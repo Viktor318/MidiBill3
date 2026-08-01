@@ -22,24 +22,70 @@ Partial Class MainForm
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
-        MenuStrip1 = New MenuStrip()
+        menuStrip1 = New MenuStrip()
+        mnuFajl = New ToolStripMenuItem()
+        mnuBetolt = New ToolStripMenuItem()
+        mnuMent = New ToolStripMenuItem()
+        ToolStripSeparator1 = New ToolStripSeparator()
+        mnuKilepes = New ToolStripMenuItem()
         chkPedal = New CheckBox()
         grpVolume = New GroupBox()
         trkAlapHangero = New TrackBar()
         grpMidiIn = New GroupBox()
+        cmbMidiIn = New ComboBox()
         grpMidiOut = New GroupBox()
+        cmbMidiOut = New ComboBox()
+        btnReset = New Button()
+        btnKilepes = New Button()
+        lblMidiUzenet = New Label()
+        dlgMegnyitas = New OpenFileDialog()
+        dlgMentes = New SaveFileDialog()
+        menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
+        grpMidiIn.SuspendLayout()
+        grpMidiOut.SuspendLayout()
         SuspendLayout()
         ' 
-        ' MenuStrip1
+        ' menuStrip1
         ' 
-        MenuStrip1.ImageScalingSize = New Size(20, 20)
-        MenuStrip1.Location = New Point(0, 0)
-        MenuStrip1.Name = "MenuStrip1"
-        MenuStrip1.Size = New Size(942, 24)
-        MenuStrip1.TabIndex = 0
-        MenuStrip1.Text = "MenuStrip1"
+        menuStrip1.ImageScalingSize = New Size(20, 20)
+        menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl})
+        menuStrip1.Location = New Point(0, 0)
+        menuStrip1.Name = "menuStrip1"
+        menuStrip1.Size = New Size(942, 28)
+        menuStrip1.TabIndex = 0
+        menuStrip1.Text = "MenuStrip1"
+        ' 
+        ' mnuFajl
+        ' 
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator1, mnuKilepes})
+        mnuFajl.Name = "mnuFajl"
+        mnuFajl.Size = New Size(45, 24)
+        mnuFajl.Text = "&Fájl"
+        ' 
+        ' mnuBetolt
+        ' 
+        mnuBetolt.Name = "mnuBetolt"
+        mnuBetolt.Size = New Size(206, 26)
+        mnuBetolt.Text = "Adatok &betöltése"
+        ' 
+        ' mnuMent
+        ' 
+        mnuMent.Name = "mnuMent"
+        mnuMent.Size = New Size(206, 26)
+        mnuMent.Text = "Adatok &mentése"
+        ' 
+        ' ToolStripSeparator1
+        ' 
+        ToolStripSeparator1.Name = "ToolStripSeparator1"
+        ToolStripSeparator1.Size = New Size(203, 6)
+        ' 
+        ' mnuKilepes
+        ' 
+        mnuKilepes.Name = "mnuKilepes"
+        mnuKilepes.Size = New Size(206, 26)
+        mnuKilepes.Text = "&Kilépés"
         ' 
         ' chkPedal
         ' 
@@ -73,6 +119,7 @@ Partial Class MainForm
         ' 
         ' grpMidiIn
         ' 
+        grpMidiIn.Controls.Add(cmbMidiIn)
         grpMidiIn.Location = New Point(624, 246)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
@@ -80,8 +127,17 @@ Partial Class MainForm
         grpMidiIn.TabStop = False
         grpMidiIn.Text = "MIDI In"
         ' 
+        ' cmbMidiIn
+        ' 
+        cmbMidiIn.FormattingEnabled = True
+        cmbMidiIn.Location = New Point(12, 36)
+        cmbMidiIn.Name = "cmbMidiIn"
+        cmbMidiIn.Size = New Size(253, 28)
+        cmbMidiIn.TabIndex = 0
+        ' 
         ' grpMidiOut
         ' 
+        grpMidiOut.Controls.Add(cmbMidiOut)
         grpMidiOut.Location = New Point(624, 354)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
@@ -89,30 +145,92 @@ Partial Class MainForm
         grpMidiOut.TabStop = False
         grpMidiOut.Text = "MIDI Out"
         ' 
+        ' cmbMidiOut
+        ' 
+        cmbMidiOut.FormattingEnabled = True
+        cmbMidiOut.Location = New Point(12, 36)
+        cmbMidiOut.Name = "cmbMidiOut"
+        cmbMidiOut.Size = New Size(253, 28)
+        cmbMidiOut.TabIndex = 0
+        ' 
+        ' btnReset
+        ' 
+        btnReset.Location = New Point(622, 476)
+        btnReset.Name = "btnReset"
+        btnReset.Size = New Size(132, 60)
+        btnReset.TabIndex = 5
+        btnReset.Text = "Csend legyen!"
+        btnReset.UseVisualStyleBackColor = True
+        ' 
+        ' btnKilepes
+        ' 
+        btnKilepes.Location = New Point(769, 476)
+        btnKilepes.Name = "btnKilepes"
+        btnKilepes.Size = New Size(132, 60)
+        btnKilepes.TabIndex = 6
+        btnKilepes.Text = "Kilépés"
+        btnKilepes.UseVisualStyleBackColor = True
+        ' 
+        ' lblMidiUzenet
+        ' 
+        lblMidiUzenet.Location = New Point(24, 642)
+        lblMidiUzenet.Name = "lblMidiUzenet"
+        lblMidiUzenet.Size = New Size(270, 25)
+        lblMidiUzenet.TabIndex = 7
+        lblMidiUzenet.Text = "MIDI üzenetek:"
+        ' 
+        ' dlgMegnyitas
+        ' 
+        dlgMegnyitas.Filter = "MidiBill adatok (*.json)|*.json"
+        ' 
+        ' dlgMentes
+        ' 
+        dlgMentes.Filter = "MidiBill adatok (*.json)|*.json"
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(942, 693)
+        Controls.Add(lblMidiUzenet)
+        Controls.Add(btnKilepes)
+        Controls.Add(btnReset)
         Controls.Add(grpMidiOut)
         Controls.Add(grpMidiIn)
         Controls.Add(grpVolume)
         Controls.Add(chkPedal)
-        Controls.Add(MenuStrip1)
-        MainMenuStrip = MenuStrip1
+        Controls.Add(menuStrip1)
+        MainMenuStrip = menuStrip1
         Name = "MainForm"
+        StartPosition = FormStartPosition.CenterScreen
         Text = "MainForm"
+        menuStrip1.ResumeLayout(False)
+        menuStrip1.PerformLayout()
         grpVolume.ResumeLayout(False)
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).EndInit()
+        grpMidiIn.ResumeLayout(False)
+        grpMidiOut.ResumeLayout(False)
         ResumeLayout(False)
         PerformLayout()
     End Sub
 
-    Friend WithEvents MenuStrip1 As MenuStrip
+    Friend WithEvents menuStrip1 As MenuStrip
     Friend WithEvents chkPedal As CheckBox
     Friend WithEvents grpVolume As GroupBox
     Friend WithEvents trkAlapHangero As TrackBar
     Friend WithEvents grpMidiIn As GroupBox
     Friend WithEvents grpMidiOut As GroupBox
+    Friend WithEvents cmbMidiIn As ComboBox
+    Friend WithEvents cmbMidiOut As ComboBox
+    Friend WithEvents btnReset As Button
+    Friend WithEvents btnKilepes As Button
+    Friend WithEvents lblMidiUzenet As Label
+    Friend WithEvents mnuFajl As ToolStripMenuItem
+    Friend WithEvents mnuBetolt As ToolStripMenuItem
+    Friend WithEvents mnuMent As ToolStripMenuItem
+    Friend WithEvents ToolStripSeparator1 As ToolStripSeparator
+    Friend WithEvents mnuKilepes As ToolStripMenuItem
+    Friend WithEvents dlgMegnyitas As OpenFileDialog
+    Friend WithEvents dlgMentes As SaveFileDialog
 
 End Class
