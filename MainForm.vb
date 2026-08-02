@@ -50,6 +50,7 @@ Public Class MainForm
         ' Alapértelmezetten csak az 1. csatorna aktív - ugyanaz a kezdőállapot,
         ' mint a VB6-os Tervezőben (J1(0).Value = 1 volt bejelölve, a többi nem).
         hangszerPanelek(0).Aktiv = True
+        hangszerKeretek(0).Text = "1. hangszer: Aktív"
     End Sub
 
     ''' <summary>
