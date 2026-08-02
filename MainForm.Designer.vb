@@ -89,7 +89,7 @@ Partial Class MainForm
         ' 
         ' chkPedal
         ' 
-        chkPedal.Location = New Point(324, 642)
+        chkPedal.Location = New Point(324, 652)
         chkPedal.Name = "chkPedal"
         chkPedal.Size = New Size(242, 25)
         chkPedal.TabIndex = 1
@@ -173,7 +173,7 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Location = New Point(24, 642)
+        lblMidiUzenet.Location = New Point(24, 652)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(270, 25)
         lblMidiUzenet.TabIndex = 7
