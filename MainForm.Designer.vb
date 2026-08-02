@@ -40,6 +40,9 @@ Partial Class MainForm
         lblMidiUzenet = New Label()
         dlgMegnyitas = New OpenFileDialog()
         dlgMentes = New SaveFileDialog()
+        mnuImportMb3 = New ToolStripMenuItem()
+        ToolStripSeparator2 = New ToolStripSeparator()
+        dlgImportMb3 = New OpenFileDialog()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -59,7 +62,7 @@ Partial Class MainForm
         ' 
         ' mnuFajl
         ' 
-        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator1, mnuKilepes})
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator2, mnuImportMb3, ToolStripSeparator1, mnuKilepes})
         mnuFajl.Name = "mnuFajl"
         mnuFajl.Size = New Size(45, 24)
         mnuFajl.Text = "&Fájl"
@@ -67,24 +70,24 @@ Partial Class MainForm
         ' mnuBetolt
         ' 
         mnuBetolt.Name = "mnuBetolt"
-        mnuBetolt.Size = New Size(206, 26)
+        mnuBetolt.Size = New Size(287, 26)
         mnuBetolt.Text = "Adatok &betöltése"
         ' 
         ' mnuMent
         ' 
         mnuMent.Name = "mnuMent"
-        mnuMent.Size = New Size(206, 26)
+        mnuMent.Size = New Size(287, 26)
         mnuMent.Text = "Adatok &mentése"
         ' 
         ' ToolStripSeparator1
         ' 
         ToolStripSeparator1.Name = "ToolStripSeparator1"
-        ToolStripSeparator1.Size = New Size(203, 6)
+        ToolStripSeparator1.Size = New Size(284, 6)
         ' 
         ' mnuKilepes
         ' 
         mnuKilepes.Name = "mnuKilepes"
-        mnuKilepes.Size = New Size(206, 26)
+        mnuKilepes.Size = New Size(287, 26)
         mnuKilepes.Text = "&Kilépés"
         ' 
         ' chkPedal
@@ -187,6 +190,21 @@ Partial Class MainForm
         ' 
         dlgMentes.Filter = "MidiBill adatok (*.json)|*.json"
         ' 
+        ' mnuImportMb3
+        ' 
+        mnuImportMb3.Name = "mnuImportMb3"
+        mnuImportMb3.Size = New Size(287, 26)
+        mnuImportMb3.Text = "Régi .mb3 preset &importálása"
+        ' 
+        ' ToolStripSeparator2
+        ' 
+        ToolStripSeparator2.Name = "ToolStripSeparator2"
+        ToolStripSeparator2.Size = New Size(284, 6)
+        ' 
+        ' dlgImportMb3
+        ' 
+        dlgImportMb3.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
@@ -232,5 +250,8 @@ Partial Class MainForm
     Friend WithEvents mnuKilepes As ToolStripMenuItem
     Friend WithEvents dlgMegnyitas As OpenFileDialog
     Friend WithEvents dlgMentes As SaveFileDialog
+    Friend WithEvents mnuImportMb3 As ToolStripMenuItem
+    Friend WithEvents ToolStripSeparator2 As ToolStripSeparator
+    Friend WithEvents dlgImportMb3 As OpenFileDialog
 
 End Class
