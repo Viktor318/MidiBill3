@@ -10,6 +10,12 @@ Public Class MainForm
     Private utolsoPedalErtek As Integer = 0
     Private inicializalasKesz As Boolean = False
 
+    ' A jelenleg "aktív" fájl neve (útvonal nélkül) - mindig szinkronban az
+    ' ablak címsorával. Ez alapján ajánljuk fel alapértelmezettként a nevet
+    ' a mentés-dialógusnál, függetlenül attól, hogy korábban betöltés,
+    ' mentés vagy .mb3 import történt.
+    Private aktualisFajlNev As String = ""
+
     ' A beállítások automatikus be-/kimentési útvonala - a VB6-os
     ' KezdetFile (Kezdet.mb3) megfelelője, JSON formátumban.
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
@@ -395,23 +401,41 @@ Public Class MainForm
         Return Math.Max(min, Math.Min(max, ertek))
     End Function
 
-    ''' <summary>Az ablak címsorának frissítése a mentett/betöltött/importált fájl nevével (csak a fájlnév, nem a teljes útvonal)</summary>
+    ''' <summary>
+    ''' Az ablak címsorának frissítése a mentett/betöltött/importált fájl
+    ''' nevével (csak a fájlnév, nem a teljes útvonal), és az aktuális
+    ''' fájlnév eltárolása is - ezt ajánljuk fel majd alapértelmezettként
+    ''' a legközelebbi "Adatok mentése" dialógusnál.
+    ''' </summary>
     Private Sub CimsorFrissitese(teljesUtvonal As String)
-        Me.Text = "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre : " & IO.Path.GetFileName(teljesUtvonal)
+        aktualisFajlNev = IO.Path.GetFileName(teljesUtvonal)
+        Me.Text = "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre : " & aktualisFajlNev
     End Sub
 
     ''' <summary>
-    ''' A fájldialógus "megjegyzett" FileName-jét lecseréli csak a fájlnévre
-    ''' (a mappát InitialDirectory-ba mentve), hogy legközelebbi megnyitáskor
-    ''' ne a teljes, hosszú elérési utat mutassa előre kitöltve a mezőben,
-    ''' hanem csak a legutóbb használt fájl rövid nevét.
+    ''' A fájldialógus "megjegyzett" FileName-jét lecseréli csak a fájlnévre,
+    ''' hogy legközelebbi megnyitáskor ne a teljes, hosszú elérési utat
+    ''' mutassa előre kitöltve a mezőben, hanem csak a legutóbb használt
+    ''' fájl rövid nevét. Az InitialDirectory-t szándékosan NEM állítja itt -
+    ''' azt mindig a program mappájára állítjuk, lásd DialogusMappaBeallitasa.
     ''' </summary>
     Private Sub DialogusRovidNevreAllitasa(dlg As FileDialog, teljesUtvonal As String)
-        dlg.InitialDirectory = IO.Path.GetDirectoryName(teljesUtvonal)
         dlg.FileName = IO.Path.GetFileName(teljesUtvonal)
     End Sub
 
+    ''' <summary>
+    ''' A fájldialógus kezdő mappáját mindig a program aktuális könyvtárára
+    ''' állítja - a fájlműveletek mindig innen induljanak, függetlenül attól,
+    ''' hogy korábban a munkamenet során esetleg máshova mentettünk/onnan
+    ''' töltöttünk be.
+    ''' </summary>
+    Private Sub DialogusMappaBeallitasa(dlg As FileDialog)
+        dlg.InitialDirectory = Application.StartupPath
+    End Sub
+
     Private Sub mnuBetolt_Click(sender As Object, e As EventArgs) Handles mnuBetolt.Click
+        DialogusMappaBeallitasa(dlgMegnyitas)
+
         If dlgMegnyitas.ShowDialog() = DialogResult.OK Then
             Try
                 Dim b As Beallitasok = Beallitasok.Betoltes(dlgMegnyitas.FileName)
@@ -427,6 +451,9 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuMent_Click(sender As Object, e As EventArgs) Handles mnuMent.Click
+        DialogusMappaBeallitasa(dlgMentes)
+        dlgMentes.FileName = IO.Path.GetFileNameWithoutExtension(aktualisFajlNev)
+
         If dlgMentes.ShowDialog() = DialogResult.OK Then
             Try
                 AktualisBeallitasokOsszegyujtese().Mentes(dlgMentes.FileName)
@@ -440,6 +467,8 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuImportMb3_Click(sender As Object, e As EventArgs) Handles mnuImportMb3.Click
+        DialogusMappaBeallitasa(dlgImportMb3)
+
         If dlgImportMb3.ShowDialog() = DialogResult.OK Then
             Try
                 Dim b As Beallitasok = Beallitasok.ImportMb3(dlgImportMb3.FileName)

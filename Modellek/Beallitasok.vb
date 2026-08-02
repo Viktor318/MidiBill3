@@ -1,6 +1,7 @@
 ﻿Imports System.IO
 Imports System.Text.Json
 Imports System.Text.Json.Serialization
+Imports System.Text.RegularExpressions
 
 Namespace Modellek
 
@@ -61,19 +62,36 @@ Namespace Modellek
             Return b
         End Function
 
-        ''' <summary>Beállítások mentése JSON fájlba</summary>
+        ''' <summary>
+        ''' Beállítások mentése JSON fájlba - kiegészítve emberi olvasást segítő
+        ''' megjegyzésekkel (fejléc + hangszernevek). A megjegyzések a szabványos
+        ''' JSON-ban nem léteznek, de a saját Betoltes() metódusunk kifejezetten
+        ''' megengedi és átugorja őket olvasáskor - más program nem biztos, hogy
+        ''' elfogadná ezt a fájlt szigorú JSON-ként.
+        ''' </summary>
         Public Sub Mentes(fajlNev As String)
             Dim opciok As New JsonSerializerOptions With {
                 .WriteIndented = True
             }
-            Dim json As String = JsonSerializer.Serialize(Me, opciok)
-            IO.File.WriteAllText(fajlNev, json)
+            Dim nyersJson As String = JsonSerializer.Serialize(Me, opciok)
+            Dim vegsoJson As String = KommentekHozzaadasa(nyersJson)
+            IO.File.WriteAllText(fajlNev, vegsoJson)
         End Sub
 
-        ''' <summary>Beállítások betöltése JSON fájlból</summary>
+        ''' <summary>
+        ''' Beállítások betöltése JSON fájlból. A ReadCommentHandling.Skip
+        ''' miatt a Mentes() által beszúrt "// ..." megjegyzések nem okoznak
+        ''' hibát, egyszerűen átugorja őket a beolvasás.
+        ''' </summary>
         Public Shared Function Betoltes(fajlNev As String) As Beallitasok
             Dim json As String = IO.File.ReadAllText(fajlNev)
-            Dim eredmeny As Beallitasok = JsonSerializer.Deserialize(Of Beallitasok)(json)
+
+            Dim opciok As New JsonSerializerOptions With {
+                .ReadCommentHandling = JsonCommentHandling.Skip,
+                .AllowTrailingCommas = True
+            }
+
+            Dim eredmeny As Beallitasok = JsonSerializer.Deserialize(Of Beallitasok)(json, opciok)
 
             ' Biztonsági háló: ha a JSON hiányos vagy sérült volt, és a
             ' Csatornak lista nem pontosan 4 elemű, egészítsük ki/vágjuk
@@ -131,6 +149,44 @@ Namespace Modellek
             ' ezt szándékosan figyelmen kívül hagyjuk, lásd fent.
 
             Return b
+        End Function
+
+        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét, tartományellenőrzéssel</summary>
+        Private Shared Function HangszerNev(index As Integer) As String
+            If index >= 0 AndAlso index < HangszerLista.Nevek.Length Then
+                Return HangszerLista.Nevek(index)
+            End If
+            Return "ismeretlen hangszer"
+        End Function
+
+        ''' <summary>
+        ''' A tiszta JSON szöveget egészíti ki emberi olvasást segítő
+        ''' megjegyzésekkel: fejléc a fájl elején, és minden "Hangszer": N
+        ''' sor mellé a hangszer neve.
+        ''' </summary>
+        Private Shared Function KommentekHozzaadasa(json As String) As String
+            ' 1. A "Hangszer": <szám> sorok kiegészítése a hangszer nevével
+            Dim hangszerMinta As New Regex("(""Hangszer"":\s*)(-?\d+)(,?)")
+            Dim jsonHangszerNevekkel As String = hangszerMinta.Replace(json,
+                Function(m As Match) As String
+                    Dim idx As Integer = 0
+                    Integer.TryParse(m.Groups(2).Value, idx)
+                    Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & HangszerNev(idx)
+                End Function)
+
+            ' 2. Fejléc megjegyzés beszúrása a fájl elejére, az első ("{") sor után
+            Dim sorok As New List(Of String)(jsonHangszerNevekkel.Split({Environment.NewLine}, StringSplitOptions.None))
+
+            Dim fejlec() As String = {
+                "  // MidiBill3 beállítások - JSON formátumú preset fájl",
+                "  // Készült: " & DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss", Globalization.CultureInfo.InvariantCulture)
+            }
+
+            If sorok.Count > 0 Then
+                sorok.InsertRange(1, fejlec)
+            End If
+
+            Return String.Join(Environment.NewLine, sorok)
         End Function
 
     End Class
