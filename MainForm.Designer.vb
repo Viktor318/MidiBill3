@@ -99,9 +99,9 @@ Partial Class MainForm
         ' grpVolume
         ' 
         grpVolume.Controls.Add(trkAlapHangero)
-        grpVolume.Location = New Point(624, 138)
+        grpVolume.Location = New Point(625, 32)
         grpVolume.Name = "grpVolume"
-        grpVolume.Size = New Size(277, 92)
+        grpVolume.Size = New Size(277, 85)
         grpVolume.TabIndex = 2
         grpVolume.TabStop = False
         grpVolume.Text = "Alap hangerő beállítása: 70"
@@ -120,7 +120,7 @@ Partial Class MainForm
         ' grpMidiIn
         ' 
         grpMidiIn.Controls.Add(cmbMidiIn)
-        grpMidiIn.Location = New Point(624, 246)
+        grpMidiIn.Location = New Point(625, 140)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
         grpMidiIn.TabIndex = 3
@@ -138,7 +138,7 @@ Partial Class MainForm
         ' grpMidiOut
         ' 
         grpMidiOut.Controls.Add(cmbMidiOut)
-        grpMidiOut.Location = New Point(624, 354)
+        grpMidiOut.Location = New Point(625, 248)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
         grpMidiOut.TabIndex = 4
@@ -155,7 +155,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Location = New Point(622, 476)
+        btnReset.Location = New Point(625, 350)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
         btnReset.TabIndex = 5
@@ -164,7 +164,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Location = New Point(769, 476)
+        btnKilepes.Location = New Point(770, 350)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
         btnKilepes.TabIndex = 6
