@@ -47,6 +47,7 @@
         For Each nev As String In GMHangszerek
             cmbHangszer.Items.Add(nev)
         Next
+        cmbHangszer.SelectedIndex = 0 ' alapértelmezett hangszer: az első a listában (ua., mint a VB6-ban)
         betoltesAlatt = False
 
         ' Kezdeti értékkijelzés (a Tervezőben beállított alapértékek alapján)
