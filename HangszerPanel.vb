@@ -1,4 +1,5 @@
 ﻿Imports MidiBill3.Modellek
+Imports System.ComponentModel
 
 Public Class HangszerPanel
 
@@ -43,7 +44,11 @@ Public Class HangszerPanel
     ' (íráskor NEM tüzelünk eseményt, hogy betöltéskor a MainForm ne
     '  generáljon felesleges MIDI-küldést minden egyes mező beállításakor -
     '  a betöltés végén a MainForm majd egyszer, explicit módon frissíti a MIDI-t)
+    ' A DesignerSerializationVisibility.Hidden jelzi a WinForms Tervezőnek,
+    ' hogy ezek tisztán futásidejű property-k, sose próbálja szerializálni
+    ' őket a .Designer.vb fájlba (WFO1000 figyelmeztetés/hiba elkerülése).
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Hangszer As Integer
         Get
             Return cmbHangszer.SelectedIndex
@@ -55,6 +60,7 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Hangero As Integer
         Get
             Return trkHangero.Value
@@ -66,6 +72,7 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Ter As Integer
         Get
             Return trkTer.Value
@@ -77,6 +84,7 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Vibrato As Integer
         Get
             Return trkVibrato.Value
@@ -88,6 +96,7 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Aktiv As Boolean
         Get
             Return chkAktiv.Checked
