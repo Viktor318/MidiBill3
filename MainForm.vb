@@ -16,6 +16,15 @@ Public Class MainForm
     ' mentés vagy .mb3 import történt.
     Private aktualisFajlNev As String = ""
 
+    ' Az egyes fájlműveletek (betöltés/mentés/import) LEGUTÓBB HASZNÁLT
+    ' mappája, KÜLÖN-KÜLÖN nyilvántartva. Üres string = még nem volt
+    ' sikeres művelet ebben a munkamenetben -> ilyenkor a program mappáját
+    ' használjuk alapértelmezettként. Az első sikeres művelet után viszont
+    ' mindegyik a saját, legutóbb használt mappáját jegyzi meg.
+    Private utolsoBetoltesMappa As String = ""
+    Private utolsoMentesMappa As String = ""
+    Private utolsoImportMappa As String = ""
+
     ' A beállítások automatikus be-/kimentési útvonala - a VB6-os
     ' KezdetFile (Kezdet.mb3) megfelelője, JSON formátumban.
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
@@ -413,35 +422,35 @@ Public Class MainForm
     End Sub
 
     ''' <summary>
-    ''' A fájldialógus "megjegyzett" FileName-jét lecseréli csak a fájlnévre,
-    ''' hogy legközelebbi megnyitáskor ne a teljes, hosszú elérési utat
-    ''' mutassa előre kitöltve a mezőben, hanem csak a legutóbb használt
-    ''' fájl rövid nevét. Az InitialDirectory-t szándékosan NEM állítja itt -
-    ''' azt mindig a program mappájára állítjuk, lásd DialogusMappaBeallitasa.
+    ''' A dialógus kezdő mappáját állítja be: ha a megjegyzettMappa még üres
+    ''' (nem volt még sikeres művelet ennél a típusnál ebben a munkamenetben),
+    ''' a program mappáját használja; egyébként a legutóbb használt, saját
+    ''' mappáját az adott művelettípusnak (betöltés/mentés/import külön-külön).
     ''' </summary>
-    Private Sub DialogusRovidNevreAllitasa(dlg As FileDialog, teljesUtvonal As String)
-        dlg.FileName = IO.Path.GetFileName(teljesUtvonal)
+    Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String)
+        dlg.InitialDirectory = If(String.IsNullOrEmpty(megjegyzettMappa), Application.StartupPath, megjegyzettMappa)
     End Sub
 
     ''' <summary>
-    ''' A fájldialógus kezdő mappáját mindig a program aktuális könyvtárára
-    ''' állítja - a fájlműveletek mindig innen induljanak, függetlenül attól,
-    ''' hogy korábban a munkamenet során esetleg máshova mentettünk/onnan
-    ''' töltöttünk be.
+    ''' Sikeres fájlművelet után: a dialógus FileName mezőjét rövid névre
+    ''' állítja (legközelebbi megnyitáskor ne a teljes útvonalat mutassa),
+    ''' ÉS elmenti a használt mappát a megfelelő "megjegyzett mappa" mezőbe,
+    ''' hogy legközelebb onnan folytassa ugyanaz a művelettípus.
     ''' </summary>
-    Private Sub DialogusMappaBeallitasa(dlg As FileDialog)
-        dlg.InitialDirectory = Application.StartupPath
+    Private Sub DialogusAllapotMentese(dlg As FileDialog, teljesUtvonal As String, ByRef megjegyzettMappa As String)
+        dlg.FileName = IO.Path.GetFileName(teljesUtvonal)
+        megjegyzettMappa = IO.Path.GetDirectoryName(teljesUtvonal)
     End Sub
 
     Private Sub mnuBetolt_Click(sender As Object, e As EventArgs) Handles mnuBetolt.Click
-        DialogusMappaBeallitasa(dlgMegnyitas)
+        DialogusMappaBeallitasa(dlgMegnyitas, utolsoBetoltesMappa)
 
         If dlgMegnyitas.ShowDialog() = DialogResult.OK Then
             Try
                 Dim b As Beallitasok = Beallitasok.Betoltes(dlgMegnyitas.FileName)
                 BeallitasokAlkalmazasa(b, True)
                 CimsorFrissitese(dlgMegnyitas.FileName)
-                DialogusRovidNevreAllitasa(dlgMegnyitas, dlgMegnyitas.FileName)
+                DialogusAllapotMentese(dlgMegnyitas, dlgMegnyitas.FileName, utolsoBetoltesMappa)
             Catch ex As Exception
                 MsgBox("Nem sikerült betölteni a(z) """ & dlgMegnyitas.FileName & """ fájlt." & vbCrLf &
                        "Lehet, hogy sérült, vagy nem MidiBill adatfájl." & vbCrLf & vbCrLf &
@@ -451,14 +460,14 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuMent_Click(sender As Object, e As EventArgs) Handles mnuMent.Click
-        DialogusMappaBeallitasa(dlgMentes)
+        DialogusMappaBeallitasa(dlgMentes, utolsoMentesMappa)
         dlgMentes.FileName = IO.Path.GetFileNameWithoutExtension(aktualisFajlNev)
 
         If dlgMentes.ShowDialog() = DialogResult.OK Then
             Try
                 AktualisBeallitasokOsszegyujtese().Mentes(dlgMentes.FileName)
                 CimsorFrissitese(dlgMentes.FileName)
-                DialogusRovidNevreAllitasa(dlgMentes, dlgMentes.FileName)
+                DialogusAllapotMentese(dlgMentes, dlgMentes.FileName, utolsoMentesMappa)
             Catch ex As Exception
                 MsgBox("Nem sikerült elmenteni a beállításokat ide:" & vbCrLf & dlgMentes.FileName & vbCrLf & vbCrLf &
                        "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
@@ -467,14 +476,14 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuImportMb3_Click(sender As Object, e As EventArgs) Handles mnuImportMb3.Click
-        DialogusMappaBeallitasa(dlgImportMb3)
+        DialogusMappaBeallitasa(dlgImportMb3, utolsoImportMappa)
 
         If dlgImportMb3.ShowDialog() = DialogResult.OK Then
             Try
                 Dim b As Beallitasok = Beallitasok.ImportMb3(dlgImportMb3.FileName)
                 BeallitasokAlkalmazasa(b, False) ' a MIDI eszközválasztást szándékosan nem érintjük
                 CimsorFrissitese(dlgImportMb3.FileName)
-                DialogusRovidNevreAllitasa(dlgImportMb3, dlgImportMb3.FileName)
+                DialogusAllapotMentese(dlgImportMb3, dlgImportMb3.FileName, utolsoImportMappa)
 
                 MsgBox("A régi preset sikeresen importálva." & vbCrLf &
                        "A MIDI be-/kimeneti eszköz kiválasztása változatlan maradt - " &
