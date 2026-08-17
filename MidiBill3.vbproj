@@ -44,6 +44,9 @@
 	<Compile Remove="PresetKonvertalo\**" />
 	<EmbeddedResource Remove="PresetKonvertalo\**" />
 	<None Remove="PresetKonvertalo\**" />
+	<Compile Remove="Mb3Konvertalo\**" />
+	<EmbeddedResource Remove="Mb3Konvertalo\**" />
+	<None Remove="Mb3Konvertalo\**" />
 </ItemGroup>
 
 </Project>
