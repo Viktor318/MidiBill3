@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Futásidejű, automatikusan generált induló-állapot - ne kövessük, mert minden kilépéskor felülíródik
+Kezdet.json

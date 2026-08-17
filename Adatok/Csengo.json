@@ -1,0 +1,38 @@
+{
+  // MidiBill3 beállítások - JSON formátumú preset fájl
+  // Készült: 2026.08.02 22:24:27
+  "Csatornak": [
+    {
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 48,  // String Ensemble 1
+      "Hangero": 111,
+      "Ter": 0,
+      "Vibrato": 24,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 10,  // Music Box
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false
+    }
+  ],
+  "AlapHangero": 70,
+  "MidiBemenetNev": "V49",
+  "MidiKimenetNev": "SB Audigy 5/Rx Synth A [3FC0]",
+  "PedalInvertalva": false
+}

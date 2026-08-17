@@ -1,0 +1,38 @@
+{
+  // MidiBill3 beállítások - JSON formátumú preset fájl
+  // Készült: 2026.08.02 22:01:00
+  "Csatornak": [
+    {
+      "Hangszer": 89,  // Pad 2 (warm)
+      "Hangero": 79,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false
+    },
+    {
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false
+    },
+    {
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false
+    }
+  ],
+  "AlapHangero": 70,
+  "MidiBemenetNev": "V49",
+  "MidiKimenetNev": "VirtualMIDISynth #1",
+  "PedalInvertalva": false
+}

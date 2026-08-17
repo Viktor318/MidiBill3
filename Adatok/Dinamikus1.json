@@ -1,0 +1,36 @@
+{
+  "Csatornak": [
+    {
+      "Hangszer": 0,
+      "Hangero": 109,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 16,
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 30,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 35,
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 52,
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    }
+  ],
+  "AlapHangero": 81,
+  "MidiBemenetNev": "V49",
+  "MidiKimenetNev": "SB Audigy 5/Rx Synth A [3FC0]",
+  "PedalInvertalva": false
+}

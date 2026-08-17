@@ -1,0 +1,36 @@
+{
+  "Csatornak": [
+    {
+      "Hangszer": 18,
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 29,
+      "Hangero": 127,
+      "Ter": 35,
+      "Vibrato": 24,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 0,
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    },
+    {
+      "Hangszer": 0,
+      "Hangero": 100,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": true
+    }
+  ],
+  "AlapHangero": 70,
+  "MidiBemenetNev": "V49",
+  "MidiKimenetNev": "VirtualMIDISynth #1",
+  "PedalInvertalva": false
+}
