@@ -32,5 +32,12 @@
       <LastGenOutput>Application.Designer.vb</LastGenOutput>
     </None>
   </ItemGroup>
+  
+  <ItemGroup>
+  <!-- Az Adatok mappa (régi preset fájlok) automatikus másolása a build és publish kimeneti mappájába is -->
+  <None Include="Adatok\**\*.*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 
 </Project>

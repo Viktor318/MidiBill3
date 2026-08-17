@@ -40,6 +40,12 @@ Public Class HangszerPanel
     ''' <summary>Aktív jelölőnégyzet állapota változott</summary>
     Public Event AktivValtozott(sender As Object, aktiv As Boolean)
 
+    ''' <summary>"Alul" (Split ponttól alul szól) jelölőnégyzet állapota változott</summary>
+    Public Event AlulValtozott(sender As Object, aktiv As Boolean)
+
+    ''' <summary>"Felül" (Split ponttól felül szól) jelölőnégyzet állapota változott</summary>
+    Public Event FelulValtozott(sender As Object, aktiv As Boolean)
+
     ' --- Publikus property-k: kívülről is olvasható/írható állapot ---
     ' (íráskor NEM tüzelünk eseményt, hogy betöltéskor a MainForm ne
     '  generáljon felesleges MIDI-küldést minden egyes mező beállításakor -
@@ -108,6 +114,30 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
+    Public Property Alul As Boolean
+        Get
+            Return chkAlul.Checked
+        End Get
+        Set(value As Boolean)
+            betoltesAlatt = True
+            chkAlul.Checked = value
+            betoltesAlatt = False
+        End Set
+    End Property
+
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
+    Public Property Felul As Boolean
+        Get
+            Return chkFelul.Checked
+        End Get
+        Set(value As Boolean)
+            betoltesAlatt = True
+            chkFelul.Checked = value
+            betoltesAlatt = False
+        End Set
+    End Property
+
     ' --- Belső eseménykezelők: a vezérlők változásait továbbítjuk kifelé ---
 
     Private Sub cmbHangszer_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbHangszer.SelectedIndexChanged
@@ -136,6 +166,16 @@ Public Class HangszerPanel
     Private Sub chkAktiv_CheckedChanged(sender As Object, e As EventArgs) Handles chkAktiv.CheckedChanged
         If betoltesAlatt Then Return
         RaiseEvent AktivValtozott(Me, chkAktiv.Checked)
+    End Sub
+
+    Private Sub chkAlul_CheckedChanged(sender As Object, e As EventArgs) Handles chkAlul.CheckedChanged
+        If betoltesAlatt Then Return
+        RaiseEvent AlulValtozott(Me, chkAlul.Checked)
+    End Sub
+
+    Private Sub chkFelul_CheckedChanged(sender As Object, e As EventArgs) Handles chkFelul.CheckedChanged
+        If betoltesAlatt Then Return
+        RaiseEvent FelulValtozott(Me, chkFelul.Checked)
     End Sub
 
 End Class

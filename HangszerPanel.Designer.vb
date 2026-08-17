@@ -33,6 +33,8 @@ Partial Class HangszerPanel
         lblHerErtek = New Label()
         lblTerErtek = New Label()
         lblVibErtek = New Label()
+        chkAlul = New CheckBox()
+        chkFelul = New CheckBox()
         CType(trkHangero, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkTer, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkVibrato, ComponentModel.ISupportInitialize).BeginInit()
@@ -80,7 +82,6 @@ Partial Class HangszerPanel
         ' 
         ' lblHer
         ' 
-        lblHer.AutoSize = False
         lblHer.Location = New Point(12, 54)
         lblHer.Name = "lblHer"
         lblHer.Size = New Size(38, 25)
@@ -90,7 +91,6 @@ Partial Class HangszerPanel
         ' 
         ' lblTer
         ' 
-        lblTer.AutoSize = False
         lblTer.Location = New Point(12, 108)
         lblTer.Name = "lblTer"
         lblTer.Size = New Size(38, 25)
@@ -100,7 +100,6 @@ Partial Class HangszerPanel
         ' 
         ' lblVib
         ' 
-        lblVib.AutoSize = False
         lblVib.Location = New Point(12, 162)
         lblVib.Name = "lblVib"
         lblVib.Size = New Size(38, 25)
@@ -110,17 +109,15 @@ Partial Class HangszerPanel
         ' 
         ' chkAktiv
         ' 
-        chkAktiv.AutoSize = False
         chkAktiv.Location = New Point(24, 222)
         chkAktiv.Name = "chkAktiv"
-        chkAktiv.Size = New Size(120, 24)
+        chkAktiv.Size = New Size(70, 24)
         chkAktiv.TabIndex = 7
         chkAktiv.Text = "Aktív"
         chkAktiv.UseVisualStyleBackColor = True
         ' 
         ' lblHerErtek
         ' 
-        lblHerErtek.AutoSize = False
         lblHerErtek.Location = New Point(12, 79)
         lblHerErtek.Name = "lblHerErtek"
         lblHerErtek.Size = New Size(38, 25)
@@ -130,7 +127,6 @@ Partial Class HangszerPanel
         ' 
         ' lblTerErtek
         ' 
-        lblTerErtek.AutoSize = False
         lblTerErtek.Location = New Point(12, 133)
         lblTerErtek.Name = "lblTerErtek"
         lblTerErtek.Size = New Size(38, 25)
@@ -140,7 +136,6 @@ Partial Class HangszerPanel
         ' 
         ' lblVibErtek
         ' 
-        lblVibErtek.AutoSize = False
         lblVibErtek.Location = New Point(12, 187)
         lblVibErtek.Name = "lblVibErtek"
         lblVibErtek.Size = New Size(38, 25)
@@ -148,10 +143,30 @@ Partial Class HangszerPanel
         lblVibErtek.Text = "0"
         lblVibErtek.TextAlign = ContentAlignment.TopCenter
         ' 
+        ' chkAlul
+        ' 
+        chkAlul.Location = New Point(110, 222)
+        chkAlul.Name = "chkAlul"
+        chkAlul.Size = New Size(70, 24)
+        chkAlul.TabIndex = 11
+        chkAlul.Text = "Alul"
+        chkAlul.UseVisualStyleBackColor = True
+        ' 
+        ' chkFelul
+        ' 
+        chkFelul.Location = New Point(196, 222)
+        chkFelul.Name = "chkFelul"
+        chkFelul.Size = New Size(70, 24)
+        chkFelul.TabIndex = 12
+        chkFelul.Text = "Felül"
+        chkFelul.UseVisualStyleBackColor = True
+        ' 
         ' HangszerPanel
         ' 
         AutoScaleDimensions = New SizeF(8.0F, 20.0F)
         AutoScaleMode = AutoScaleMode.Font
+        Controls.Add(chkFelul)
+        Controls.Add(chkAlul)
         Controls.Add(lblVibErtek)
         Controls.Add(lblTerErtek)
         Controls.Add(lblHerErtek)
@@ -182,5 +197,7 @@ Partial Class HangszerPanel
     Friend WithEvents lblHerErtek As Label
     Friend WithEvents lblTerErtek As Label
     Friend WithEvents lblVibErtek As Label
+    Friend WithEvents chkAlul As CheckBox
+    Friend WithEvents chkFelul As CheckBox
 
 End Class

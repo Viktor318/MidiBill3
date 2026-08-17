@@ -25,6 +25,14 @@ Public Class MainForm
     Private utolsoMentesMappa As String = ""
     Private utolsoImportMappa As String = ""
 
+    ' A jelenlegi Split pont (MIDI hangszám, 0-127), szinkronban a
+    ' cmbSplitPont kiválasztásával és a grpSplit fejlécével.
+    Private aktualisSplitPont As Integer = 60
+
+    ' Jelzi, hogy a "Tanulás" gomb után a következő lenyomott billentyű
+    ' állítja be a Split pontot (ahelyett, hogy megszólalna).
+    Private splitTanulasAktiv As Boolean = False
+
     ' A beállítások automatikus be-/kimentési útvonala - a VB6-os
     ' KezdetFile (Kezdet.mb3) megfelelője, JSON formátumban.
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
@@ -34,9 +42,11 @@ Public Class MainForm
     Private Const MAIN_VOLUME As Integer = 7
     Private Const PAN As Integer = 10
     Private Const MOD_WHEEL As Integer = 1
+    Private Const NOTE_ON As Integer = &H90
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         HangszerPanelekLetrehozasa()
+        SplitPontFeltoltese()
         MidiEszkozokFeltoltese()
         KezdetBeallitasokBetoltese()
     End Sub
@@ -88,12 +98,23 @@ Public Class MainForm
             AddHandler panel.TerValtozott, AddressOf HangszerPanel_TerValtozott
             AddHandler panel.VibratoValtozott, AddressOf HangszerPanel_VibratoValtozott
             AddHandler panel.AktivValtozott, AddressOf HangszerPanel_AktivValtozott
+            AddHandler panel.AlulValtozott, AddressOf HangszerPanel_AlulValtozott
+            AddHandler panel.FelulValtozott, AddressOf HangszerPanel_FelulValtozott
         Next
 
         hangszerPanelek(0).Aktiv = True
         hangszerKeretek(0).Text = "1. hangszer: Aktív"
 
         inicializalasKesz = True
+    End Sub
+
+    ''' <summary>A Split pont legördülő lista feltöltése mind a 128 MIDI hanggal, hangnévvel</summary>
+    Private Sub SplitPontFeltoltese()
+        cmbSplitPont.Items.Clear()
+        For szam As Integer = 0 To 127
+            cmbSplitPont.Items.Add(Hangnevek.HangNev(szam) & " (" & szam & ")")
+        Next
+        cmbSplitPont.SelectedIndex = 60 ' alapértelmezett törésponti hang: C4
     End Sub
 
     Private Sub MidiEszkozokFeltoltese()
@@ -169,15 +190,19 @@ Public Class MainForm
 
     ''' <summary>
     ''' Új kimeneti port nyitásakor minden csatorna aktuális állapotát
-    ''' (hangszer, hangerő, pan, vibrato, aktív/inaktív) újraküldi -
+    ''' (hangszer, hangerő, pan, vibrato, aktív/inaktív, zóna) újraküldi -
     ''' a VB6-os Init_Channels megfelelője.
     ''' </summary>
     Private Sub OsszesCsatornaUjrakuldese()
         If Not inicializalasKesz Then Return
 
+        midiMotor.SplitPont = aktualisSplitPont
+
         For i As Integer = 0 To 3
             Dim csatornaSzam As Integer = i + 1
             midiMotor.CsatornaAktiv(i) = hangszerPanelek(i).Aktiv
+            midiMotor.CsatornaAlul(i) = hangszerPanelek(i).Alul
+            midiMotor.CsatornaFelul(i) = hangszerPanelek(i).Felul
             midiMotor.ProgramValtas(csatornaSzam, hangszerPanelek(i).Hangszer)
             CsatornaHangeroKuldes(csatornaSzam, hangszerPanelek(i).Hangero)
             midiMotor.ControllerValtas(csatornaSzam, PAN, hangszerPanelek(i).Ter + 64)
@@ -243,6 +268,20 @@ Public Class MainForm
         End If
     End Sub
 
+    ''' <summary>"Alul" zóna be-/kikapcsolása egy csatornán - a MidiEngine kezeli a hang-nyilvántartást</summary>
+    Private Sub HangszerPanel_AlulValtozott(sender As Object, aktiv As Boolean)
+        Dim cs As Integer = CsatornaSzam(sender)
+        If cs = 0 Then Return
+        midiMotor.AlulValtas(cs, aktiv)
+    End Sub
+
+    ''' <summary>"Felül" zóna be-/kikapcsolása egy csatornán - a MidiEngine kezeli a hang-nyilvántartást</summary>
+    Private Sub HangszerPanel_FelulValtozott(sender As Object, aktiv As Boolean)
+        Dim cs As Integer = CsatornaSzam(sender)
+        If cs = 0 Then Return
+        midiMotor.FelulValtas(cs, aktiv)
+    End Sub
+
     ''' <summary>
     ''' A csatorna hangereje mindig a globális alaphangerővel szorzódik -
     ''' a VB6-os Her_Change: "Data * (Volume.Value / 100)" megfelelője.
@@ -267,6 +306,41 @@ Public Class MainForm
     End Sub
 
     ' ============================================================
+    ' Split pont
+    ' ============================================================
+
+    ''' <summary>
+    ''' A Split pont manuális kiválasztása a legördülő listából - a "Tanulás"
+    ''' gomb is ugyanezt az egy állapotot állítja be, így a két bemeneti mód
+    ''' mindig szinkronban marad.
+    ''' </summary>
+    Private Sub cmbSplitPont_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbSplitPont.SelectedIndexChanged
+        If Not inicializalasKesz Then Return
+        If cmbSplitPont.SelectedIndex < 0 Then Return
+
+        aktualisSplitPont = cmbSplitPont.SelectedIndex
+        midiMotor.SplitPont = aktualisSplitPont
+        grpSplit.Text = "Split pont: " & Hangnevek.HangNev(aktualisSplitPont)
+    End Sub
+
+    ''' <summary>"Tanulás" gomb: várakozás a következő billentyűlenyomásra</summary>
+    Private Sub btnSplitTanulas_Click(sender As Object, e As EventArgs) Handles btnSplitTanulas.Click
+        splitTanulasAktiv = True
+        lblSplitInfo.Text = "Várakozás billentyűre..."
+    End Sub
+
+    ''' <summary>
+    ''' A "Tanulás" mód lezárása: a lenyomott hang lesz az új Split pont.
+    ''' A cmbSplitPont.SelectedIndex beállítása automatikusan kiváltja a
+    ''' cmbSplitPont_SelectedIndexChanged-et, ami mindent (MidiEngine, felirat) frissít.
+    ''' </summary>
+    Private Sub SplitPontBeallitasaTanulassal(hang As Integer)
+        splitTanulasAktiv = False
+        cmbSplitPont.SelectedIndex = hang
+        lblSplitInfo.Text = "Beállítva: " & Hangnevek.HangNev(hang)
+    End Sub
+
+    ' ============================================================
     ' Bejövő MIDI üzenetek fogadása (NAudio háttérszáláról!)
     ' ============================================================
 
@@ -285,6 +359,8 @@ Public Class MainForm
     ''' <summary>
     ''' Ez már biztosan a UI-szálon fut. A VB6-os MIDIInput1_Message logikáját
     ''' követi: pedál-inverzió kezelése, üzenet megjelenítése, majd fan-out küldés.
+    ''' Ha "Tanulás" módban vagyunk, a következő Note On beállítja a Split
+    ''' pontot, és NEM szólal meg (nem kerül továbbküldésre).
     ''' </summary>
     Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer)
         Dim vegsoAdat2 As Integer = adat2
@@ -297,6 +373,11 @@ Public Class MainForm
         End If
 
         lblMidiUzenet.Text = "MIDI üzenetek: " & uzenet & ", " & adat1 & ", " & vegsoAdat2
+
+        If splitTanulasAktiv AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
+            SplitPontBeallitasaTanulassal(adat1)
+            Return ' a tanuláshoz használt billentyű nem szólal meg
+        End If
 
         midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
     End Sub
@@ -360,6 +441,8 @@ Public Class MainForm
             cs.Ter = hangszerPanelek(i).Ter
             cs.Vibrato = hangszerPanelek(i).Vibrato
             cs.Aktiv = hangszerPanelek(i).Aktiv
+            cs.Alul = hangszerPanelek(i).Alul
+            cs.Felul = hangszerPanelek(i).Felul
             b.Csatornak.Add(cs)
         Next
 
@@ -367,6 +450,7 @@ Public Class MainForm
         b.MidiBemenetNev = If(cmbMidiIn.SelectedItem IsNot Nothing, cmbMidiIn.SelectedItem.ToString(), "")
         b.MidiKimenetNev = If(cmbMidiOut.SelectedItem IsNot Nothing, cmbMidiOut.SelectedItem.ToString(), "")
         b.PedalInvertalva = chkPedal.Checked
+        b.SplitPont = aktualisSplitPont
 
         Return b
     End Function
@@ -387,6 +471,8 @@ Public Class MainForm
             hangszerPanelek(i).Ter = Korlatoz(cs.Ter, -64, 63)
             hangszerPanelek(i).Vibrato = Korlatoz(cs.Vibrato, 0, 127)
             hangszerPanelek(i).Aktiv = cs.Aktiv
+            hangszerPanelek(i).Alul = cs.Alul
+            hangszerPanelek(i).Felul = cs.Felul
 
             Dim alapNev As String = (i + 1).ToString() & ". hangszer"
             hangszerKeretek(i).Text = If(cs.Aktiv, alapNev & ": Aktív", alapNev)
@@ -394,6 +480,7 @@ Public Class MainForm
 
         trkAlapHangero.Value = Korlatoz(b.AlapHangero, 0, 100)
         chkPedal.Checked = b.PedalInvertalva
+        cmbSplitPont.SelectedIndex = Korlatoz(b.SplitPont, 0, 127)
 
         If frissitsdEszkozoketIs Then
             Dim beIdx As Integer = cmbMidiIn.Items.IndexOf(b.MidiBemenetNev)

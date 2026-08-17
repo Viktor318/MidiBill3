@@ -43,11 +43,17 @@ Partial Class MainForm
         dlgMegnyitas = New OpenFileDialog()
         dlgMentes = New SaveFileDialog()
         dlgImportMb3 = New OpenFileDialog()
+        grpSplit = New GroupBox()
+        lblSplitInfo = New Label()
+        btnSplitTanulas = New Button()
+        cmbSplitPont = New ComboBox()
+        lblSplitCim = New Label()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
         grpMidiIn.SuspendLayout()
         grpMidiOut.SuspendLayout()
+        grpSplit.SuspendLayout()
         SuspendLayout()
         ' 
         ' menuStrip1
@@ -205,11 +211,59 @@ Partial Class MainForm
         ' 
         dlgImportMb3.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
         ' 
+        ' grpSplit
+        ' 
+        grpSplit.Controls.Add(lblSplitInfo)
+        grpSplit.Controls.Add(btnSplitTanulas)
+        grpSplit.Controls.Add(cmbSplitPont)
+        grpSplit.Controls.Add(lblSplitCim)
+        grpSplit.Location = New Point(624, 345)
+        grpSplit.Name = "grpSplit"
+        grpSplit.Size = New Size(277, 110)
+        grpSplit.TabIndex = 8
+        grpSplit.TabStop = False
+        grpSplit.Text = "Split pont"
+        ' 
+        ' lblSplitInfo
+        ' 
+        lblSplitInfo.Font = New Font("Segoe UI", 7.8F, FontStyle.Regular, GraphicsUnit.Point, CByte(238))
+        lblSplitInfo.Location = New Point(162, 64)
+        lblSplitInfo.Name = "lblSplitInfo"
+        lblSplitInfo.Size = New Size(80, 34)
+        lblSplitInfo.TabIndex = 3
+        lblSplitInfo.TextAlign = ContentAlignment.MiddleLeft
+        ' 
+        ' btnSplitTanulas
+        ' 
+        btnSplitTanulas.Location = New Point(32, 64)
+        btnSplitTanulas.Name = "btnSplitTanulas"
+        btnSplitTanulas.Size = New Size(120, 34)
+        btnSplitTanulas.TabIndex = 2
+        btnSplitTanulas.Text = "Tanulás..."
+        btnSplitTanulas.UseVisualStyleBackColor = True
+        ' 
+        ' cmbSplitPont
+        ' 
+        cmbSplitPont.FormattingEnabled = True
+        cmbSplitPont.Location = New Point(122, 26)
+        cmbSplitPont.Name = "cmbSplitPont"
+        cmbSplitPont.Size = New Size(120, 28)
+        cmbSplitPont.TabIndex = 1
+        ' 
+        ' lblSplitCim
+        ' 
+        lblSplitCim.Location = New Point(32, 28)
+        lblSplitCim.Name = "lblSplitCim"
+        lblSplitCim.Size = New Size(85, 26)
+        lblSplitCim.TabIndex = 0
+        lblSplitCim.Text = "Split pont:"
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(942, 693)
+        Controls.Add(grpSplit)
         Controls.Add(lblMidiUzenet)
         Controls.Add(btnKilepes)
         Controls.Add(btnReset)
@@ -228,6 +282,7 @@ Partial Class MainForm
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).EndInit()
         grpMidiIn.ResumeLayout(False)
         grpMidiOut.ResumeLayout(False)
+        grpSplit.ResumeLayout(False)
         ResumeLayout(False)
         PerformLayout()
     End Sub
@@ -253,5 +308,10 @@ Partial Class MainForm
     Friend WithEvents mnuImportMb3 As ToolStripMenuItem
     Friend WithEvents ToolStripSeparator2 As ToolStripSeparator
     Friend WithEvents dlgImportMb3 As OpenFileDialog
+    Friend WithEvents grpSplit As GroupBox
+    Friend WithEvents lblSplitCim As Label
+    Friend WithEvents btnSplitTanulas As Button
+    Friend WithEvents cmbSplitPont As ComboBox
+    Friend WithEvents lblSplitInfo As Label
 
 End Class
