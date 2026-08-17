@@ -22,6 +22,7 @@ Partial Class MainForm
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
+        Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(MainForm))
         menuStrip1 = New MenuStrip()
         mnuFajl = New ToolStripMenuItem()
         mnuBetolt = New ToolStripMenuItem()
@@ -30,6 +31,8 @@ Partial Class MainForm
         mnuImportMb3 = New ToolStripMenuItem()
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
+        SúgóToolStripMenuItem = New ToolStripMenuItem()
+        mnuNevjegy = New ToolStripMenuItem()
         chkPedal = New CheckBox()
         grpVolume = New GroupBox()
         trkAlapHangero = New TrackBar()
@@ -48,8 +51,6 @@ Partial Class MainForm
         btnSplitTanulas = New Button()
         cmbSplitPont = New ComboBox()
         lblSplitCim = New Label()
-        SúgóToolStripMenuItem = New ToolStripMenuItem()
-        mnuNevjegy = New ToolStripMenuItem()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -108,6 +109,19 @@ Partial Class MainForm
         mnuKilepes.Name = "mnuKilepes"
         mnuKilepes.Size = New Size(287, 26)
         mnuKilepes.Text = "&Kilépés"
+        ' 
+        ' SúgóToolStripMenuItem
+        ' 
+        SúgóToolStripMenuItem.DropDownItems.AddRange(New ToolStripItem() {mnuNevjegy})
+        SúgóToolStripMenuItem.Name = "SúgóToolStripMenuItem"
+        SúgóToolStripMenuItem.Size = New Size(57, 24)
+        SúgóToolStripMenuItem.Text = "&Súgó"
+        ' 
+        ' mnuNevjegy
+        ' 
+        mnuNevjegy.Name = "mnuNevjegy"
+        mnuNevjegy.Size = New Size(155, 26)
+        mnuNevjegy.Text = "&Névjegy..."
         ' 
         ' chkPedal
         ' 
@@ -260,19 +274,6 @@ Partial Class MainForm
         lblSplitCim.TabIndex = 0
         lblSplitCim.Text = "Split pont:"
         ' 
-        ' SúgóToolStripMenuItem
-        ' 
-        SúgóToolStripMenuItem.DropDownItems.AddRange(New ToolStripItem() {mnuNevjegy})
-        SúgóToolStripMenuItem.Name = "SúgóToolStripMenuItem"
-        SúgóToolStripMenuItem.Size = New Size(57, 24)
-        SúgóToolStripMenuItem.Text = "&Súgó"
-        ' 
-        ' mnuNevjegy
-        ' 
-        mnuNevjegy.Name = "mnuNevjegy"
-        mnuNevjegy.Size = New Size(224, 26)
-        mnuNevjegy.Text = "&Névjegy..."
-        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
@@ -287,6 +288,7 @@ Partial Class MainForm
         Controls.Add(grpVolume)
         Controls.Add(chkPedal)
         Controls.Add(menuStrip1)
+        Icon = CType(resources.GetObject("$this.Icon"), Icon)
         MainMenuStrip = menuStrip1
         Name = "MainForm"
         StartPosition = FormStartPosition.CenterScreen
