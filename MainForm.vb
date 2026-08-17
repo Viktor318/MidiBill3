@@ -6,45 +6,24 @@ Public Class MainForm
 
     Private hangszerKeretek(3) As GroupBox
     Private hangszerPanelek(3) As HangszerPanel
+    Private csatornaAllapotok(15) As CsatornaBeallitas
+    Private aktivCsoportIndex As Integer = 0
+
+    Private Const DOB_CSATORNA_INDEX As Integer = 9
 
     Private utolsoPedalErtek As Integer = 0
     Private inicializalasKesz As Boolean = False
-
-    ' A jelenleg "aktív" fájl neve (útvonal nélkül) - mindig szinkronban az
-    ' ablak címsorával. Ez alapján ajánljuk fel alapértelmezettként a nevet
-    ' a mentés-dialógusnál, függetlenül attól, hogy korábban betöltés,
-    ' mentés vagy .mb3 import történt.
     Private aktualisFajlNev As String = ""
-
-    ' Az egyes fájlműveletek (betöltés/mentés/import) LEGUTÓBB HASZNÁLT
-    ' mappája, KÜLÖN-KÜLÖN nyilvántartva. Üres string = még nem volt
-    ' sikeres művelet ebben a munkamenetben -> ilyenkor a program mappáját
-    ' használjuk alapértelmezettként. Az első sikeres művelet után viszont
-    ' mindegyik a saját, legutóbb használt mappáját jegyzi meg.
     Private utolsoBetoltesMappa As String = ""
     Private utolsoMentesMappa As String = ""
     Private utolsoImportMappa As String = ""
-
-    ' A jelenlegi Split pont (MIDI hangszám, 0-127), szinkronban a
-    ' cmbSplitPont kiválasztásával és a grpSplit fejlécével.
     Private aktualisSplitPont As Integer = 60
-
-    ' Jelzi, hogy a "Tanulás" gomb után a következő lenyomott billentyű
-    ' állítja be a Split pontot (ahelyett, hogy megszólalna).
     Private splitTanulasAktiv As Boolean = False
-
-    ' Jelzi, hogy a "Kilépés mentés nélkül" menüpontból indult a bezárás -
-    ' ilyenkor a FormClosing NEM írja felül a Kezdet.json-t.
     Private mentesKihagyasa As Boolean = False
-
-    ' A jelenlegi globális transzponálás félhangban, szinkronban a
-    ' grpTranspose fejlécével. Tartomány: ±24 félhang (±2 oktáv).
     Private aktualisTranszponalas As Integer = 0
     Private Const TRANSZPONALAS_MIN As Integer = -24
     Private Const TRANSZPONALAS_MAX As Integer = 24
 
-    ' A beállítások automatikus be-/kimentési útvonala - a VB6-os
-    ' KezdetFile (Kezdet.mb3) megfelelője, JSON formátumban.
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
 
     Private Const CONTROLLER_CHANGE As Integer = &HB0
@@ -56,19 +35,18 @@ Public Class MainForm
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         HangszerPanelekLetrehozasa()
+        CsatornaAllapotokInicializalasa()
         SplitPontFeltoltese()
         MidiEszkozokFeltoltese()
+
+        inicializalasKesz = True
+        CsatornaPanelekFrissitese()
+
         KezdetBeallitasokBetoltese()
     End Sub
 
-    ''' <summary>
-    ''' Kilépéskor: hangok elnémítása minden csatornán, aktuális állapot
-    ''' mentése a Kezdet.json-ba, majd a MIDI portok bezárása - ez az
-    ''' EGYETLEN, központi hely a leállításhoz, függetlenül attól, hogy a
-    ''' felhasználó gombbal, menüből vagy az "X"-szel zárta be az ablakot.
-    ''' </summary>
     Private Sub MainForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
-        For c As Integer = 1 To 4
+        For c As Integer = 1 To 16
             midiMotor.HangokKikapcsolasa(c, True)
         Next
 
@@ -76,23 +54,22 @@ Public Class MainForm
             Try
                 AktualisBeallitasokOsszegyujtese().Mentes(kezdetFile)
             Catch ex As Exception
-                ' Kilépéskor csendben elnyeljük - a bezárás ne akadjon el emiatt
             End Try
         End If
 
         midiMotor.Dispose()
     End Sub
 
+    ''' <summary>A 4 fizikai HangszerPanel és keret létrehozása - a végleges elrendezéshez igazítva</summary>
     Private Sub HangszerPanelekLetrehozasa()
-        Dim xKoordinatak() As Integer = {10, 316}
-        Dim yKoordinatak() As Integer = {32, 340}
+        Dim xKoordinatak() As Integer = {25, 331}
+        Dim yKoordinatak() As Integer = {53, 361}
 
         For i As Integer = 0 To 3
             Dim oszlop As Integer = i Mod 2
             Dim sor As Integer = i \ 2
 
             Dim keret As New GroupBox()
-            keret.Text = (i + 1).ToString() & ". hangszer"
             keret.Location = New Point(xKoordinatak(oszlop), yKoordinatak(sor))
             keret.Size = New Size(300, 300)
 
@@ -113,20 +90,21 @@ Public Class MainForm
             AddHandler panel.AlulValtozott, AddressOf HangszerPanel_AlulValtozott
             AddHandler panel.FelulValtozott, AddressOf HangszerPanel_FelulValtozott
         Next
-
-        hangszerPanelek(0).Aktiv = True
-        hangszerKeretek(0).Text = "1. hangszer: Aktív"
-
-        inicializalasKesz = True
     End Sub
 
-    ''' <summary>A Split pont legördülő lista feltöltése mind a 128 MIDI hanggal, hangnévvel</summary>
+    Private Sub CsatornaAllapotokInicializalasa()
+        For i As Integer = 0 To 15
+            csatornaAllapotok(i) = New CsatornaBeallitas()
+        Next
+        csatornaAllapotok(0).Aktiv = True
+    End Sub
+
     Private Sub SplitPontFeltoltese()
         cmbSplitPont.Items.Clear()
         For szam As Integer = 0 To 127
             cmbSplitPont.Items.Add(Hangnevek.HangNev(szam) & " (" & szam & ")")
         Next
-        cmbSplitPont.SelectedIndex = 60 ' alapértelmezett törésponti hang: C4
+        cmbSplitPont.SelectedIndex = 60
     End Sub
 
     Private Sub MidiEszkozokFeltoltese()
@@ -156,10 +134,9 @@ Public Class MainForm
         cmbMidiOut.SelectedIndex = 0
     End Sub
 
-    ''' <summary>Induláskor, ha van korábban elmentett Kezdet.json, betölti azt</summary>
     Private Sub KezdetBeallitasokBetoltese()
         If Not IO.File.Exists(kezdetFile) Then
-            CimsorFrissitese(kezdetFile) ' Nincs elmentett fájl - de a nevét (Kezdet.json) így is mutatjuk
+            CimsorFrissitese(kezdetFile)
             Return
         End If
 
@@ -187,7 +164,7 @@ Public Class MainForm
                    "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
         End Try
 
-        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
+        ActiveControl = Nothing
     End Sub
 
     Private Sub cmbMidiOut_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbMidiOut.SelectedIndexChanged
@@ -204,27 +181,76 @@ Public Class MainForm
         ActiveControl = Nothing
     End Sub
 
-    ''' <summary>
-    ''' Új kimeneti port nyitásakor minden csatorna aktuális állapotát
-    ''' (hangszer, hangerő, pan, vibrato, aktív/inaktív, zóna) újraküldi,
-    ''' valamint a Split pontot és a Transzponálást is átadja a MidiEngine-nek -
-    ''' a VB6-os Init_Channels megfelelője.
-    ''' </summary>
     Private Sub OsszesCsatornaUjrakuldese()
         If Not inicializalasKesz Then Return
 
         midiMotor.SplitPont = aktualisSplitPont
         midiMotor.Transpozicio = aktualisTranszponalas
 
-        For i As Integer = 0 To 3
+        For i As Integer = 0 To 15
             Dim csatornaSzam As Integer = i + 1
-            midiMotor.CsatornaAktiv(i) = hangszerPanelek(i).Aktiv
-            midiMotor.CsatornaAlul(i) = hangszerPanelek(i).Alul
-            midiMotor.CsatornaFelul(i) = hangszerPanelek(i).Felul
-            midiMotor.ProgramValtas(csatornaSzam, hangszerPanelek(i).Hangszer)
-            CsatornaHangeroKuldes(csatornaSzam, hangszerPanelek(i).Hangero)
-            midiMotor.ControllerValtas(csatornaSzam, PAN, hangszerPanelek(i).Ter + 64)
-            midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, hangszerPanelek(i).Vibrato)
+            Dim adat As CsatornaBeallitas = csatornaAllapotok(i)
+            midiMotor.CsatornaAktiv(i) = adat.Aktiv
+            midiMotor.CsatornaAlul(i) = adat.Alul
+            midiMotor.CsatornaFelul(i) = adat.Felul
+            midiMotor.ProgramValtas(csatornaSzam, adat.Hangszer)
+            CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
+            midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
+            midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
+        Next
+    End Sub
+
+    ' ============================================================
+    ' Csatornacsoport váltás (1-4 / 5-8 / 9-12 / 13-16)
+    ' ============================================================
+
+    Private Sub radCsoport1_CheckedChanged(sender As Object, e As EventArgs) Handles radCsoport1.CheckedChanged
+        If radCsoport1.Checked Then CsoportValtas(0)
+    End Sub
+
+    Private Sub radCsoport2_CheckedChanged(sender As Object, e As EventArgs) Handles radCsoport2.CheckedChanged
+        If radCsoport2.Checked Then CsoportValtas(1)
+    End Sub
+
+    Private Sub radCsoport3_CheckedChanged(sender As Object, e As EventArgs) Handles radCsoport3.CheckedChanged
+        If radCsoport3.Checked Then CsoportValtas(2)
+    End Sub
+
+    Private Sub radCsoport4_CheckedChanged(sender As Object, e As EventArgs) Handles radCsoport4.CheckedChanged
+        If radCsoport4.Checked Then CsoportValtas(3)
+    End Sub
+
+    Private Sub CsoportValtas(ujCsoportIndex As Integer)
+        If Not inicializalasKesz Then Return
+        aktivCsoportIndex = ujCsoportIndex
+        CsatornaPanelekFrissitese()
+    End Sub
+
+    Private Sub CsatornaPanelekFrissitese()
+        For i As Integer = 0 To 3
+            Dim csatornaIndex As Integer = aktivCsoportIndex * 4 + i
+            Dim csatornaSzam As Integer = csatornaIndex + 1
+            Dim adat As CsatornaBeallitas = csatornaAllapotok(csatornaIndex)
+            Dim panel As HangszerPanel = hangszerPanelek(i)
+            Dim keret As GroupBox = hangszerKeretek(i)
+
+            panel.Hangszer = adat.Hangszer
+            panel.Hangero = adat.Hangero
+            panel.Ter = adat.Ter
+            panel.Vibrato = adat.Vibrato
+            panel.Aktiv = adat.Aktiv
+            panel.Alul = adat.Alul
+            panel.Felul = adat.Felul
+
+            Dim dobCsatorna As Boolean = (csatornaIndex = DOB_CSATORNA_INDEX)
+            panel.Enabled = Not dobCsatorna
+
+            Dim alapNev As String = csatornaSzam.ToString() & ". csatorna"
+            If dobCsatorna Then
+                keret.Text = alapNev & " (dob - nem konfigurálható)"
+            Else
+                keret.Text = If(adat.Aktiv, alapNev & ": Aktív", alapNev)
+            End If
         Next
     End Sub
 
@@ -232,52 +258,58 @@ Public Class MainForm
     ' HangszerPanel események -> MIDI küldés
     ' ============================================================
 
-    Private Function CsatornaSzam(sender As Object) As Integer
+    Private Function CsatornaIndexTol(sender As Object) As Integer
         Dim panel As HangszerPanel = TryCast(sender, HangszerPanel)
-        If panel Is Nothing Then Return 0
-        Dim index As Integer = Array.IndexOf(hangszerPanelek, panel)
-        If index < 0 Then Return 0
-        Return index + 1
+        If panel Is Nothing Then Return -1
+        Dim panelPozicio As Integer = Array.IndexOf(hangszerPanelek, panel)
+        If panelPozicio < 0 Then Return -1
+        Return aktivCsoportIndex * 4 + panelPozicio
     End Function
 
     Private Sub HangszerPanel_HangszerValtozott(sender As Object, patchIndex As Integer)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        midiMotor.ProgramValtas(cs, patchIndex)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Hangszer = patchIndex
+        midiMotor.ProgramValtas(idx + 1, patchIndex)
     End Sub
 
     Private Sub HangszerPanel_HangeroValtozott(sender As Object, ertek As Integer)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        CsatornaHangeroKuldes(cs, ertek)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Hangero = ertek
+        CsatornaHangeroKuldes(idx + 1, ertek)
     End Sub
 
     Private Sub HangszerPanel_TerValtozott(sender As Object, ertek As Integer)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        midiMotor.ControllerValtas(cs, PAN, ertek + 64)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Ter = ertek
+        midiMotor.ControllerValtas(idx + 1, PAN, ertek + 64)
     End Sub
 
     Private Sub HangszerPanel_VibratoValtozott(sender As Object, ertek As Integer)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        midiMotor.ControllerValtas(cs, MOD_WHEEL, ertek)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Vibrato = ertek
+        midiMotor.ControllerValtas(idx + 1, MOD_WHEEL, ertek)
     End Sub
 
-    ''' <summary>
-    ''' A keret feliratának frissítése + a csatorna tényleges be-/kikapcsolása
-    ''' a MidiEngine-ben (Sound_Held_Notes / Turn_Notes_Off megfelelője).
-    ''' </summary>
     Private Sub HangszerPanel_AktivValtozott(sender As Object, aktiv As Boolean)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        If idx = DOB_CSATORNA_INDEX Then Return
+
+        csatornaAllapotok(idx).Aktiv = aktiv
+
         Dim panel As HangszerPanel = CType(sender, HangszerPanel)
-        Dim index As Integer = Array.IndexOf(hangszerPanelek, panel)
-        If index < 0 Then Return
+        Dim panelPozicio As Integer = Array.IndexOf(hangszerPanelek, panel)
+        If panelPozicio >= 0 Then
+            Dim alapNev As String = (idx + 1).ToString() & ". csatorna"
+            hangszerKeretek(panelPozicio).Text = If(aktiv, alapNev & ": Aktív", alapNev)
+        End If
 
-        Dim alapNev As String = (index + 1).ToString() & ". hangszer"
-        hangszerKeretek(index).Text = If(aktiv, alapNev & ": Aktív", alapNev)
-
-        Dim csatornaSzam As Integer = index + 1
-        midiMotor.CsatornaAktiv(index) = aktiv
+        Dim csatornaSzam As Integer = idx + 1
+        midiMotor.CsatornaAktiv(idx) = aktiv
 
         If aktiv Then
             midiMotor.LenyomottHangokMegszolaltatasa(csatornaSzam)
@@ -286,24 +318,20 @@ Public Class MainForm
         End If
     End Sub
 
-    ''' <summary>"Alul" zóna be-/kikapcsolása egy csatornán - a MidiEngine kezeli a hang-nyilvántartást</summary>
     Private Sub HangszerPanel_AlulValtozott(sender As Object, aktiv As Boolean)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        midiMotor.AlulValtas(cs, aktiv)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Alul = aktiv
+        midiMotor.AlulValtas(idx + 1, aktiv)
     End Sub
 
-    ''' <summary>"Felül" zóna be-/kikapcsolása egy csatornán - a MidiEngine kezeli a hang-nyilvántartást</summary>
     Private Sub HangszerPanel_FelulValtozott(sender As Object, aktiv As Boolean)
-        Dim cs As Integer = CsatornaSzam(sender)
-        If cs = 0 Then Return
-        midiMotor.FelulValtas(cs, aktiv)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Felul = aktiv
+        midiMotor.FelulValtas(idx + 1, aktiv)
     End Sub
 
-    ''' <summary>
-    ''' A csatorna hangereje mindig a globális alaphangerővel szorzódik -
-    ''' a VB6-os Her_Change: "Data * (Volume.Value / 100)" megfelelője.
-    ''' </summary>
     Private Sub CsatornaHangeroKuldes(csatornaSzam As Integer, csatornaErtek As Integer)
         Dim vegsoErtek As Integer = CInt(csatornaErtek * (trkAlapHangero.Value / 100.0))
         midiMotor.ControllerValtas(csatornaSzam, MAIN_VOLUME, vegsoErtek)
@@ -318,8 +346,8 @@ Public Class MainForm
 
         grpVolume.Text = "Alap hangerő beállítása: " & trkAlapHangero.Value
 
-        For i As Integer = 0 To 3
-            CsatornaHangeroKuldes(i + 1, hangszerPanelek(i).Hangero)
+        For i As Integer = 0 To 15
+            CsatornaHangeroKuldes(i + 1, csatornaAllapotok(i).Hangero)
         Next
     End Sub
 
@@ -327,11 +355,6 @@ Public Class MainForm
     ' Split pont
     ' ============================================================
 
-    ''' <summary>
-    ''' A Split pont manuális kiválasztása a legördülő listából - a "Tanulás"
-    ''' gomb is ugyanezt az egy állapotot állítja be, így a két bemeneti mód
-    ''' mindig szinkronban marad.
-    ''' </summary>
     Private Sub cmbSplitPont_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbSplitPont.SelectedIndexChanged
         If Not inicializalasKesz Then Return
         If cmbSplitPont.SelectedIndex < 0 Then Return
@@ -343,17 +366,11 @@ Public Class MainForm
         ActiveControl = Nothing
     End Sub
 
-    ''' <summary>"Tanulás" gomb: várakozás a következő billentyűlenyomásra</summary>
     Private Sub btnSplitTanulas_Click(sender As Object, e As EventArgs) Handles btnSplitTanulas.Click
         splitTanulasAktiv = True
         lblSplitInfo.Text = "Várakozás billentyűre..."
     End Sub
 
-    ''' <summary>
-    ''' A "Tanulás" mód lezárása: a lenyomott hang lesz az új Split pont.
-    ''' A cmbSplitPont.SelectedIndex beállítása automatikusan kiváltja a
-    ''' cmbSplitPont_SelectedIndexChanged-et, ami mindent (MidiEngine, felirat) frissít.
-    ''' </summary>
     Private Sub SplitPontBeallitasaTanulassal(hang As Integer)
         splitTanulasAktiv = False
         cmbSplitPont.SelectedIndex = hang
@@ -364,17 +381,10 @@ Public Class MainForm
     ' Globális transzponálás
     ' ============================================================
 
-    ''' <summary>Egy előjeles félhang-értéket "+7" / "-3" / "0" formára alakít, a GroupBox fejléchez</summary>
     Private Function ElojelesSzoveg(ertek As Integer) As String
         Return If(ertek > 0, "+" & ertek, ertek.ToString())
     End Function
 
-    ''' <summary>
-    ''' Az összes transzponálás-gomb közös célfüggvénye: a ±24 félhangos
-    ''' tartományba szorítja az új értéket, majd frissíti a MidiEngine-t és
-    ''' a GroupBox fejlécét. Élő váltás NEM retroaktív: a már tartott
-    ''' hangokat nem érinti, csak az ezután lenyomottakra vonatkozik.
-    ''' </summary>
     Private Sub TranszponalasFrissites(ujErtek As Integer)
         aktualisTranszponalas = Korlatoz(ujErtek, TRANSZPONALAS_MIN, TRANSZPONALAS_MAX)
         midiMotor.Transpozicio = aktualisTranszponalas
@@ -401,10 +411,6 @@ Public Class MainForm
     ' Bejövő MIDI üzenetek fogadása (NAudio háttérszáláról!)
     ' ============================================================
 
-    ''' <summary>
-    ''' A midiMotor háttérszálról tüzeli ezt az eseményt - kötelező Invoke-kal
-    ''' a UI-szálra váltani, mielőtt bármilyen vezérlőt módosítanánk.
-    ''' </summary>
     Private Sub midiMotor_MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer) Handles midiMotor.MidiUzenetErkezett
         If InvokeRequired Then
             Invoke(Sub() MidiUzenetFeldolgozasa(uzenet, adat1, adat2))
@@ -413,12 +419,6 @@ Public Class MainForm
         End If
     End Sub
 
-    ''' <summary>
-    ''' Ez már biztosan a UI-szálon fut. A VB6-os MIDIInput1_Message logikáját
-    ''' követi: pedál-inverzió kezelése, üzenet megjelenítése, majd fan-out küldés.
-    ''' Ha "Tanulás" módban vagyunk, a következő Note On beállítja a Split
-    ''' pontot, és NEM szólal meg (nem kerül továbbküldésre).
-    ''' </summary>
     Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer)
         Dim vegsoAdat2 As Integer = adat2
 
@@ -433,16 +433,12 @@ Public Class MainForm
 
         If splitTanulasAktiv AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
             SplitPontBeallitasaTanulassal(adat1)
-            Return ' a tanuláshoz használt billentyű nem szólal meg
+            Return
         End If
 
         midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
     End Sub
 
-    ''' <summary>
-    ''' Pedál-inverzió bekapcsolásakor/kikapcsolásakor azonnal ki is küldjük
-    ''' az invertált pedálállapotot - a VB6-os Pedal_Click megfelelője.
-    ''' </summary>
     Private Sub chkPedal_CheckedChanged(sender As Object, e As EventArgs) Handles chkPedal.CheckedChanged
         utolsoPedalErtek = 127 - utolsoPedalErtek
         lblMidiUzenet.Text = "MIDI üzenetek: " & CONTROLLER_CHANGE & ", " & DAMPER_PEDAL & ", " & utolsoPedalErtek
@@ -466,13 +462,13 @@ Public Class MainForm
     ' ============================================================
 
     Private Sub btnReset_Click(sender As Object, e As EventArgs) Handles btnReset.Click
-        For c As Integer = 1 To 4
+        For c As Integer = 1 To 16
             midiMotor.HangokKikapcsolasa(c, True)
         Next
     End Sub
 
     ' ============================================================
-    ' Kilépés (gomb + menü) - a tényleges munkát a FormClosing végzi
+    ' Kilépés
     ' ============================================================
 
     Private Sub btnKilepes_Click(sender As Object, e As EventArgs) Handles btnKilepes.Click
@@ -485,8 +481,8 @@ Public Class MainForm
 
     Private Sub mnuKilepesMentesNelkul_Click(sender As Object, e As EventArgs) Handles mnuKilepesMentesNelkul.Click
         Dim valasz As MsgBoxResult = MsgBox("Biztosan mentés nélkül szeretnél kilépni?" & vbCrLf &
-                                         "A jelenlegi beállítások elvesznek, legközelebb a korábban elmentett állapot töltődik be.",
-                                         MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill - Kilépés mentés nélkül")
+                                             "A jelenlegi beállítások elvesznek, legközelebb a korábban elmentett állapot töltődik be.",
+                                             MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill - Kilépés mentés nélkül")
         If valasz = MsgBoxResult.Yes Then
             mentesKihagyasa = True
             Close()
@@ -503,7 +499,7 @@ Public Class MainForm
 
         MsgBox("MidiBill3" & vbCrLf &
                "Verzió: " & verzioSzoveg & vbCrLf & vbCrLf &
-               "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre." & vbCrLf &
+               "MIDI billentyűzet megszólaltatása 16 csatornán, 4 egyszerre szerkeszthető." & vbCrLf &
                ".NET 10 / WinForms port a VB6-os eredetiből.",
                MsgBoxStyle.Information, "Névjegy - MidiBill3")
     End Sub
@@ -512,19 +508,19 @@ Public Class MainForm
     ' Fájl mentés / betöltés (JSON) + régi .mb3 importálás
     ' ============================================================
 
-    ''' <summary>Az aktuális UI-állapot összegyűjtése egy Beallitasok objektumba (mentéshez)</summary>
     Private Function AktualisBeallitasokOsszegyujtese() As Beallitasok
         Dim b As New Beallitasok()
 
-        For i As Integer = 0 To 3
+        For i As Integer = 0 To 15
+            Dim forras As CsatornaBeallitas = csatornaAllapotok(i)
             Dim cs As New CsatornaBeallitas()
-            cs.Hangszer = hangszerPanelek(i).Hangszer
-            cs.Hangero = hangszerPanelek(i).Hangero
-            cs.Ter = hangszerPanelek(i).Ter
-            cs.Vibrato = hangszerPanelek(i).Vibrato
-            cs.Aktiv = hangszerPanelek(i).Aktiv
-            cs.Alul = hangszerPanelek(i).Alul
-            cs.Felul = hangszerPanelek(i).Felul
+            cs.Hangszer = forras.Hangszer
+            cs.Hangero = forras.Hangero
+            cs.Ter = forras.Ter
+            cs.Vibrato = forras.Vibrato
+            cs.Aktiv = forras.Aktiv
+            cs.Alul = forras.Alul
+            cs.Felul = forras.Felul
             b.Csatornak.Add(cs)
         Next
 
@@ -538,41 +534,27 @@ Public Class MainForm
         Return b
     End Function
 
-    ''' <summary>
-    ''' Egy betöltött/importált Beallitasok alkalmazása a UI-ra és a MIDI-re.
-    ''' frissitsdEszkozoketIs: JSON-betöltésnél True (van eszköznév-adat),
-    ''' .mb3 importnál False (a régi fájl eszközindexei nem megbízhatóak).
-    ''' </summary>
     Private Sub BeallitasokAlkalmazasa(b As Beallitasok, frissitsdEszkozoketIs As Boolean)
-        For i As Integer = 0 To 3
+        For i As Integer = 0 To 15
             Dim cs As CsatornaBeallitas = b.Csatornak(i)
-
-            ' Korlátozás: ha a fájl sérült/kézzel szerkesztett és érvénytelen
-            ' tartományú értéket tartalmazna, ne omoljon össze rajta a program.
-            hangszerPanelek(i).Hangszer = Korlatoz(cs.Hangszer, 0, 127)
-            hangszerPanelek(i).Hangero = Korlatoz(cs.Hangero, 0, 127)
-            hangszerPanelek(i).Ter = Korlatoz(cs.Ter, -64, 63)
-            hangszerPanelek(i).Vibrato = Korlatoz(cs.Vibrato, 0, 127)
-            hangszerPanelek(i).Aktiv = cs.Aktiv
-            hangszerPanelek(i).Alul = cs.Alul
-            hangszerPanelek(i).Felul = cs.Felul
-
-            Dim alapNev As String = (i + 1).ToString() & ". hangszer"
-            hangszerKeretek(i).Text = If(cs.Aktiv, alapNev & ": Aktív", alapNev)
+            Dim adat As New CsatornaBeallitas()
+            adat.Hangszer = Korlatoz(cs.Hangszer, 0, 127)
+            adat.Hangero = Korlatoz(cs.Hangero, 0, 127)
+            adat.Ter = Korlatoz(cs.Ter, -64, 63)
+            adat.Vibrato = Korlatoz(cs.Vibrato, 0, 127)
+            adat.Aktiv = If(i = DOB_CSATORNA_INDEX, False, cs.Aktiv)
+            adat.Alul = cs.Alul
+            adat.Felul = cs.Felul
+            csatornaAllapotok(i) = adat
         Next
 
         trkAlapHangero.Value = Korlatoz(b.AlapHangero, 0, 100)
         chkPedal.Checked = b.PedalInvertalva
 
-        ' Preset betöltésekor a korábbi "Tanulás" állapot/felirat már nem
-        ' releváns (esetleg más split pontot mutatna, mint amit most
-        ' betöltünk) - töröljük, és megszakítjuk a folyamatban lévő
-        ' "Tanulás" várakozást is, ha épp az lenne aktív.
         splitTanulasAktiv = False
         lblSplitInfo.Text = ""
 
         cmbSplitPont.SelectedIndex = Korlatoz(b.SplitPont, 0, 127)
-
         TranszponalasFrissites(b.Transzponalas)
 
         If frissitsdEszkozoketIs Then
@@ -583,6 +565,7 @@ Public Class MainForm
             If kiIdx >= 0 Then cmbMidiOut.SelectedIndex = kiIdx
         End If
 
+        CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()
     End Sub
 
@@ -590,33 +573,15 @@ Public Class MainForm
         Return Math.Max(min, Math.Min(max, ertek))
     End Function
 
-    ''' <summary>
-    ''' Az ablak címsorának frissítése a mentett/betöltött/importált fájl
-    ''' nevével (csak a fájlnév, nem a teljes útvonal), és az aktuális
-    ''' fájlnév eltárolása is - ezt ajánljuk fel majd alapértelmezettként
-    ''' a legközelebbi "Adatok mentése" dialógusnál.
-    ''' </summary>
     Private Sub CimsorFrissitese(teljesUtvonal As String)
         aktualisFajlNev = IO.Path.GetFileName(teljesUtvonal)
-        Me.Text = "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre : " & aktualisFajlNev
+        Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev
     End Sub
 
-    ''' <summary>
-    ''' A dialógus kezdő mappáját állítja be: ha a megjegyzettMappa még üres
-    ''' (nem volt még sikeres művelet ennél a típusnál ebben a munkamenetben),
-    ''' a program mappáját használja; egyébként a legutóbb használt, saját
-    ''' mappáját az adott művelettípusnak (betöltés/mentés/import külön-külön).
-    ''' </summary>
     Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String)
         dlg.InitialDirectory = If(String.IsNullOrEmpty(megjegyzettMappa), Application.StartupPath, megjegyzettMappa)
     End Sub
 
-    ''' <summary>
-    ''' Sikeres fájlművelet után: a dialógus FileName mezőjét rövid névre
-    ''' állítja (legközelebbi megnyitáskor ne a teljes útvonalat mutassa),
-    ''' ÉS elmenti a használt mappát a megfelelő "megjegyzett mappa" mezőbe,
-    ''' hogy legközelebb onnan folytassa ugyanaz a művelettípus.
-    ''' </summary>
     Private Sub DialogusAllapotMentese(dlg As FileDialog, teljesUtvonal As String, ByRef megjegyzettMappa As String)
         dlg.FileName = IO.Path.GetFileName(teljesUtvonal)
         megjegyzettMappa = IO.Path.GetDirectoryName(teljesUtvonal)
@@ -661,11 +626,11 @@ Public Class MainForm
         If dlgImportMb3.ShowDialog() = DialogResult.OK Then
             Try
                 Dim b As Beallitasok = Beallitasok.ImportMb3(dlgImportMb3.FileName)
-                BeallitasokAlkalmazasa(b, False) ' a MIDI eszközválasztást szándékosan nem érintjük
+                BeallitasokAlkalmazasa(b, False)
                 CimsorFrissitese(dlgImportMb3.FileName)
                 DialogusAllapotMentese(dlgImportMb3, dlgImportMb3.FileName, utolsoImportMappa)
 
-                MsgBox("A régi preset sikeresen importálva." & vbCrLf &
+                MsgBox("A régi preset sikeresen importálva (1-4. csatornára)." & vbCrLf &
                        "A MIDI be-/kimeneti eszköz kiválasztása változatlan maradt - " &
                        "a régi fájl eszközindexei a mai gépen már nem lennének megbízhatóak.",
                        MsgBoxStyle.Information, "MidiBill")

@@ -31,6 +31,7 @@ Partial Class MainForm
         mnuImportMb3 = New ToolStripMenuItem()
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
+        mnuKilepesMentesNelkul = New ToolStripMenuItem()
         SúgóToolStripMenuItem = New ToolStripMenuItem()
         mnuNevjegy = New ToolStripMenuItem()
         chkPedal = New CheckBox()
@@ -56,7 +57,11 @@ Partial Class MainForm
         btnOktavFel = New Button()
         btnFelhangLe = New Button()
         btnFelhangFel = New Button()
-        mnuKilepesMentesNelkul = New ToolStripMenuItem()
+        radCsoport1 = New RadioButton()
+        radCsoport2 = New RadioButton()
+        grpCsatornaValaszto = New GroupBox()
+        radCsoport4 = New RadioButton()
+        radCsoport3 = New RadioButton()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -64,6 +69,7 @@ Partial Class MainForm
         grpMidiOut.SuspendLayout()
         grpSplit.SuspendLayout()
         grpTranspose.SuspendLayout()
+        grpCsatornaValaszto.SuspendLayout()
         SuspendLayout()
         ' 
         ' menuStrip1
@@ -117,6 +123,12 @@ Partial Class MainForm
         mnuKilepes.Size = New Size(287, 26)
         mnuKilepes.Text = "&Kilépés"
         ' 
+        ' mnuKilepesMentesNelkul
+        ' 
+        mnuKilepesMentesNelkul.Name = "mnuKilepesMentesNelkul"
+        mnuKilepesMentesNelkul.Size = New Size(287, 26)
+        mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
+        ' 
         ' SúgóToolStripMenuItem
         ' 
         SúgóToolStripMenuItem.DropDownItems.AddRange(New ToolStripItem() {mnuNevjegy})
@@ -132,9 +144,9 @@ Partial Class MainForm
         ' 
         ' chkPedal
         ' 
-        chkPedal.Location = New Point(324, 652)
+        chkPedal.Location = New Point(371, 693)
         chkPedal.Name = "chkPedal"
-        chkPedal.Size = New Size(242, 25)
+        chkPedal.Size = New Size(220, 25)
         chkPedal.TabIndex = 1
         chkPedal.Text = "Fordított pedál működés"
         chkPedal.UseVisualStyleBackColor = True
@@ -142,7 +154,7 @@ Partial Class MainForm
         ' grpVolume
         ' 
         grpVolume.Controls.Add(trkAlapHangero)
-        grpVolume.Location = New Point(625, 32)
+        grpVolume.Location = New Point(640, 53)
         grpVolume.Name = "grpVolume"
         grpVolume.Size = New Size(277, 85)
         grpVolume.TabIndex = 2
@@ -163,7 +175,7 @@ Partial Class MainForm
         ' grpMidiIn
         ' 
         grpMidiIn.Controls.Add(cmbMidiIn)
-        grpMidiIn.Location = New Point(625, 140)
+        grpMidiIn.Location = New Point(640, 148)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
         grpMidiIn.TabIndex = 3
@@ -181,7 +193,7 @@ Partial Class MainForm
         ' grpMidiOut
         ' 
         grpMidiOut.Controls.Add(cmbMidiOut)
-        grpMidiOut.Location = New Point(625, 248)
+        grpMidiOut.Location = New Point(640, 243)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
         grpMidiOut.TabIndex = 4
@@ -198,8 +210,8 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
-        btnReset.Location = New Point(625, 580)
+        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Location = New Point(640, 601)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
         btnReset.TabIndex = 5
@@ -208,8 +220,8 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
-        btnKilepes.Location = New Point(770, 580)
+        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+        btnKilepes.Location = New Point(785, 601)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
         btnKilepes.TabIndex = 6
@@ -218,9 +230,9 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Location = New Point(24, 652)
+        lblMidiUzenet.Location = New Point(640, 693)
         lblMidiUzenet.Name = "lblMidiUzenet"
-        lblMidiUzenet.Size = New Size(270, 25)
+        lblMidiUzenet.Size = New Size(220, 25)
         lblMidiUzenet.TabIndex = 7
         lblMidiUzenet.Text = "MIDI üzenetek:"
         ' 
@@ -242,7 +254,7 @@ Partial Class MainForm
         grpSplit.Controls.Add(btnSplitTanulas)
         grpSplit.Controls.Add(cmbSplitPont)
         grpSplit.Controls.Add(lblSplitCim)
-        grpSplit.Location = New Point(624, 345)
+        grpSplit.Location = New Point(640, 361)
         grpSplit.Name = "grpSplit"
         grpSplit.Size = New Size(277, 110)
         grpSplit.TabIndex = 8
@@ -289,7 +301,7 @@ Partial Class MainForm
         grpTranspose.Controls.Add(btnOktavFel)
         grpTranspose.Controls.Add(btnFelhangLe)
         grpTranspose.Controls.Add(btnFelhangFel)
-        grpTranspose.Location = New Point(624, 458)
+        grpTranspose.Location = New Point(640, 476)
         grpTranspose.Name = "grpTranspose"
         grpTranspose.Size = New Size(277, 112)
         grpTranspose.TabIndex = 9
@@ -332,17 +344,63 @@ Partial Class MainForm
         btnFelhangFel.Text = "Félhang fel"
         btnFelhangFel.UseVisualStyleBackColor = True
         ' 
-        ' mnuKilepesMentesNelkul
+        ' radCsoport1
         ' 
-        mnuKilepesMentesNelkul.Name = "mnuKilepesMentesNelkul"
-        mnuKilepesMentesNelkul.Size = New Size(287, 26)
-        mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
+        radCsoport1.Checked = True
+        radCsoport1.Location = New Point(12, 26)
+        radCsoport1.Name = "radCsoport1"
+        radCsoport1.Size = New Size(55, 25)
+        radCsoport1.TabIndex = 11
+        radCsoport1.TabStop = True
+        radCsoport1.Text = "1-4"
+        radCsoport1.UseVisualStyleBackColor = True
+        ' 
+        ' radCsoport2
+        ' 
+        radCsoport2.Location = New Point(80, 26)
+        radCsoport2.Name = "radCsoport2"
+        radCsoport2.Size = New Size(55, 25)
+        radCsoport2.TabIndex = 12
+        radCsoport2.Text = "5-8"
+        radCsoport2.UseVisualStyleBackColor = True
+        ' 
+        ' grpCsatornaValaszto
+        ' 
+        grpCsatornaValaszto.Controls.Add(radCsoport4)
+        grpCsatornaValaszto.Controls.Add(radCsoport3)
+        grpCsatornaValaszto.Controls.Add(radCsoport1)
+        grpCsatornaValaszto.Controls.Add(radCsoport2)
+        grpCsatornaValaszto.Location = New Point(25, 673)
+        grpCsatornaValaszto.Name = "grpCsatornaValaszto"
+        grpCsatornaValaszto.Size = New Size(300, 64)
+        grpCsatornaValaszto.TabIndex = 13
+        grpCsatornaValaszto.TabStop = False
+        grpCsatornaValaszto.Text = "MIDI csatornák"
+        ' 
+        ' radCsoport4
+        ' 
+        radCsoport4.Location = New Point(224, 26)
+        radCsoport4.Name = "radCsoport4"
+        radCsoport4.Size = New Size(70, 25)
+        radCsoport4.TabIndex = 14
+        radCsoport4.Text = "13-16"
+        radCsoport4.UseVisualStyleBackColor = True
+        ' 
+        ' radCsoport3
+        ' 
+        radCsoport3.Location = New Point(148, 26)
+        radCsoport3.Name = "radCsoport3"
+        radCsoport3.Size = New Size(60, 25)
+        radCsoport3.TabIndex = 13
+        radCsoport3.Text = "9-12"
+        radCsoport3.UseVisualStyleBackColor = True
         ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(8F, 20F)
+        AutoScaleDimensions = New SizeF(8.0F, 20.0F)
         AutoScaleMode = AutoScaleMode.Font
-        ClientSize = New Size(942, 693)
+        ClientSize = New Size(942, 762)
+        Controls.Add(grpCsatornaValaszto)
         Controls.Add(grpTranspose)
         Controls.Add(grpSplit)
         Controls.Add(lblMidiUzenet)
@@ -366,6 +424,7 @@ Partial Class MainForm
         grpMidiOut.ResumeLayout(False)
         grpSplit.ResumeLayout(False)
         grpTranspose.ResumeLayout(False)
+        grpCsatornaValaszto.ResumeLayout(False)
         ResumeLayout(False)
         PerformLayout()
     End Sub
@@ -404,5 +463,10 @@ Partial Class MainForm
     Friend WithEvents btnFelhangLe As Button
     Friend WithEvents btnFelhangFel As Button
     Friend WithEvents mnuKilepesMentesNelkul As ToolStripMenuItem
+    Friend WithEvents radCsoport1 As RadioButton
+    Friend WithEvents radCsoport2 As RadioButton
+    Friend WithEvents grpCsatornaValaszto As GroupBox
+    Friend WithEvents radCsoport3 As RadioButton
+    Friend WithEvents radCsoport4 As RadioButton
 
 End Class
