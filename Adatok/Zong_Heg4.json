@@ -1,38 +1,47 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.02 21:55:04
+  // Készült: 2026.08.17 15:06:47
   "Csatornak": [
     {
       "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 1,  // Bright Acoustic Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 91,  // Pad 4 (choir)
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 49,  // String Ensemble 2
       "Hangero": 70,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     }
   ],
   "AlapHangero": 70,
   "MidiBemenetNev": "V49",
   "MidiKimenetNev": "VirtualMIDISynth #1",
-  "PedalInvertalva": false
+  "PedalInvertalva": false,
+  "SplitPont": 60  // C4
 }

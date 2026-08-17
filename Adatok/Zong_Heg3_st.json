@@ -1,38 +1,47 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.02 22:01:34
+  // Készült: 2026.08.17 15:06:47
   "Csatornak": [
     {
       "Hangszer": 4,  // Rhodes Piano
       "Hangero": 127,
       "Ter": -64,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 51,  // Synth Strings 2
       "Hangero": 50,
       "Ter": -64,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 4,  // Rhodes Piano
       "Hangero": 127,
       "Ter": 63,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
       "Hangszer": 51,  // Synth Strings 2
       "Hangero": 50,
       "Ter": 63,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     }
   ],
   "AlapHangero": 70,
   "MidiBemenetNev": "V49",
   "MidiKimenetNev": "VirtualMIDISynth #1",
-  "PedalInvertalva": false
+  "PedalInvertalva": false,
+  "SplitPont": 60  // C4
 }

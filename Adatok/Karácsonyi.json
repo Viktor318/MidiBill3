@@ -1,36 +1,47 @@
 {
+  // MidiBill3 beállítások - JSON formátumú preset fájl
+  // Készült: 2026.08.17 15:06:47
   "Csatornak": [
     {
-      "Hangszer": 19,
+      "Hangszer": 19,  // Church Organ
       "Hangero": 121,
       "Ter": 0,
       "Vibrato": 18,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 6,
+      "Hangszer": 6,  // Harpsichord
       "Hangero": 95,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 10,
+      "Hangszer": 10,  // Music Box
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 73,
+      "Hangszer": 73,  // Flute
       "Hangero": 96,
       "Ter": 0,
       "Vibrato": 18,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     }
   ],
   "AlapHangero": 70,
   "MidiBemenetNev": "V49",
   "MidiKimenetNev": "SB Audigy 5/Rx Synth A [3FC0]",
-  "PedalInvertalva": false
+  "PedalInvertalva": false,
+  "SplitPont": 60  // C4
 }

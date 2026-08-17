@@ -40,4 +40,10 @@
   </None>
 </ItemGroup>
 
+<ItemGroup>
+	<Compile Remove="PresetKonvertalo\**" />
+	<EmbeddedResource Remove="PresetKonvertalo\**" />
+	<None Remove="PresetKonvertalo\**" />
+</ItemGroup>
+
 </Project>

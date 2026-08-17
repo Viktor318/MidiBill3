@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="MidiBill3.vbproj" />
+  <Project Path="PresetKonvertalo/PresetKonvertalo.vbproj" Id="57fc310e-72c4-46c7-830f-3b38891a0103" />
 </Solution>

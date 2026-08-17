@@ -1,36 +1,47 @@
 {
+  // MidiBill3 beállítások - JSON formátumú preset fájl
+  // Készült: 2026.08.17 15:06:47
   "Csatornak": [
     {
-      "Hangszer": 18,
+      "Hangszer": 18,  // Rock Organ
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 29,
+      "Hangszer": 29,  // Overdriven Guitar
       "Hangero": 127,
       "Ter": 35,
       "Vibrato": 24,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 0,
+      "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     },
     {
-      "Hangszer": 0,
+      "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 100,
       "Ter": 0,
       "Vibrato": 0,
-      "Aktiv": true
+      "Aktiv": true,
+      "Alul": true,
+      "Felul": true
     }
   ],
   "AlapHangero": 70,
   "MidiBemenetNev": "V49",
   "MidiKimenetNev": "VirtualMIDISynth #1",
-  "PedalInvertalva": false
+  "PedalInvertalva": false,
+  "SplitPont": 60  // C4
 }
