@@ -26,6 +26,8 @@ Partial Class MainForm
         mnuFajl = New ToolStripMenuItem()
         mnuBetolt = New ToolStripMenuItem()
         mnuMent = New ToolStripMenuItem()
+        ToolStripSeparator2 = New ToolStripSeparator()
+        mnuImportMb3 = New ToolStripMenuItem()
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
         chkPedal = New CheckBox()
@@ -40,8 +42,6 @@ Partial Class MainForm
         lblMidiUzenet = New Label()
         dlgMegnyitas = New OpenFileDialog()
         dlgMentes = New SaveFileDialog()
-        mnuImportMb3 = New ToolStripMenuItem()
-        ToolStripSeparator2 = New ToolStripSeparator()
         dlgImportMb3 = New OpenFileDialog()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
@@ -78,6 +78,17 @@ Partial Class MainForm
         mnuMent.Name = "mnuMent"
         mnuMent.Size = New Size(287, 26)
         mnuMent.Text = "Adatok &mentése"
+        ' 
+        ' ToolStripSeparator2
+        ' 
+        ToolStripSeparator2.Name = "ToolStripSeparator2"
+        ToolStripSeparator2.Size = New Size(284, 6)
+        ' 
+        ' mnuImportMb3
+        ' 
+        mnuImportMb3.Name = "mnuImportMb3"
+        mnuImportMb3.Size = New Size(287, 26)
+        mnuImportMb3.Text = "Régi .mb3 preset &importálása"
         ' 
         ' ToolStripSeparator1
         ' 
@@ -158,7 +169,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Location = New Point(625, 350)
+        btnReset.Location = New Point(625, 580)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
         btnReset.TabIndex = 5
@@ -167,7 +178,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Location = New Point(770, 350)
+        btnKilepes.Location = New Point(770, 580)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
         btnKilepes.TabIndex = 6
@@ -189,17 +200,6 @@ Partial Class MainForm
         ' dlgMentes
         ' 
         dlgMentes.Filter = "MidiBill adatok (*.json)|*.json"
-        ' 
-        ' mnuImportMb3
-        ' 
-        mnuImportMb3.Name = "mnuImportMb3"
-        mnuImportMb3.Size = New Size(287, 26)
-        mnuImportMb3.Text = "Régi .mb3 preset &importálása"
-        ' 
-        ' ToolStripSeparator2
-        ' 
-        ToolStripSeparator2.Name = "ToolStripSeparator2"
-        ToolStripSeparator2.Size = New Size(284, 6)
         ' 
         ' dlgImportMb3
         ' 
