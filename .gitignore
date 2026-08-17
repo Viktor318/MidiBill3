@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Futásidejű, automatikusan generált induló-állapot - ne kövessük, mert minden kilépéskor felülíródik
 Kezdet.json
+
+# Biztonsági mentésként generált file, nem kell követni
+MidiBill3.zip
