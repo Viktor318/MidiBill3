@@ -48,6 +48,8 @@ Partial Class MainForm
         btnSplitTanulas = New Button()
         cmbSplitPont = New ComboBox()
         lblSplitCim = New Label()
+        SúgóToolStripMenuItem = New ToolStripMenuItem()
+        mnuNevjegy = New ToolStripMenuItem()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -59,7 +61,7 @@ Partial Class MainForm
         ' menuStrip1
         ' 
         menuStrip1.ImageScalingSize = New Size(20, 20)
-        menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl})
+        menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl, SúgóToolStripMenuItem})
         menuStrip1.Location = New Point(0, 0)
         menuStrip1.Name = "menuStrip1"
         menuStrip1.Size = New Size(942, 28)
@@ -229,7 +231,7 @@ Partial Class MainForm
         lblSplitInfo.Font = New Font("Segoe UI", 7.8F, FontStyle.Regular, GraphicsUnit.Point, CByte(238))
         lblSplitInfo.Location = New Point(162, 64)
         lblSplitInfo.Name = "lblSplitInfo"
-        lblSplitInfo.Size = New Size(80, 34)
+        lblSplitInfo.Size = New Size(104, 34)
         lblSplitInfo.TabIndex = 3
         lblSplitInfo.TextAlign = ContentAlignment.MiddleLeft
         ' 
@@ -257,6 +259,19 @@ Partial Class MainForm
         lblSplitCim.Size = New Size(85, 26)
         lblSplitCim.TabIndex = 0
         lblSplitCim.Text = "Split pont:"
+        ' 
+        ' SúgóToolStripMenuItem
+        ' 
+        SúgóToolStripMenuItem.DropDownItems.AddRange(New ToolStripItem() {mnuNevjegy})
+        SúgóToolStripMenuItem.Name = "SúgóToolStripMenuItem"
+        SúgóToolStripMenuItem.Size = New Size(57, 24)
+        SúgóToolStripMenuItem.Text = "&Súgó"
+        ' 
+        ' mnuNevjegy
+        ' 
+        mnuNevjegy.Name = "mnuNevjegy"
+        mnuNevjegy.Size = New Size(224, 26)
+        mnuNevjegy.Text = "&Névjegy..."
         ' 
         ' MainForm
         ' 
@@ -313,5 +328,7 @@ Partial Class MainForm
     Friend WithEvents btnSplitTanulas As Button
     Friend WithEvents cmbSplitPont As ComboBox
     Friend WithEvents lblSplitInfo As Label
+    Friend WithEvents SúgóToolStripMenuItem As ToolStripMenuItem
+    Friend WithEvents mnuNevjegy As ToolStripMenuItem
 
 End Class

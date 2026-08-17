@@ -426,6 +426,17 @@ Public Class MainForm
         Close()
     End Sub
 
+    Private Sub mnuNevjegy_Click(sender As Object, e As EventArgs) Handles mnuNevjegy.Click
+        Dim verzio As Version = Reflection.Assembly.GetExecutingAssembly().GetName().Version
+        Dim verzioSzoveg As String = verzio.Major & "." & verzio.Minor & "." & verzio.Build
+
+        MsgBox("MidiBill3" & vbCrLf &
+           "Verzió: " & verzioSzoveg & vbCrLf & vbCrLf &
+           "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre." & vbCrLf &
+           ".NET 10 / WinForms port a VB6-os eredetiből.",
+           MsgBoxStyle.Information, "Névjegy - MidiBill3")
+    End Sub
+
     ' ============================================================
     ' Fájl mentés / betöltés (JSON) + régi .mb3 importálás
     ' ============================================================
@@ -584,4 +595,7 @@ Public Class MainForm
         End If
     End Sub
 
+    Private Sub lblSplitInfo_Click(sender As Object, e As EventArgs) Handles lblSplitInfo.Click
+
+    End Sub
 End Class

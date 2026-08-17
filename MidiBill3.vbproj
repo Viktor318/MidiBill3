@@ -6,6 +6,7 @@
     <StartupObject>MidiBill3.My.MyApplication</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
     <MyType>WindowsForms</MyType>
+	<Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
