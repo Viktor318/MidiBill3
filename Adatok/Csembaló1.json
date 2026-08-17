@@ -1,6 +1,6 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.17 15:06:47
+  // Készült: 2026.08.17 22:02:01
   "Csatornak": [
     {
       "Hangszer": 6,  // Harpsichord
@@ -43,5 +43,6 @@
   "MidiBemenetNev": "V49",
   "MidiKimenetNev": "SB Audigy 5/Rx Synth A [3FC0]",
   "PedalInvertalva": false,
-  "SplitPont": 60  // C4
+  "SplitPont": 60,  // C4
+  "Transzponalas": 0  // 0 félhang
 }
