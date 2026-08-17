@@ -33,6 +33,10 @@ Public Class MainForm
     ' állítja be a Split pontot (ahelyett, hogy megszólalna).
     Private splitTanulasAktiv As Boolean = False
 
+    ' Jelzi, hogy a "Kilépés mentés nélkül" menüpontból indult a bezárás -
+    ' ilyenkor a FormClosing NEM írja felül a Kezdet.json-t.
+    Private mentesKihagyasa As Boolean = False
+
     ' A jelenlegi globális transzponálás félhangban, szinkronban a
     ' grpTranspose fejlécével. Tartomány: ±24 félhang (±2 oktáv).
     Private aktualisTranszponalas As Integer = 0
@@ -68,11 +72,13 @@ Public Class MainForm
             midiMotor.HangokKikapcsolasa(c, True)
         Next
 
-        Try
-            AktualisBeallitasokOsszegyujtese().Mentes(kezdetFile)
-        Catch ex As Exception
-            ' Kilépéskor csendben elnyeljük - a bezárás ne akadjon el emiatt
-        End Try
+        If Not mentesKihagyasa Then
+            Try
+                AktualisBeallitasokOsszegyujtese().Mentes(kezdetFile)
+            Catch ex As Exception
+                ' Kilépéskor csendben elnyeljük - a bezárás ne akadjon el emiatt
+            End Try
+        End If
 
         midiMotor.Dispose()
     End Sub
@@ -475,6 +481,16 @@ Public Class MainForm
 
     Private Sub mnuKilepes_Click(sender As Object, e As EventArgs) Handles mnuKilepes.Click
         Close()
+    End Sub
+
+    Private Sub mnuKilepesMentesNelkul_Click(sender As Object, e As EventArgs) Handles mnuKilepesMentesNelkul.Click
+        Dim valasz As MsgBoxResult = MsgBox("Biztosan mentés nélkül szeretnél kilépni?" & vbCrLf &
+                                         "A jelenlegi beállítások elvesznek, legközelebb a korábban elmentett állapot töltődik be.",
+                                         MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill - Kilépés mentés nélkül")
+        If valasz = MsgBoxResult.Yes Then
+            mentesKihagyasa = True
+            Close()
+        End If
     End Sub
 
     ' ============================================================

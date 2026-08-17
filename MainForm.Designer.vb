@@ -56,6 +56,7 @@ Partial Class MainForm
         btnOktavFel = New Button()
         btnFelhangLe = New Button()
         btnFelhangFel = New Button()
+        mnuKilepesMentesNelkul = New ToolStripMenuItem()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -77,7 +78,7 @@ Partial Class MainForm
         ' 
         ' mnuFajl
         ' 
-        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator2, mnuImportMb3, ToolStripSeparator1, mnuKilepes})
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator2, mnuImportMb3, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
         mnuFajl.Name = "mnuFajl"
         mnuFajl.Size = New Size(45, 24)
         mnuFajl.Text = "&Fájl"
@@ -331,6 +332,12 @@ Partial Class MainForm
         btnFelhangFel.Text = "Félhang fel"
         btnFelhangFel.UseVisualStyleBackColor = True
         ' 
+        ' mnuKilepesMentesNelkul
+        ' 
+        mnuKilepesMentesNelkul.Name = "mnuKilepesMentesNelkul"
+        mnuKilepesMentesNelkul.Size = New Size(287, 26)
+        mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
@@ -396,5 +403,6 @@ Partial Class MainForm
     Friend WithEvents btnOktavFel As Button
     Friend WithEvents btnFelhangLe As Button
     Friend WithEvents btnFelhangFel As Button
+    Friend WithEvents mnuKilepesMentesNelkul As ToolStripMenuItem
 
 End Class
