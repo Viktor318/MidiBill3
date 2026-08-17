@@ -21,8 +21,15 @@ Namespace Modellek
         Private midiBemenet As MidiIn = Nothing
 
         ' Ugyanaz a nyilvántartás, mint a VB6-os NoteOn(1 To 4, 0 To 127):
-        ' melyik hang szól ténylegesen az egyes KIMENETI csatornákon.
+        ' melyik EREDETI hang szól ténylegesen az egyes KIMENETI csatornákon.
         Private noteOn(3, 127) As Boolean
+
+        ' Az adott csatornán, adott EREDETI hanghoz tartozóan ténylegesen
+        ' KIKÜLDÖTT (már transzponált) hangmagasság. Erre megy majd a Note
+        ' Off is, függetlenül attól, hogy a Transzponálás értéke időközben
+        ' változott-e - így egy élőben módosított transzponálás sem hagyhat
+        ' "beragadt" hangot.
+        Private kimenoHang(3, 127) As Integer
 
         ' A VB6-os HeldNotes(0 To 127) megfelelője: melyik FIZIKAI billentyű
         ' van lenyomva (0=nincs, egyébként a velocity), a csatornák be/ki
@@ -72,6 +79,15 @@ Namespace Modellek
 
         ''' <summary>Split pont: MIDI hangszám (0-127), amitől a "Felül" zóna kezdődik. Alapértelmezett: 60 (C4)</summary>
         Public Property SplitPont As Integer = 60
+
+        ''' <summary>
+        ''' Globális transzponálás félhangban (-24..+24 - a tartományt a
+        ''' MainForm korlátozza a gomboknál). A Split pont zóna-döntését NEM
+        ''' érinti (az mindig az eredeti hangot nézi) - csak a ténylegesen
+        ''' kiküldött hangmagasságot tolja el. Élő váltás nem retroaktív:
+        ''' a már tartott hangokat nem érinti, csak az ezután lenyomottakat.
+        ''' </summary>
+        Public Property Transpozicio As Integer = 0
 
         ''' <summary>Bejövő MIDI üzenet érkezett (a UI-szálra váltás a feliratkozó feladata!)</summary>
         Public Event MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer)
@@ -138,6 +154,7 @@ Namespace Modellek
             midiKimenet = New MidiOut(eszkozIndex)
             kimenetiHibaJelezve = False ' Új sikeres nyitás után újra figyelmeztethetünk
             Array.Clear(noteOn, 0, noteOn.Length) ' Új porton biztosan nem szól semmi
+            Array.Clear(kimenoHang, 0, kimenoHang.Length)
         End Sub
 
         Public Sub KimenetBezaras()
@@ -172,8 +189,10 @@ Namespace Modellek
         ''' <summary>
         ''' A VB6-os Send_MIDI megfelelője: a bejövő MIDI-üzenetet szétosztja
         ''' a 4 aktív kimeneti csatornára - Split pont szerinti zóna-szűréssel
-        ''' a hangmagassághoz kötött üzeneteknél (Note On/Off, Poly Pressure),
-        ''' vagy - rendszerüzenet esetén - változatlanul, egyszer küldi tovább.
+        ''' (az EREDETI hang alapján) és globális transzponálással (a
+        ''' KIKÜLDÖTT hangmagasságra alkalmazva) a hangmagassághoz kötött
+        ''' üzeneteknél (Note On/Off, Poly Pressure), vagy - rendszerüzenet
+        ''' esetén - változatlanul, egyszer küldi tovább.
         ''' </summary>
         Public Sub UzenetKuldes(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
 
@@ -184,7 +203,8 @@ Namespace Modellek
                 Dim tenylegesNoteOn As Boolean = (statuszBajt = NOTE_ON_STATUS And adat2 > 0)
                 Dim tenylegesNoteOff As Boolean = (statuszBajt = NOTE_ON_STATUS And adat2 = 0) OrElse statuszBajt = NOTE_OFF_STATUS
 
-                ' HeldNotes a csatornák be/ki állapotától FÜGGETLENÜL frissül
+                ' HeldNotes a csatornák be/ki állapotától FÜGGETLENÜL, EREDETI
+                ' hang alapján frissül.
                 If tenylegesNoteOn Then
                     heldNotes(adat1) = adat2
                 ElseIf tenylegesNoteOff Then
@@ -197,26 +217,41 @@ Namespace Modellek
                 For c As Integer = 0 To 3
                     If Not csatornaAktivTomb(c) Then Continue For
 
-                    Dim kuldheto As Boolean
                     If tenylegesNoteOff Then
                         ' Note Off: MINDIG ahhoz a csatornához küldjük, amelyiken
-                        ' ténylegesen szól ez a hang (a nyilvántartás alapján) -
-                        ' így split pont váltás vagy zóna-átállítás közben sem
-                        ' maradhat "beragadt" hang egyetlen csatornán sem.
-                        kuldheto = noteOn(c, adat1)
+                        ' ténylegesen szól ez a hang (a nyilvántartás alapján), és
+                        ' MINDIG ugyanazt a (korábban ténylegesen kiküldött,
+                        ' esetleg transzponált) hangmagasságot kapcsoljuk ki -
+                        ' így sem a split pont, sem a zóna-beállítás, sem a
+                        ' transzponálás menet közbeni váltása nem hagyhat
+                        ' "beragadt" hangot egyetlen csatornán sem.
+                        If noteOn(c, adat1) Then
+                            KuldesEgyCsatornara(statuszBajt + c, kimenoHang(c, adat1), adat2)
+                            noteOn(c, adat1) = False
+                        End If
                     ElseIf hangUzenet Then
-                        ' Note On / Poly Pressure: az AKTUÁLIS zóna-beállítás dönt
-                        kuldheto = If(felsoZona, csatornaFelulTomb(c), csatornaAlulTomb(c))
+                        ' Note On / Poly Pressure: az AKTUÁLIS zóna-beállítás
+                        ' dönt (EREDETI hang alapján), a kiküldött hangmagasságra
+                        ' pedig alkalmazzuk az AKTUÁLIS transzponálást.
+                        Dim zonaIlleszkedik As Boolean = If(felsoZona, csatornaFelulTomb(c), csatornaAlulTomb(c))
+                        If zonaIlleszkedik Then
+                            Dim kimeno As Integer = adat1 + Transpozicio
+                            If ErvenyesHangE(kimeno) Then
+                                KuldesEgyCsatornara(statuszBajt + c, kimeno, adat2)
+                                If tenylegesNoteOn Then
+                                    noteOn(c, adat1) = True
+                                    kimenoHang(c, adat1) = kimeno
+                                End If
+                            End If
+                            ' Ha a transzponált hang a 0-127-es tartományon
+                            ' kívülre esne, a felhasználói döntés szerint az a
+                            ' csatorna egyszerűen néma marad erre a hangra.
+                        End If
                     Else
-                        ' Nem hangmagassághoz kötött üzenet (Controller Change,
-                        ' Program Change, Pitch Bend stb.) - minden aktív
-                        ' csatornára megy, a Split pont ezt nem érinti.
-                        kuldheto = True
-                    End If
-
-                    If kuldheto Then
+                        ' Egyéb channel voice üzenet (pl. Channel Pressure,
+                        ' Pitch Bend) - minden aktív csatornára megy,
+                        ' változatlanul.
                         KuldesEgyCsatornara(statuszBajt + c, adat1, adat2)
-                        HangNyilvantartasFrissit(c, statuszBajt, adat1, adat2)
                     End If
                 Next
             Else
@@ -228,6 +263,10 @@ Namespace Modellek
 
         Private Function HangUzenetE(statuszBajt As Integer) As Boolean
             Return statuszBajt = NOTE_ON_STATUS OrElse statuszBajt = NOTE_OFF_STATUS OrElse statuszBajt = POLY_PRESSURE_STATUS
+        End Function
+
+        Private Function ErvenyesHangE(hang As Integer) As Boolean
+            Return hang >= 0 AndAlso hang <= 127
         End Function
 
         ''' <summary>Egyetlen alacsonyszintű MIDI üzenet kiküldése, hibatűrő módon</summary>
@@ -244,17 +283,14 @@ Namespace Modellek
             End Try
         End Sub
 
-        Private Sub HangNyilvantartasFrissit(csatornaIndex As Integer, statuszBajt As Integer, noteNum As Integer, velocity As Integer)
-            If statuszBajt = NOTE_ON_STATUS And velocity > 0 Then
-                noteOn(csatornaIndex, noteNum) = True
-            ElseIf (statuszBajt = NOTE_ON_STATUS And velocity = 0) OrElse statuszBajt = NOTE_OFF_STATUS Then
-                noteOn(csatornaIndex, noteNum) = False
-            End If
-        End Sub
-
         ''' <summary>
         ''' A VB6-os Turn_Notes_Off megfelelője. FullSweep=True esetén (pánikgomb)
-        ''' mind a 128 hangot lekapcsolja, függetlenül a nyilvántartástól.
+        ''' mind a 128 (nyers, transzponálástól független) kimeneti hangot
+        ''' lekapcsolja, függetlenül a nyilvántartástól - ez egy tényleges
+        ''' vészleállítás, aminek a huzalon lévő ÖSSZES hangot le kell fognia.
+        ''' Normál esetben (FullSweep=False) csak a ténylegesen tartott
+        ''' hangokat kapcsolja ki, a ténylegesen kiküldött (transzponált)
+        ''' hangmagasságukon.
         ''' </summary>
         Public Sub HangokKikapcsolasa(csatornaSzam As Integer, Optional teljesSepres As Boolean = False)
             Dim csatornaIndex As Integer = csatornaSzam - 1
@@ -264,12 +300,14 @@ Namespace Modellek
             If teljesSepres Then
                 For n As Integer = 0 To 127
                     KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, n, 0)
+                Next
+                For n As Integer = 0 To 127
                     noteOn(csatornaIndex, n) = False
                 Next
             Else
                 For n As Integer = 0 To 127
                     If noteOn(csatornaIndex, n) Then
-                        KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, n, 0)
+                        KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, kimenoHang(csatornaIndex, n), 0)
                         noteOn(csatornaIndex, n) = False
                     End If
                 Next
@@ -279,13 +317,14 @@ Namespace Modellek
         ''' <summary>
         ''' Egy adott zóna (alul vagy felül) hangjainak lekapcsolása egy
         ''' csatornán - csak azokat, amik ténylegesen szólnak ott ÉS az
-        ''' adott zónába esnek. Az Alul/Felul checkbox kikapcsolásakor hívjuk.
+        ''' adott zónába esnek, a ténylegesen kiküldött hangmagasságukon.
+        ''' Az Alul/Felul checkbox kikapcsolásakor hívjuk.
         ''' </summary>
         Private Sub ZonaHangokKikapcsolasa(csatornaSzam As Integer, felsoZona As Boolean)
             Dim csatornaIndex As Integer = csatornaSzam - 1
             For n As Integer = 0 To 127
                 If ZonaIllik(n, felsoZona) AndAlso noteOn(csatornaIndex, n) Then
-                    KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, n, 0)
+                    KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, kimenoHang(csatornaIndex, n), 0)
                     noteOn(csatornaIndex, n) = False
                 End If
             Next
@@ -293,15 +332,20 @@ Namespace Modellek
 
         ''' <summary>
         ''' Egy adott zóna (alul vagy felül) jelenleg lenyomott hangjainak
-        ''' megszólaltatása egy csatornán - az Alul/Felül checkbox
-        ''' bekapcsolásakor, illetve a csatorna aktiválásakor hívjuk.
+        ''' megszólaltatása egy csatornán, az AKTUÁLIS transzponálással -
+        ''' az Alul/Felül checkbox bekapcsolásakor, illetve a csatorna
+        ''' aktiválásakor hívjuk.
         ''' </summary>
         Private Sub ZonaHangokMegszolaltatasa(csatornaSzam As Integer, felsoZona As Boolean)
             Dim csatornaIndex As Integer = csatornaSzam - 1
             For n As Integer = 0 To 127
                 If ZonaIllik(n, felsoZona) AndAlso heldNotes(n) > 0 Then
-                    KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, n, heldNotes(n))
-                    noteOn(csatornaIndex, n) = True
+                    Dim kimeno As Integer = n + Transpozicio
+                    If ErvenyesHangE(kimeno) Then
+                        KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, kimeno, heldNotes(n))
+                        noteOn(csatornaIndex, n) = True
+                        kimenoHang(csatornaIndex, n) = kimeno
+                    End If
                 End If
             Next
         End Sub

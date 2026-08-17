@@ -1,6 +1,5 @@
 ﻿Imports System.IO
 Imports System.Text.Json
-Imports System.Text.Json.Serialization
 Imports System.Text.RegularExpressions
 
 Namespace Modellek
@@ -68,6 +67,13 @@ Namespace Modellek
         Public Property SplitPont As Integer = 60
 
         ''' <summary>
+        ''' Globális transzponálás félhangban. Alapértelmezett 0, régi
+        ''' fájloknál (ahol ez a mező nem szerepel) is ez az érték kerül
+        ''' alkalmazásra (nincs eltolás).
+        ''' </summary>
+        Public Property Transzponalas As Integer = 0
+
+        ''' <summary>
         ''' Új, alapértelmezett beállítások létrehozása (4 csatorna, gyári értékekkel).
         ''' Ezt hívjuk, ha nincs Kezdet.json, vagy ha betöltés hibázik.
         ''' </summary>
@@ -81,11 +87,11 @@ Namespace Modellek
 
         ''' <summary>
         ''' Beállítások mentése JSON fájlba - kiegészítve emberi olvasást segítő
-        ''' megjegyzésekkel (fejléc + hangszernevek + split pont hangneve). A
-        ''' megjegyzések a szabványos JSON-ban nem léteznek, de a saját
-        ''' Betoltes() metódusunk kifejezetten megengedi és átugorja őket
-        ''' olvasáskor - más program nem biztos, hogy elfogadná ezt a fájlt
-        ''' szigorú JSON-ként.
+        ''' megjegyzésekkel (fejléc + hangszernevek + split pont hangneve +
+        ''' transzponálás félhang-szövege). A megjegyzések a szabványos
+        ''' JSON-ban nem léteznek, de a saját Betoltes() metódusunk kifejezetten
+        ''' megengedi és átugorja őket olvasáskor - más program nem biztos,
+        ''' hogy elfogadná ezt a fájlt szigorú JSON-ként.
         ''' </summary>
         Public Sub Mentes(fajlNev As String)
             Dim opciok As New JsonSerializerOptions With {
@@ -127,8 +133,9 @@ Namespace Modellek
         ''' alaphangerő kerül át - a MIDI be-/kimeneti eszköz SZÁNDÉKOSAN
         ''' nem, mert a régi fájlban tárolt eszközindex a mai gépen már nem
         ''' feleltethető meg megbízhatóan a jelenlegi eszközlistának. Az
-        ''' Alul/Felul mindkét csatornán True marad (gyári alapérték),
-        ''' hiszen a régi formátum nem ismerte a split fogalmát.
+        ''' Alul/Felul mindkét csatornán True marad, a Transzponalas 0
+        ''' marad (gyári alapértékek), hiszen a régi formátum nem ismerte
+        ''' ezeket a fogalmakat.
         ''' </summary>
         Public Shared Function ImportMb3(fajlNev As String) As Beallitasok
             Dim sorok() As String = IO.File.ReadAllLines(fajlNev)
@@ -179,10 +186,17 @@ Namespace Modellek
             Return "ismeretlen hangszer"
         End Function
 
+        ''' <summary>Egy előjeles félhang-értéket "+7 félhang" / "-3 félhang" / "0 félhang" formára alakít</summary>
+        Private Shared Function TranszponalasSzoveg(ertek As Integer) As String
+            Dim elojel As String = If(ertek > 0, "+", "")
+            Return elojel & ertek & " félhang"
+        End Function
+
         ''' <summary>
         ''' A tiszta JSON szöveget egészíti ki emberi olvasást segítő
         ''' megjegyzésekkel: fejléc a fájl elején, minden "Hangszer": N sor
-        ''' mellé a hangszer neve, és a "SplitPont": N sor mellé a hangnév.
+        ''' mellé a hangszer neve, a "SplitPont": N sor mellé a hangnév, és
+        ''' a "Transzponalas": N sor mellé a félhang-szöveg.
         ''' </summary>
         Private Shared Function KommentekHozzaadasa(json As String) As String
             ' 1. A "Hangszer": <szám> sorok kiegészítése a hangszer nevével
@@ -203,7 +217,16 @@ Namespace Modellek
                     Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & Hangnevek.HangNev(idx)
                 End Function)
 
-            ' 3. Fejléc megjegyzés beszúrása a fájl elejére, az első ("{") sor után
+            ' 3. A "Transzponalas": <szám> sor kiegészítése a félhang-szöveggel (pl. "// +7 félhang")
+            Dim transzMinta As New Regex("(""Transzponalas"":\s*)(-?\d+)(,?)")
+            jsonKommentekkel = transzMinta.Replace(jsonKommentekkel,
+                Function(m As Match) As String
+                    Dim ertek As Integer = 0
+                    Integer.TryParse(m.Groups(2).Value, ertek)
+                    Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & TranszponalasSzoveg(ertek)
+                End Function)
+
+            ' 4. Fejléc megjegyzés beszúrása a fájl elejére, az első ("{") sor után
             Dim sorok As New List(Of String)(jsonKommentekkel.Split({Environment.NewLine}, StringSplitOptions.None))
 
             Dim fejlec() As String = {

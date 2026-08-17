@@ -33,6 +33,12 @@ Public Class MainForm
     ' állítja be a Split pontot (ahelyett, hogy megszólalna).
     Private splitTanulasAktiv As Boolean = False
 
+    ' A jelenlegi globális transzponálás félhangban, szinkronban a
+    ' grpTranspose fejlécével. Tartomány: ±24 félhang (±2 oktáv).
+    Private aktualisTranszponalas As Integer = 0
+    Private Const TRANSZPONALAS_MIN As Integer = -24
+    Private Const TRANSZPONALAS_MAX As Integer = 24
+
     ' A beállítások automatikus be-/kimentési útvonala - a VB6-os
     ' KezdetFile (Kezdet.mb3) megfelelője, JSON formátumban.
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
@@ -189,18 +195,20 @@ Public Class MainForm
                    "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
         End Try
 
-        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
+        ActiveControl = Nothing
     End Sub
 
     ''' <summary>
     ''' Új kimeneti port nyitásakor minden csatorna aktuális állapotát
-    ''' (hangszer, hangerő, pan, vibrato, aktív/inaktív, zóna) újraküldi -
+    ''' (hangszer, hangerő, pan, vibrato, aktív/inaktív, zóna) újraküldi,
+    ''' valamint a Split pontot és a Transzponálást is átadja a MidiEngine-nek -
     ''' a VB6-os Init_Channels megfelelője.
     ''' </summary>
     Private Sub OsszesCsatornaUjrakuldese()
         If Not inicializalasKesz Then Return
 
         midiMotor.SplitPont = aktualisSplitPont
+        midiMotor.Transpozicio = aktualisTranszponalas
 
         For i As Integer = 0 To 3
             Dim csatornaSzam As Integer = i + 1
@@ -326,7 +334,7 @@ Public Class MainForm
         midiMotor.SplitPont = aktualisSplitPont
         grpSplit.Text = "Split pont: " & Hangnevek.HangNev(aktualisSplitPont)
 
-        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
+        ActiveControl = Nothing
     End Sub
 
     ''' <summary>"Tanulás" gomb: várakozás a következő billentyűlenyomásra</summary>
@@ -344,6 +352,43 @@ Public Class MainForm
         splitTanulasAktiv = False
         cmbSplitPont.SelectedIndex = hang
         lblSplitInfo.Text = "Beállítva: " & Hangnevek.HangNev(hang)
+    End Sub
+
+    ' ============================================================
+    ' Globális transzponálás
+    ' ============================================================
+
+    ''' <summary>Egy előjeles félhang-értéket "+7" / "-3" / "0" formára alakít, a GroupBox fejléchez</summary>
+    Private Function ElojelesSzoveg(ertek As Integer) As String
+        Return If(ertek > 0, "+" & ertek, ertek.ToString())
+    End Function
+
+    ''' <summary>
+    ''' Az összes transzponálás-gomb közös célfüggvénye: a ±24 félhangos
+    ''' tartományba szorítja az új értéket, majd frissíti a MidiEngine-t és
+    ''' a GroupBox fejlécét. Élő váltás NEM retroaktív: a már tartott
+    ''' hangokat nem érinti, csak az ezután lenyomottakra vonatkozik.
+    ''' </summary>
+    Private Sub TranszponalasFrissites(ujErtek As Integer)
+        aktualisTranszponalas = Korlatoz(ujErtek, TRANSZPONALAS_MIN, TRANSZPONALAS_MAX)
+        midiMotor.Transpozicio = aktualisTranszponalas
+        grpTranspose.Text = "Transzponálás: " & ElojelesSzoveg(aktualisTranszponalas)
+    End Sub
+
+    Private Sub btnFelhangFel_Click(sender As Object, e As EventArgs) Handles btnFelhangFel.Click
+        TranszponalasFrissites(aktualisTranszponalas + 1)
+    End Sub
+
+    Private Sub btnFelhangLe_Click(sender As Object, e As EventArgs) Handles btnFelhangLe.Click
+        TranszponalasFrissites(aktualisTranszponalas - 1)
+    End Sub
+
+    Private Sub btnOktavFel_Click(sender As Object, e As EventArgs) Handles btnOktavFel.Click
+        TranszponalasFrissites(aktualisTranszponalas + 12)
+    End Sub
+
+    Private Sub btnOktavLe_Click(sender As Object, e As EventArgs) Handles btnOktavLe.Click
+        TranszponalasFrissites(aktualisTranszponalas - 12)
     End Sub
 
     ' ============================================================
@@ -432,15 +477,19 @@ Public Class MainForm
         Close()
     End Sub
 
+    ' ============================================================
+    ' Névjegy
+    ' ============================================================
+
     Private Sub mnuNevjegy_Click(sender As Object, e As EventArgs) Handles mnuNevjegy.Click
         Dim verzio As Version = Reflection.Assembly.GetExecutingAssembly().GetName().Version
         Dim verzioSzoveg As String = verzio.Major & "." & verzio.Minor & "." & verzio.Build
 
         MsgBox("MidiBill3" & vbCrLf &
-           "Verzió: " & verzioSzoveg & vbCrLf & vbCrLf &
-           "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre." & vbCrLf &
-           ".NET 10 / WinForms port a VB6-os eredetiből.",
-           MsgBoxStyle.Information, "Névjegy - MidiBill3")
+               "Verzió: " & verzioSzoveg & vbCrLf & vbCrLf &
+               "MIDI billentyűzet megszólaltatása 4 hangszeren egyszerre." & vbCrLf &
+               ".NET 10 / WinForms port a VB6-os eredetiből.",
+               MsgBoxStyle.Information, "Névjegy - MidiBill3")
     End Sub
 
     ' ============================================================
@@ -468,6 +517,7 @@ Public Class MainForm
         b.MidiKimenetNev = If(cmbMidiOut.SelectedItem IsNot Nothing, cmbMidiOut.SelectedItem.ToString(), "")
         b.PedalInvertalva = chkPedal.Checked
         b.SplitPont = aktualisSplitPont
+        b.Transzponalas = aktualisTranszponalas
 
         Return b
     End Function
@@ -506,6 +556,8 @@ Public Class MainForm
         lblSplitInfo.Text = ""
 
         cmbSplitPont.SelectedIndex = Korlatoz(b.SplitPont, 0, 127)
+
+        TranszponalasFrissites(b.Transzponalas)
 
         If frissitsdEszkozoketIs Then
             Dim beIdx As Integer = cmbMidiIn.Items.IndexOf(b.MidiBemenetNev)
@@ -609,7 +661,4 @@ Public Class MainForm
         End If
     End Sub
 
-    Private Sub lblSplitInfo_Click(sender As Object, e As EventArgs) Handles lblSplitInfo.Click
-
-    End Sub
 End Class

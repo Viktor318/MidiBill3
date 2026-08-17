@@ -51,12 +51,18 @@ Partial Class MainForm
         btnSplitTanulas = New Button()
         cmbSplitPont = New ComboBox()
         lblSplitCim = New Label()
+        grpTranspose = New GroupBox()
+        btnFelhangFel = New Button()
+        btnFelhangLe = New Button()
+        btnOktavFel = New Button()
+        btnOktavLe = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
         grpMidiIn.SuspendLayout()
         grpMidiOut.SuspendLayout()
         grpSplit.SuspendLayout()
+        grpTranspose.SuspendLayout()
         SuspendLayout()
         ' 
         ' menuStrip1
@@ -274,11 +280,61 @@ Partial Class MainForm
         lblSplitCim.TabIndex = 0
         lblSplitCim.Text = "Split pont:"
         ' 
+        ' grpTranspose
+        ' 
+        grpTranspose.Controls.Add(btnOktavLe)
+        grpTranspose.Controls.Add(btnOktavFel)
+        grpTranspose.Controls.Add(btnFelhangLe)
+        grpTranspose.Controls.Add(btnFelhangFel)
+        grpTranspose.Location = New Point(624, 458)
+        grpTranspose.Name = "grpTranspose"
+        grpTranspose.Size = New Size(277, 112)
+        grpTranspose.TabIndex = 9
+        grpTranspose.TabStop = False
+        grpTranspose.Text = "Transzponálás: 0"
+        ' 
+        ' btnFelhangFel
+        ' 
+        btnFelhangFel.Location = New Point(12, 22)
+        btnFelhangFel.Name = "btnFelhangFel"
+        btnFelhangFel.Size = New Size(122, 34)
+        btnFelhangFel.TabIndex = 0
+        btnFelhangFel.Text = "Félhang fel"
+        btnFelhangFel.UseVisualStyleBackColor = True
+        ' 
+        ' btnFelhangLe
+        ' 
+        btnFelhangLe.Location = New Point(142, 22)
+        btnFelhangLe.Name = "btnFelhangLe"
+        btnFelhangLe.Size = New Size(122, 34)
+        btnFelhangLe.TabIndex = 1
+        btnFelhangLe.Text = "Félhang le"
+        btnFelhangLe.UseVisualStyleBackColor = True
+        ' 
+        ' btnOktavFel
+        ' 
+        btnOktavFel.Location = New Point(12, 62)
+        btnOktavFel.Name = "btnOktavFel"
+        btnOktavFel.Size = New Size(122, 34)
+        btnOktavFel.TabIndex = 2
+        btnOktavFel.Text = "Oktáv fel"
+        btnOktavFel.UseVisualStyleBackColor = True
+        ' 
+        ' btnOktavLe
+        ' 
+        btnOktavLe.Location = New Point(142, 62)
+        btnOktavLe.Name = "btnOktavLe"
+        btnOktavLe.Size = New Size(122, 34)
+        btnOktavLe.TabIndex = 3
+        btnOktavLe.Text = "Oktáv le"
+        btnOktavLe.UseVisualStyleBackColor = True
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(8F, 20F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(942, 693)
+        Controls.Add(grpTranspose)
         Controls.Add(grpSplit)
         Controls.Add(lblMidiUzenet)
         Controls.Add(btnKilepes)
@@ -300,6 +356,7 @@ Partial Class MainForm
         grpMidiIn.ResumeLayout(False)
         grpMidiOut.ResumeLayout(False)
         grpSplit.ResumeLayout(False)
+        grpTranspose.ResumeLayout(False)
         ResumeLayout(False)
         PerformLayout()
     End Sub
@@ -332,5 +389,10 @@ Partial Class MainForm
     Friend WithEvents lblSplitInfo As Label
     Friend WithEvents SúgóToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents mnuNevjegy As ToolStripMenuItem
+    Friend WithEvents grpTranspose As GroupBox
+    Friend WithEvents btnOktavLe As Button
+    Friend WithEvents btnOktavFel As Button
+    Friend WithEvents btnFelhangLe As Button
+    Friend WithEvents btnFelhangFel As Button
 
 End Class
