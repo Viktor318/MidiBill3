@@ -52,10 +52,10 @@ Partial Class MainForm
         cmbSplitPont = New ComboBox()
         lblSplitCim = New Label()
         grpTranspose = New GroupBox()
-        btnFelhangFel = New Button()
-        btnFelhangLe = New Button()
-        btnOktavFel = New Button()
         btnOktavLe = New Button()
+        btnOktavFel = New Button()
+        btnFelhangLe = New Button()
+        btnFelhangFel = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -197,6 +197,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
+        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
         btnReset.Location = New Point(625, 580)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
@@ -206,6 +207,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
+        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
         btnKilepes.Location = New Point(770, 580)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
@@ -293,23 +295,14 @@ Partial Class MainForm
         grpTranspose.TabStop = False
         grpTranspose.Text = "Transzponálás: 0"
         ' 
-        ' btnFelhangFel
+        ' btnOktavLe
         ' 
-        btnFelhangFel.Location = New Point(12, 22)
-        btnFelhangFel.Name = "btnFelhangFel"
-        btnFelhangFel.Size = New Size(122, 34)
-        btnFelhangFel.TabIndex = 0
-        btnFelhangFel.Text = "Félhang fel"
-        btnFelhangFel.UseVisualStyleBackColor = True
-        ' 
-        ' btnFelhangLe
-        ' 
-        btnFelhangLe.Location = New Point(142, 22)
-        btnFelhangLe.Name = "btnFelhangLe"
-        btnFelhangLe.Size = New Size(122, 34)
-        btnFelhangLe.TabIndex = 1
-        btnFelhangLe.Text = "Félhang le"
-        btnFelhangLe.UseVisualStyleBackColor = True
+        btnOktavLe.Location = New Point(142, 62)
+        btnOktavLe.Name = "btnOktavLe"
+        btnOktavLe.Size = New Size(122, 34)
+        btnOktavLe.TabIndex = 3
+        btnOktavLe.Text = "Oktáv le"
+        btnOktavLe.UseVisualStyleBackColor = True
         ' 
         ' btnOktavFel
         ' 
@@ -320,14 +313,23 @@ Partial Class MainForm
         btnOktavFel.Text = "Oktáv fel"
         btnOktavFel.UseVisualStyleBackColor = True
         ' 
-        ' btnOktavLe
+        ' btnFelhangLe
         ' 
-        btnOktavLe.Location = New Point(142, 62)
-        btnOktavLe.Name = "btnOktavLe"
-        btnOktavLe.Size = New Size(122, 34)
-        btnOktavLe.TabIndex = 3
-        btnOktavLe.Text = "Oktáv le"
-        btnOktavLe.UseVisualStyleBackColor = True
+        btnFelhangLe.Location = New Point(142, 22)
+        btnFelhangLe.Name = "btnFelhangLe"
+        btnFelhangLe.Size = New Size(122, 34)
+        btnFelhangLe.TabIndex = 1
+        btnFelhangLe.Text = "Félhang le"
+        btnFelhangLe.UseVisualStyleBackColor = True
+        ' 
+        ' btnFelhangFel
+        ' 
+        btnFelhangFel.Location = New Point(12, 22)
+        btnFelhangFel.Name = "btnFelhangFel"
+        btnFelhangFel.Size = New Size(122, 34)
+        btnFelhangFel.TabIndex = 0
+        btnFelhangFel.Text = "Félhang fel"
+        btnFelhangFel.UseVisualStyleBackColor = True
         ' 
         ' MainForm
         ' 
