@@ -174,6 +174,8 @@ Public Class MainForm
                    "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
                    "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
         End Try
+
+        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
     End Sub
 
     Private Sub cmbMidiOut_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbMidiOut.SelectedIndexChanged
@@ -186,6 +188,8 @@ Public Class MainForm
                    "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
                    "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
         End Try
+
+        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
     End Sub
 
     ''' <summary>
@@ -321,6 +325,8 @@ Public Class MainForm
         aktualisSplitPont = cmbSplitPont.SelectedIndex
         midiMotor.SplitPont = aktualisSplitPont
         grpSplit.Text = "Split pont: " & Hangnevek.HangNev(aktualisSplitPont)
+
+        ActiveControl = Nothing ' fókusz elvétele, hogy a legördülő ne maradjon kék kiemeléssel
     End Sub
 
     ''' <summary>"Tanulás" gomb: várakozás a következő billentyűlenyomásra</summary>
@@ -491,6 +497,14 @@ Public Class MainForm
 
         trkAlapHangero.Value = Korlatoz(b.AlapHangero, 0, 100)
         chkPedal.Checked = b.PedalInvertalva
+
+        ' Preset betöltésekor a korábbi "Tanulás" állapot/felirat már nem
+        ' releváns (esetleg más split pontot mutatna, mint amit most
+        ' betöltünk) - töröljük, és megszakítjuk a folyamatban lévő
+        ' "Tanulás" várakozást is, ha épp az lenne aktív.
+        splitTanulasAktiv = False
+        lblSplitInfo.Text = ""
+
         cmbSplitPont.SelectedIndex = Korlatoz(b.SplitPont, 0, 127)
 
         If frissitsdEszkozoketIs Then
