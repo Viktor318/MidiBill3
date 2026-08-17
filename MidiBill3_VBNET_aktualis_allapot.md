@@ -54,11 +54,17 @@ MidiBill3/
 - Csatornánkénti be-/kikapcsolás (Aktív checkbox), automatikus
   "csatlakozás" a már lenyomott hangokhoz visszakapcsoláskor
 - Note-tracking rendszer (célzott hangkikapcsolás, nem vak 128-as seprés)
-- "Csend legyen!" pánikgomb (teljes 128-hangos seprés minden csatornán)
+- "Csend legyen!" pánikgomb (teljes 128-hangos seprés minden csatornán) -
+  dőlt+félkövér felirattal kiemelve
+- "Kilépés" gomb/menü - félkövér felirattal kiemelve
+- **"Kilépés mentés nélkül"** menüpont (Fájl menü): megerősítő kérdéssel,
+  a hangok kikapcsolása és a MIDI-portok bezárása megtörténik, csak a
+  `Kezdet.json` felülírása marad el - hasznos kísérletezéskor
 - Pedál-inverzió (Fordított pedál működés checkbox)
 - Hibatűrő MIDI-küldés (kihúzott USB-MIDI interfész esetén sem áll le
   a program, csak egyszer figyelmeztet)
-- Egységes `FormClosing` minden kilépési útvonalra (gomb, menü, "X")
+- Egységes `FormClosing` minden kilépési útvonalra (gomb, menü, "X",
+  "Kilépés mentés nélkül")
 
 **Fájlkezelés**
 - JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet tárolás
@@ -85,7 +91,7 @@ MidiBill3/
 - Visszamenőleges kompatibilitás: régi fájloknál minden csatorna
   alapból mindkét zónában szól
 
-**Globális Transzponálás (v1.2.0, legújabb funkció)**
+**Globális Transzponálás (v1.2.0)**
 - `GroupBox` a Split pont alatt: fejléc "Transzponálás: +N/-N/0"
 - 4 gomb: Félhang fel, Félhang le, Oktáv fel, Oktáv le
 - Tartomány: ±24 félhang (±2 oktáv)
@@ -121,11 +127,45 @@ tud elkapni - ilyenkor a Windows Eseménynaplót kell megnézni.
 
 ## Következő lépések / nyitott témák
 
-- Végigtesztelési checklist még nincs összeállítva
-- **Csatornánkénti transzponálás** (a globális mellett) - felmerült
-  ötletként, még nincs megtervezve/implementálva
-- **Telepítő (Inno Setup)** - eldöntött irány (`.iss` szkript, egyszerű
-  fájlmásolás + parancsikonok), még nincs elkezdve
-- A Split Point és Transzponálás funkciók még friss, alaposabb éles
-  tesztelést igényelnek (különösen a kettő együttes, élő játék közbeni
-  használata)
+Fontossági/tervezett sorrendben:
+
+1. **Csatornánkénti transzponálás** - új `TrackBar` a `HangszerPanel`-en,
+   a globális transzponálás mellett/kiegészítéseként (a pontos
+   összeadódási logika még nincs eldöntve - ezt a globális
+   transzponáláséhoz hasonló elvi átbeszélés fogja megelőzni)
+
+2. **Reverb és Chorus csatornánként** - elvi terv már kész:
+   - General MIDI Controller Change üzenetekkel (`Reverb Send Level` =
+     controller 91, `Chorus Send Level` = controller 93), pontosan
+     ugyanazon a mintán, mint a jelenlegi `ControllerValtas` (Hangerő/
+     Pan/Vibrato)
+   - Két új `TrackBar` a `HangszerPanel`-en (0-127), ugyanazzal a
+     property/esemény-mintával, mint Her/Tér/Vib
+   - **Fontos korlát**: ez Controller Change, tehát nem hangmagassághoz
+     kötött - a Split pont és a Transzponálás nem érinti
+   - **Tényleges hatás eszközfüggő**: a Microsoft GS Wavetable Synth
+     korlátozottan/egyáltalán nem reagál rá, a VirtualMIDISynth
+     (SoundFont-alapú) általában igen, ha a SoundFont maga támogatja -
+     ezt a konkrét MIDI-kimeneti eszközön ki kell majd próbálni
+
+3. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
+   - **A NYERS BEMENETET vesszük fel** (a pedál-inverzió UTÁN, de a
+     split pont/transzponálás/csatorna-szétosztás ELŐTT befutó jelet) -
+     NEM a már feldolgozott, csatornákra szétosztott kimenetet
+   - Ennek következménye: visszajátszáskor a felvett nyers jel újra
+     végigmegy a `MidiEngine.UzenetKuldes()`-en, tehát a
+     **visszajátszás pillanatában érvényes** split pont, transzponálás
+     és csatorna-beállítások (hangszer, Aktív/Alul/Felül) alkalmazódnak
+     rá - rugalmas újrajátszást tesz lehetővé (felvétel most, más
+     hangszer-kombinációval visszajátszva később), és nincs
+     kód-duplikáció a fan-out logikában
+   - NAudio.Midi ehhez ad építőelemeket (`MidiEvent`,
+     `MidiEventCollection`, `MidiFile.Export()` szabványos `.mid`
+     fájlba mentéshez), de a felvevő és különösen a pontos időzítésű
+     lejátszó (nagy pontosságú, dedikált szálú időzítő) saját fejlesztés
+   - Még nincs elkezdve, külön tervezési kört fog igényelni
+
+4. **Telepítő (Inno Setup)** - eldöntött irány (`.iss` szkript, egyszerű
+   fájlmásolás + parancsikonok), még nincs elkezdve
+
+5. Végigtesztelési checklist még nincs összeállítva
