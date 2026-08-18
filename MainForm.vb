@@ -11,7 +11,6 @@ Public Class MainForm
 
     Private Const DOB_CSATORNA_INDEX As Integer = 9
 
-    Private utolsoPedalErtek As Integer = 0
     Private inicializalasKesz As Boolean = False
     Private aktualisFajlNev As String = ""
     Private utolsoBetoltesMappa As String = ""
@@ -526,11 +525,8 @@ Public Class MainForm
     Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer)
         Dim vegsoAdat2 As Integer = adat2
 
-        If uzenet = CONTROLLER_CHANGE And adat1 = DAMPER_PEDAL Then
-            If chkPedal.Checked Then
-                vegsoAdat2 = 127 - adat2
-            End If
-            utolsoPedalErtek = vegsoAdat2
+        If uzenet = CONTROLLER_CHANGE And adat1 = DAMPER_PEDAL And chkPedal.Checked Then
+            vegsoAdat2 = 127 - adat2
         End If
 
         lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
@@ -541,12 +537,6 @@ Public Class MainForm
         End If
 
         midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
-    End Sub
-
-    Private Sub chkPedal_CheckedChanged(sender As Object, e As EventArgs) Handles chkPedal.CheckedChanged
-        utolsoPedalErtek = 127 - utolsoPedalErtek
-        lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(CONTROLLER_CHANGE, DAMPER_PEDAL, utolsoPedalErtek)
-        midiMotor.UzenetKuldes(CONTROLLER_CHANGE, DAMPER_PEDAL, utolsoPedalErtek)
     End Sub
 
     ' ============================================================
