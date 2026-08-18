@@ -109,29 +109,34 @@ Public Class MainForm
 
     Private Sub MidiEszkozokFeltoltese()
         cmbMidiIn.Items.Clear()
+        'For Each nev As String In New List(Of String)() ' TESZT: üres bemeneti lista szimulálása
         For Each nev As String In MidiEngine.BemenetiEszkozok()
             cmbMidiIn.Items.Add(nev)
         Next
 
-        If cmbMidiIn.Items.Count = 0 Then
-            MsgBox("MIDI bemenet nem található! A program most kilép.")
-            Application.Exit()
-            Return
-        End If
-
         cmbMidiOut.Items.Clear()
+        'For Each nev As String In New List(Of String)() ' TESZT: üres kimeneti lista szimulálása
         For Each nev As String In MidiEngine.KimenetiEszkozok()
             cmbMidiOut.Items.Add(nev)
         Next
 
-        If cmbMidiOut.Items.Count = 0 Then
-            MsgBox("MIDI kimenet nem található! A program most kilép.")
-            Application.Exit()
-            Return
+        If cmbMidiIn.Items.Count = 0 Then
+            MsgBox("Nem található csatlakoztatott MIDI bemeneti eszköz." & vbCrLf &
+               "Csatlakoztass egy MIDI billentyűzetet, majd a ""MIDI eszközök frissítése"" gombbal töltsd be.",
+               MsgBoxStyle.Exclamation, "MidiBill")
+        Else
+            cmbMidiIn.SelectedIndex = 0
         End If
 
-        cmbMidiIn.SelectedIndex = 0
-        cmbMidiOut.SelectedIndex = 0
+        If cmbMidiOut.Items.Count = 0 Then
+            MsgBox("Nem található csatlakoztatott MIDI kimeneti eszköz." & vbCrLf &
+               "MIDI kimenet nélkül a program nem tud hangot megszólaltatni, ezért most kilép." & vbCrLf &
+               "Csatlakoztass egy MIDI kimeneti eszközt, majd indítsd el újra a programot.",
+               MsgBoxStyle.Critical, "MidiBill")
+            Environment.Exit(1)
+        Else
+            cmbMidiOut.SelectedIndex = 0
+        End If
     End Sub
 
     Private Sub btnMidiFrissites_Click(sender As Object, e As EventArgs) Handles btnMidiFrissites.Click
