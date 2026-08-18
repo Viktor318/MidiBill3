@@ -27,6 +27,14 @@ Namespace Modellek
 
     Public Class Beallitasok
 
+        ''' <summary>
+        ''' A MidiBill3 verziószáma, amivel a fájl készült (pl. "1.3.0").
+        ''' Tisztán tájékoztató jellegű - betöltéskor nem befolyásol semmit,
+        ''' csak segít later visszakeresni, melyik verzióval mentődött a preset.
+        ''' Régi fájloknál (ahol ez a mező nem szerepel) üres marad.
+        ''' </summary>
+        Public Property Verzio As String = ""
+
         ''' <summary>A 16 MIDI csatorna beállításai (mindig pontosan 16 elem, index 0 = 1. csatorna)</summary>
         Public Property Csatornak As New List(Of CsatornaBeallitas)
 
@@ -105,7 +113,21 @@ Namespace Modellek
             Return b
         End Function
 
+        ''' <summary>
+        ''' A Csatornak listát pontosan 16 elemre egészíti ki: a hiányzó elemeket
+        ''' inaktív alapértékkel pótolja, a fölösleseket levágja, ÉS bármelyik
+        ''' meglévő elemet, ami null (pl. kézzel szerkesztett, sérült JSON esetén),
+        ''' szintén friss, alapértelmezett CsatornaBeallitas-ra cseréli.
+        ''' </summary>
         Private Shared Sub Kiegeszit16Csatornara(b As Beallitasok)
+            For i As Integer = 0 To b.Csatornak.Count - 1
+                If b.Csatornak(i) Is Nothing Then
+                    Dim uj As New CsatornaBeallitas()
+                    uj.Aktiv = False
+                    b.Csatornak(i) = uj
+                End If
+            Next
+
             While b.Csatornak.Count < 16
                 Dim uj As New CsatornaBeallitas()
                 uj.Aktiv = False
@@ -120,41 +142,66 @@ Namespace Modellek
             If index >= 0 AndAlso index < HangszerLista.Nevek.Length Then
                 Return HangszerLista.Nevek(index)
             End If
-            Return "ismeretlen hangszer"
+            Return "Ismeretlen hangszer"
         End Function
 
         Private Shared Function KommentekHozzaadasa(json As String) As String
             Dim hangszerMinta As New Regex("(""Hangszer"":\s*)(-?\d+)(,?)")
             Dim jsonKommentekkel As String = hangszerMinta.Replace(json,
-                Function(m As Match) As String
-                    Dim idx As Integer = 0
-                    Integer.TryParse(m.Groups(2).Value, idx)
-                    Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & HangszerNev(idx)
-                End Function)
+        Function(m As Match) As String
+            Dim idx As Integer = 0
+            Integer.TryParse(m.Groups(2).Value, idx)
+            Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & HangszerNev(idx)
+        End Function)
 
             Dim splitMinta As New Regex("(""SplitPont"":\s*)(-?\d+)(,?)")
             jsonKommentekkel = splitMinta.Replace(jsonKommentekkel,
-                Function(m As Match) As String
-                    Dim idx As Integer = 0
-                    Integer.TryParse(m.Groups(2).Value, idx)
-                    Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & Hangnevek.HangNev(idx)
-                End Function)
+        Function(m As Match) As String
+            Dim idx As Integer = 0
+            Integer.TryParse(m.Groups(2).Value, idx)
+            Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & Hangnevek.HangNev(idx)
+        End Function)
 
             Dim transzMinta As New Regex("(""Transzponalas"":\s*)(-?\d+)(,?)")
             jsonKommentekkel = transzMinta.Replace(jsonKommentekkel,
-                Function(m As Match) As String
-                    Dim ertek As Integer = 0
-                    Integer.TryParse(m.Groups(2).Value, ertek)
-                    Dim elojel As String = If(ertek > 0, "+", "")
-                    Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & elojel & ertek & " félhang"
-                End Function)
+        Function(m As Match) As String
+            Dim ertek As Integer = 0
+            Integer.TryParse(m.Groups(2).Value, ertek)
+            Dim elojel As String = If(ertek > 0, "+", "")
+            Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & elojel & ertek & " félhang"
+        End Function)
 
             Dim sorok As New List(Of String)(jsonKommentekkel.Split({Environment.NewLine}, StringSplitOptions.None))
 
+            ' Minden csatorna-objektum nyitó "{" sora elé beszúrjuk, hányadik
+            ' csatornáról van szó - tisztán tájékoztató komment, a program a
+            ' betöltésnél továbbra is a lista POZÍCIÓJA alapján azonosítja a
+            ' csatornákat, ez a szám nem kerül ténylegesen beolvasásra.
+            Dim csatornaSorMinta As New Regex("^\s*\{\s*$")
+            Dim csatornaSorszam As Integer = 0
+            Dim csatornakBlokkban As Boolean = False
+
+            For i As Integer = 0 To sorok.Count - 1
+                If sorok(i).Contains("""Csatornak"": [") Then
+                    csatornakBlokkban = True
+                    Continue For
+                End If
+
+                If csatornakBlokkban Then
+                    If sorok(i).TrimStart().StartsWith("]") Then
+                        csatornakBlokkban = False
+                    ElseIf csatornaSorMinta.IsMatch(sorok(i)) Then
+                        csatornaSorszam += 1
+                        Dim behuzas As String = sorok(i).Substring(0, sorok(i).IndexOf("{"c))
+                        sorok(i) = behuzas & "{  // " & csatornaSorszam & ". csatorna"
+                    End If
+                End If
+            Next
+
             Dim fejlec() As String = {
-                "  // MidiBill3 beállítások - JSON formátumú preset fájl",
-                "  // Készült: " & DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss", Globalization.CultureInfo.InvariantCulture)
-            }
+        "  // MidiBill3 beállítások - JSON formátumú preset fájl",
+        "  // Készült: " & DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss", Globalization.CultureInfo.InvariantCulture)
+    }
 
             If sorok.Count > 0 Then
                 sorok.InsertRange(1, fejlec)

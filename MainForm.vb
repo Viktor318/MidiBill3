@@ -587,14 +587,11 @@ Public Class MainForm
     ' ============================================================
 
     Private Sub mnuNevjegy_Click(sender As Object, e As EventArgs) Handles mnuNevjegy.Click
-        Dim verzio As Version = Reflection.Assembly.GetExecutingAssembly().GetName().Version
-        Dim verzioSzoveg As String = verzio.Major & "." & verzio.Minor & "." & verzio.Build
-
-        MsgBox("MidiBill3" & vbCrLf &
-               "Verzió: " & verzioSzoveg & vbCrLf & vbCrLf &
-               "MIDI billentyűzet megszólaltatása 16 csatornán, 4 egyszerre szerkeszthető." & vbCrLf &
-               ".NET 10 / WinForms port a VB6-os eredetiből.",
-               MsgBoxStyle.Information, "Névjegy - MidiBill3")
+        MsgBox("MidiBill3 2026, " & "Verzió: " & AppVerzio() & vbCrLf & vbCrLf &
+           "MIDI billentyűzet megszólaltatása 15 csatornán." & vbCrLf &
+           "(A dob csatorna nem szerkeszthető)" & vbCrLf &
+           ".NET 10 / WinForms port a VB6-os eredetiből.",
+           MsgBoxStyle.Information, "Névjegy - MidiBill3")
     End Sub
 
     ' ============================================================
@@ -602,11 +599,22 @@ Public Class MainForm
     ' ============================================================
 
     Private Function AktualisBeallitasokOsszegyujtese() As Beallitasok
-        Dim b As New Beallitasok()
+        Dim b As New Beallitasok With {
+            .Verzio = AppVerzio()
+        }
 
         For i As Integer = 0 To 15
-            Dim forras As CsatornaBeallitas = csatornaAllapotok(i)
             Dim cs As New CsatornaBeallitas()
+
+            If i = DOB_CSATORNA_INDEX Then
+                ' A 10. csatorna (dob) sosem konfigurálható, ezért az adatait
+                ' sosem mentjük - mindig friss, alapértelmezett érték kerül a
+                ' fájlba, függetlenül attól, mi van a memóriában.
+                b.Csatornak.Add(cs)
+                Continue For
+            End If
+
+            Dim forras As CsatornaBeallitas = csatornaAllapotok(i)
             cs.Hangszer = forras.Hangszer
             cs.Hangero = forras.Hangero
             cs.Ter = forras.Ter
@@ -627,43 +635,106 @@ Public Class MainForm
         Return b
     End Function
 
+    ''' <summary>
+    ''' Egy betöltött/importált Beallitasok alkalmazása a UI-ra és a MIDI-re.
+    ''' frissitsdEszkozoketIs: JSON-betöltésnél True (van eszköznév-adat),
+    ''' .mb3 importnál False (a régi fájl eszközindexei nem megbízhatóak).
+    ''' A folyamat végén figyelmeztet, ha a fájl hibás/hiányzó MIDI eszköznevet
+    ''' vagy tartományon kívüli, korrigált értéket tartalmazott.
+    ''' </summary>
     Private Sub BeallitasokAlkalmazasa(b As Beallitasok, frissitsdEszkozoketIs As Boolean)
+        Dim ertekKorrigalva As Boolean = False
+
         For i As Integer = 0 To 15
-            Dim cs As CsatornaBeallitas = b.Csatornak(i)
             Dim adat As New CsatornaBeallitas()
-            adat.Hangszer = Korlatoz(cs.Hangszer, 0, 127)
-            adat.Hangero = Korlatoz(cs.Hangero, 0, 127)
-            adat.Ter = Korlatoz(cs.Ter, -64, 63)
-            adat.Vibrato = Korlatoz(cs.Vibrato, 0, 127)
-            adat.Aktiv = If(i = DOB_CSATORNA_INDEX, False, cs.Aktiv)
+
+            If i = DOB_CSATORNA_INDEX Then
+                ' A 10. csatorna (dob) sosem konfigurálható, ezért a fájlban
+                ' esetlegesen szereplő adatát figyelmen kívül hagyjuk - mindig
+                ' friss, alapértelmezett (inaktív) állapotba kerül.
+                csatornaAllapotok(i) = adat
+                Continue For
+            End If
+
+            Dim cs As CsatornaBeallitas = b.Csatornak(i)
+
+            Dim ujHangszer As Integer = Korlatoz(cs.Hangszer, 0, 127)
+            Dim ujHangero As Integer = Korlatoz(cs.Hangero, 0, 127)
+            Dim ujTer As Integer = Korlatoz(cs.Ter, -64, 63)
+            Dim ujVibrato As Integer = Korlatoz(cs.Vibrato, 0, 127)
+
+            If ujHangszer <> cs.Hangszer OrElse ujHangero <> cs.Hangero OrElse
+           ujTer <> cs.Ter OrElse ujVibrato <> cs.Vibrato Then
+                ertekKorrigalva = True
+            End If
+
+            adat.Hangszer = ujHangszer
+            adat.Hangero = ujHangero
+            adat.Ter = ujTer
+            adat.Vibrato = ujVibrato
+            adat.Aktiv = cs.Aktiv
             adat.Alul = cs.Alul
             adat.Felul = cs.Felul
             csatornaAllapotok(i) = adat
         Next
 
-        trkAlapHangero.Value = Korlatoz(b.AlapHangero, 0, 100)
+        Dim ujAlapHangero As Integer = Korlatoz(b.AlapHangero, 0, 100)
+        If ujAlapHangero <> b.AlapHangero Then ertekKorrigalva = True
+        trkAlapHangero.Value = ujAlapHangero
+
         chkPedal.Checked = b.PedalInvertalva
 
         splitTanulasAktiv = False
         lblSplitInfo.Text = ""
 
-        cmbSplitPont.SelectedIndex = Korlatoz(b.SplitPont, 0, 127)
+        Dim ujSplitPont As Integer = Korlatoz(b.SplitPont, 0, 127)
+        If ujSplitPont <> b.SplitPont Then ertekKorrigalva = True
+        cmbSplitPont.SelectedIndex = ujSplitPont
+
+        Dim ujTranszponalas As Integer = Korlatoz(b.Transzponalas, TRANSZPONALAS_MIN, TRANSZPONALAS_MAX)
+        If ujTranszponalas <> b.Transzponalas Then ertekKorrigalva = True
         TranszponalasFrissites(b.Transzponalas)
+
+        Dim eszkozHianyzik As Boolean = False
 
         If frissitsdEszkozoketIs Then
             Dim beIdx As Integer = cmbMidiIn.Items.IndexOf(b.MidiBemenetNev)
-            If beIdx >= 0 Then cmbMidiIn.SelectedIndex = beIdx
+            If beIdx >= 0 Then
+                cmbMidiIn.SelectedIndex = beIdx
+            ElseIf Not String.IsNullOrEmpty(b.MidiBemenetNev) Then
+                eszkozHianyzik = True
+            End If
 
             Dim kiIdx As Integer = cmbMidiOut.Items.IndexOf(b.MidiKimenetNev)
-            If kiIdx >= 0 Then cmbMidiOut.SelectedIndex = kiIdx
+            If kiIdx >= 0 Then
+                cmbMidiOut.SelectedIndex = kiIdx
+            ElseIf Not String.IsNullOrEmpty(b.MidiKimenetNev) Then
+                eszkozHianyzik = True
+            End If
         End If
 
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()
+
+        If eszkozHianyzik Then
+            MsgBox("A betölteni kívánt json fájl nem létező MIDI eszköznevet tartalmazott, amit a program figyelmen kívül hagyott.",
+               MsgBoxStyle.Exclamation, "MidiBill")
+        End If
+
+        If ertekKorrigalva Then
+            MsgBox("A betölteni kívánt json fájl hibás adatokat tartalmazott, amiket a program figyelmen kívül hagyott.",
+               MsgBoxStyle.Exclamation, "MidiBill")
+        End If
     End Sub
 
     Private Function Korlatoz(ertek As Integer, min As Integer, max As Integer) As Integer
         Return Math.Max(min, Math.Min(max, ertek))
+    End Function
+
+    ''' <summary>A program aktuális verziószáma "Major.Minor.Build" formában (pl. "1.3.0")</summary>
+    Private Function AppVerzio() As String
+        Dim verzio As Version = Reflection.Assembly.GetExecutingAssembly().GetName().Version
+        Return verzio.Major & "." & verzio.Minor & "." & verzio.Build
     End Function
 
     Private Sub CimsorFrissitese(teljesUtvonal As String)
