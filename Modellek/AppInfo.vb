@@ -4,9 +4,8 @@
     ''' A futó assembly verziószámát adja vissza "Major.Minor.Build" formában
     ''' (pl. "1.3.0"). Közös hely, hogy a fő program és a segédprogramok
     ''' (PresetKonvertalo, Mb3Konvertalo) is ugyanazt a logikát használják.
-    ''' FONTOS: mindhárom projekt .vbproj fájljában a &lt;Version&gt; elemnek
-    ''' szinkronban kell maradnia, különben a segédprogramok saját, eltérő
-    ''' verziószámot írnának ki - verziólépéskor mindhárom .vbproj-t frissíteni kell!
+    ''' A verziószám forrása a Directory.Build.props (megoldás gyökere) - onnan
+    ''' örökli mindhárom projekt automatikusan, nincs szükség kézi szinkronizálásra.
     ''' </summary>
     Public Module AppInfo
 
