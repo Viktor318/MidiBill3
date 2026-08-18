@@ -48,6 +48,7 @@ Module Program
             Dim nev As String = Path.GetFileName(fajl)
             Try
                 Dim b As Beallitasok = Beallitasok.ImportMb3(fajl)
+                b.Verzio = AppInfo.AppVerzio()
                 b.MidiBemenetNev = midiBe
                 b.MidiKimenetNev = midiKi
 

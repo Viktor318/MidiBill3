@@ -587,7 +587,7 @@ Public Class MainForm
     ' ============================================================
 
     Private Sub mnuNevjegy_Click(sender As Object, e As EventArgs) Handles mnuNevjegy.Click
-        MsgBox("MidiBill3 2026, " & "Verzió: " & AppVerzio() & vbCrLf & vbCrLf &
+        MsgBox("MidiBill3 2026, " & "Verzió: " & AppInfo.AppVerzio() & vbCrLf & vbCrLf &
            "MIDI billentyűzet megszólaltatása 15 csatornán." & vbCrLf &
            "(A dob csatorna nem szerkeszthető)" & vbCrLf &
            ".NET 10 / WinForms port a VB6-os eredetiből.",
@@ -600,7 +600,7 @@ Public Class MainForm
 
     Private Function AktualisBeallitasokOsszegyujtese() As Beallitasok
         Dim b As New Beallitasok With {
-            .Verzio = AppVerzio()
+            .Verzio = AppInfo.AppVerzio()
         }
 
         For i As Integer = 0 To 15
@@ -729,12 +729,6 @@ Public Class MainForm
 
     Private Function Korlatoz(ertek As Integer, min As Integer, max As Integer) As Integer
         Return Math.Max(min, Math.Min(max, ertek))
-    End Function
-
-    ''' <summary>A program aktuális verziószáma "Major.Minor.Build" formában (pl. "1.3.0")</summary>
-    Private Function AppVerzio() As String
-        Dim verzio As Version = Reflection.Assembly.GetExecutingAssembly().GetName().Version
-        Return verzio.Major & "." & verzio.Minor & "." & verzio.Build
     End Function
 
     Private Sub CimsorFrissitese(teljesUtvonal As String)

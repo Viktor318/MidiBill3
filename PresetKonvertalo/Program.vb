@@ -38,6 +38,7 @@ Module Program
             Dim nev As String = Path.GetFileName(fajl)
             Try
                 Dim b As Beallitasok = Beallitasok.Betoltes(fajl)
+                b.Verzio = AppInfo.AppVerzio()
                 Dim celUtvonal As String = Path.Combine(kimenoMappa, nev)
                 b.Mentes(celUtvonal)
                 Console.WriteLine("OK:   " & nev)

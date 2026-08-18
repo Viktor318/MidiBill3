@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Modellek\AppInfo.vb" Link="AppInfo.vb" />
     <Compile Include="..\Modellek\Beallitasok.vb" Link="Beallitasok.vb" />
     <Compile Include="..\Modellek\Hangnevek.vb" Link="Hangnevek.vb" />
     <Compile Include="..\Modellek\HangszerLista.vb" Link="HangszerLista.vb" />
