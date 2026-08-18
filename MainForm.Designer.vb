@@ -62,6 +62,7 @@ Partial Class MainForm
         grpCsatornaValaszto = New GroupBox()
         radCsoport4 = New RadioButton()
         radCsoport3 = New RadioButton()
+        btnMidiFrissites = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -175,7 +176,7 @@ Partial Class MainForm
         ' grpMidiIn
         ' 
         grpMidiIn.Controls.Add(cmbMidiIn)
-        grpMidiIn.Location = New Point(640, 148)
+        grpMidiIn.Location = New Point(640, 141)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
         grpMidiIn.TabIndex = 3
@@ -193,7 +194,7 @@ Partial Class MainForm
         ' grpMidiOut
         ' 
         grpMidiOut.Controls.Add(cmbMidiOut)
-        grpMidiOut.Location = New Point(640, 243)
+        grpMidiOut.Location = New Point(640, 229)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
         grpMidiOut.TabIndex = 4
@@ -210,7 +211,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
         btnReset.Location = New Point(640, 601)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
@@ -220,7 +221,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
         btnKilepes.Location = New Point(785, 601)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
@@ -395,11 +396,21 @@ Partial Class MainForm
         radCsoport3.Text = "9-12"
         radCsoport3.UseVisualStyleBackColor = True
         ' 
+        ' btnMidiFrissites
+        ' 
+        btnMidiFrissites.Location = New Point(640, 319)
+        btnMidiFrissites.Name = "btnMidiFrissites"
+        btnMidiFrissites.Size = New Size(277, 34)
+        btnMidiFrissites.TabIndex = 14
+        btnMidiFrissites.Text = "MIDI eszközök frissítése"
+        btnMidiFrissites.UseVisualStyleBackColor = True
+        ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(8.0F, 20.0F)
+        AutoScaleDimensions = New SizeF(8F, 20F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(942, 762)
+        Controls.Add(btnMidiFrissites)
         Controls.Add(grpCsatornaValaszto)
         Controls.Add(grpTranspose)
         Controls.Add(grpSplit)
@@ -468,5 +479,6 @@ Partial Class MainForm
     Friend WithEvents grpCsatornaValaszto As GroupBox
     Friend WithEvents radCsoport3 As RadioButton
     Friend WithEvents radCsoport4 As RadioButton
+    Friend WithEvents btnMidiFrissites As Button
 
 End Class

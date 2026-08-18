@@ -134,6 +134,50 @@ Public Class MainForm
         cmbMidiOut.SelectedIndex = 0
     End Sub
 
+    Private Sub btnMidiFrissites_Click(sender As Object, e As EventArgs) Handles btnMidiFrissites.Click
+        MidiEszkozokUjratoltese()
+    End Sub
+
+    ''' <summary>
+    ''' Újra lekérdezi a Windows-tól az aktuálisan csatlakoztatott MIDI eszközöket,
+    ''' és frissíti a legördülő listákat - a "MIDI eszközök frissítése" gomb hívja.
+    ''' Amennyire lehet, megtartja a jelenleg kiválasztott eszközt (ha az még
+    ''' mindig szerepel a listában), hogy egy új eszköz bedugása ne zavarja meg
+    ''' a már beállított MIDI In/Out kiválasztást.
+    ''' </summary>
+    Private Sub MidiEszkozokUjratoltese()
+        Dim regiBemenet As String = If(cmbMidiIn.SelectedItem IsNot Nothing, cmbMidiIn.SelectedItem.ToString(), "")
+        Dim regiKimenet As String = If(cmbMidiOut.SelectedItem IsNot Nothing, cmbMidiOut.SelectedItem.ToString(), "")
+
+        cmbMidiIn.Items.Clear()
+        For Each nev As String In MidiEngine.BemenetiEszkozok()
+            cmbMidiIn.Items.Add(nev)
+        Next
+
+        cmbMidiOut.Items.Clear()
+        For Each nev As String In MidiEngine.KimenetiEszkozok()
+            cmbMidiOut.Items.Add(nev)
+        Next
+
+        If cmbMidiIn.Items.Count = 0 Then
+            MsgBox("MIDI bemenet nem található.", MsgBoxStyle.Exclamation, "MidiBill")
+            Return
+        End If
+
+        If cmbMidiOut.Items.Count = 0 Then
+            MsgBox("MIDI kimenet nem található.", MsgBoxStyle.Exclamation, "MidiBill")
+            Return
+        End If
+
+        Dim ujBemenetIndex As Integer = cmbMidiIn.Items.IndexOf(regiBemenet)
+        cmbMidiIn.SelectedIndex = If(ujBemenetIndex >= 0, ujBemenetIndex, 0)
+
+        Dim ujKimenetIndex As Integer = cmbMidiOut.Items.IndexOf(regiKimenet)
+        cmbMidiOut.SelectedIndex = If(ujKimenetIndex >= 0, ujKimenetIndex, 0)
+
+        MsgBox("MIDI In/Out eszközlista sikeresen frissítve.", MsgBoxStyle.Information, "MidiBill")
+    End Sub
+
     Private Sub KezdetBeallitasokBetoltese()
         If Not IO.File.Exists(kezdetFile) Then
             CimsorFrissitese(kezdetFile)
@@ -156,12 +200,27 @@ Public Class MainForm
 
     Private Sub cmbMidiIn_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbMidiIn.SelectedIndexChanged
         If cmbMidiIn.SelectedIndex < 0 Then Return
+
+        Dim frissLista As List(Of String) = MidiEngine.BemenetiEszkozok()
+        If Not EszkozListaEgyezikE(cmbMidiIn, frissLista) Then
+            MsgBox("A MIDI bemeneti eszközök listája időközben megváltozott (pl. egy" & vbCrLf &
+               "eszközt kihúztak vagy csatlakoztattak), ezért frissítem a MIDI In/Out listát." & vbCrLf &
+               "A korábbi kiválasztás visszaáll, ha az eszköz még elérhető, " &
+               "egyébként az első elérhető eszköz kerül kiválasztásra.",
+               MsgBoxStyle.Information, "MidiBill")
+            MidiEszkozokUjratoltese()
+            ActiveControl = Nothing
+            Return
+        End If
+
         Try
             midiMotor.BemenetMegnyitas(cmbMidiIn.SelectedIndex)
         Catch ex As Exception
             MsgBox("Nem sikerült megnyitni a kiválasztott MIDI bemeneti eszközt." & vbCrLf &
-                   "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
-                   "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
+               "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
+               "Hiba: " & ex.Message & vbCrLf & vbCrLf &
+               "Frissítem a MIDI eszközlistát.", MsgBoxStyle.Exclamation, "MidiBill")
+            MidiEszkozokUjratoltese()
         End Try
 
         ActiveControl = Nothing
@@ -169,17 +228,46 @@ Public Class MainForm
 
     Private Sub cmbMidiOut_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbMidiOut.SelectedIndexChanged
         If cmbMidiOut.SelectedIndex < 0 Then Return
+
+        Dim frissLista As List(Of String) = MidiEngine.KimenetiEszkozok()
+        If Not EszkozListaEgyezikE(cmbMidiOut, frissLista) Then
+            MsgBox("A MIDI kimeneti eszközök listája időközben megváltozott (pl. egy" & vbCrLf &
+               "eszközt kihúztak vagy csatlakoztattak), ezért frissítem a MIDI In/Out listát." & vbCrLf &
+               "A korábbi kiválasztás visszaáll, ha az eszköz még elérhető, " &
+               "egyébként az első elérhető eszköz kerül kiválasztásra.",
+               MsgBoxStyle.Information, "MidiBill")
+            MidiEszkozokUjratoltese()
+            ActiveControl = Nothing
+            Return
+        End If
+
         Try
             midiMotor.KimenetMegnyitas(cmbMidiOut.SelectedIndex)
             OsszesCsatornaUjrakuldese()
         Catch ex As Exception
             MsgBox("Nem sikerült megnyitni a kiválasztott MIDI kimeneti eszközt." & vbCrLf &
-                   "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
-                   "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
+               "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
+               "Hiba: " & ex.Message & vbCrLf & vbCrLf &
+               "Frissítem a MIDI eszközlistát.", MsgBoxStyle.Exclamation, "MidiBill")
+            MidiEszkozokUjratoltese()
         End Try
 
         ActiveControl = Nothing
     End Sub
+
+    ''' <summary>
+    ''' Ellenőrzi, hogy a ComboBox jelenlegi tartalma (sorrendben) pontosan
+    ''' megegyezik-e a Windows-tól frissen lekérdezett eszközlistával. Ha nem,
+    ''' az azt jelenti, hogy időközben eszköz csatlakozott/leválasztódott, és a
+    ''' jelenlegi kiválasztás (index) már nem biztos, hogy a várt eszközre mutat.
+    ''' </summary>
+    Private Function EszkozListaEgyezikE(cmb As ComboBox, frissLista As List(Of String)) As Boolean
+        If cmb.Items.Count <> frissLista.Count Then Return False
+        For i As Integer = 0 To cmb.Items.Count - 1
+            If cmb.Items(i).ToString() <> frissLista(i) Then Return False
+        Next
+        Return True
+    End Function
 
     Private Sub OsszesCsatornaUjrakuldese()
         If Not inicializalasKesz Then Return
