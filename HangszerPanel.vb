@@ -21,6 +21,7 @@ Public Class HangszerPanel
         lblHerErtek.Text = trkHangero.Value.ToString()
         lblTerErtek.Text = trkTer.Value.ToString()
         lblVibErtek.Text = trkVibrato.Value.ToString()
+        lblOktavErtek.Text = OktavSzoveg(trkOktav.Value)
     End Sub
 
     ' --- Eseménydeklarációk: ezekre iratkozik fel a MainForm ---
@@ -45,6 +46,9 @@ Public Class HangszerPanel
 
     ''' <summary>"Felül" (Split ponttól felül szól) jelölőnégyzet állapota változott</summary>
     Public Event FelulValtozott(sender As Object, aktiv As Boolean)
+
+    ''' <summary>Csatornánkénti oktáv-eltolás változott (-2..+2)</summary>
+    Public Event OktavValtozott(sender As Object, ertek As Integer)
 
     ' --- Publikus property-k: kívülről is olvasható/írható állapot ---
     ' (íráskor NEM tüzelünk eseményt, hogy betöltéskor a MainForm ne
@@ -138,6 +142,19 @@ Public Class HangszerPanel
         End Set
     End Property
 
+    ''' <summary>Csatornánkénti oktáv-eltolás (-2..+2)</summary>
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
+    Public Property Oktav As Integer
+        Get
+            Return trkOktav.Value
+        End Get
+        Set(value As Integer)
+            betoltesAlatt = True
+            trkOktav.Value = value
+            betoltesAlatt = False
+        End Set
+    End Property
+
     ' --- Belső eseménykezelők: a vezérlők változásait továbbítjuk kifelé ---
 
     Private Sub cmbHangszer_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbHangszer.SelectedIndexChanged
@@ -162,6 +179,17 @@ Public Class HangszerPanel
         If betoltesAlatt Then Return
         RaiseEvent VibratoValtozott(Me, trkVibrato.Value)
     End Sub
+
+    Private Sub trkOktav_ValueChanged(sender As Object, e As EventArgs) Handles trkOktav.ValueChanged
+        lblOktavErtek.Text = OktavSzoveg(trkOktav.Value)
+        If betoltesAlatt Then Return
+        RaiseEvent OktavValtozott(Me, trkOktav.Value)
+    End Sub
+
+    ''' <summary>Előjeles szöveg az oktáv-értékhez (pl. "+1", "-2", "0")</summary>
+    Private Function OktavSzoveg(ertek As Integer) As String
+        Return If(ertek > 0, "+" & ertek, ertek.ToString())
+    End Function
 
     Private Sub chkAktiv_CheckedChanged(sender As Object, e As EventArgs) Handles chkAktiv.CheckedChanged
         If betoltesAlatt Then Return

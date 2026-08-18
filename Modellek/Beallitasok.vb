@@ -23,6 +23,13 @@ Namespace Modellek
         Public Property Alul As Boolean = True
         Public Property Felul As Boolean = True
 
+        ''' <summary>
+        ''' Csatornánkénti oktáv-transzponálás (-2..+2). A globális
+        ''' (félhangos) transzponálással ÖSSZEADÓDIK a kiküldött
+        ''' hangmagasság kiszámításakor. Alapértelmezett 0.
+        ''' </summary>
+        Public Property Oktav As Integer = 0
+
     End Class
 
     Public Class Beallitasok

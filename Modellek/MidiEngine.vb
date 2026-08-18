@@ -48,6 +48,21 @@ Namespace Modellek
         End Property
         Private csatornaFelulTomb(15) As Boolean
 
+        ''' <summary>
+        ''' Csatornánkénti oktáv-eltolás (-2..+2), egyszerű, mellékhatás
+        ''' nélküli property (induló szinkronizáláshoz) - az interaktív,
+        ''' AZONNALI hatású (retroaktív) beállításhoz lásd OktavValtas.
+        ''' </summary>
+        Public Property CsatornaOktav(index As Integer) As Integer
+            Get
+                Return csatornaOktavTomb(index)
+            End Get
+            Set(value As Integer)
+                csatornaOktavTomb(index) = value
+            End Set
+        End Property
+        Private csatornaOktavTomb(15) As Integer
+
         Public Property SplitPont As Integer = 60
         Public Property Transpozicio As Integer = 0
 
@@ -59,6 +74,7 @@ Namespace Modellek
                 csatornaAktivTomb(c) = False
                 csatornaAlulTomb(c) = False
                 csatornaFelulTomb(c) = False
+                csatornaOktavTomb(c) = 0
             Next
         End Sub
 
@@ -131,6 +147,11 @@ Namespace Modellek
         Private Sub Bemenet_HibaErkezett(sender As Object, e As MidiInMessageEventArgs)
         End Sub
 
+        ''' <summary>
+        ''' A bejövő MIDI-üzenetet szétosztja a 16 aktív kimeneti csatornára.
+        ''' A kiküldött hangmagasságra a GLOBÁLIS (félhangos) transzponálás
+        ''' ÉS a CSATORNÁNKÉNTI (oktávos) eltolás is hat, összeadódva.
+        ''' </summary>
         Public Sub UzenetKuldes(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
 
             If statuszBajt >= &H80 And statuszBajt < &HF0 Then
@@ -158,7 +179,7 @@ Namespace Modellek
                     ElseIf hangUzenet Then
                         Dim zonaIlleszkedik As Boolean = If(felsoZona, csatornaFelulTomb(c), csatornaAlulTomb(c))
                         If zonaIlleszkedik Then
-                            Dim kimeno As Integer = adat1 + Transpozicio
+                            Dim kimeno As Integer = adat1 + Transpozicio + (csatornaOktavTomb(c) * 12)
                             If ErvenyesHangE(kimeno) Then
                                 KuldesUzenetCsatornara(c, statuszBajt, kimeno, adat2)
                                 If tenylegesNoteOn Then
@@ -234,11 +255,16 @@ Namespace Modellek
             Next
         End Sub
 
+        ''' <summary>
+        ''' Egy adott zóna jelenleg lenyomott hangjainak megszólaltatása,
+        ''' az AKTUÁLIS globális transzponálással ÉS csatornánkénti
+        ''' oktáv-eltolással.
+        ''' </summary>
         Private Sub ZonaHangokMegszolaltatasa(csatornaSzam As Integer, felsoZona As Boolean)
             Dim csatornaIndex As Integer = csatornaSzam - 1
             For n As Integer = 0 To 127
                 If ZonaIllik(n, felsoZona) AndAlso heldNotes(n) > 0 Then
-                    Dim kimeno As Integer = n + Transpozicio
+                    Dim kimeno As Integer = n + Transpozicio + (csatornaOktavTomb(csatornaIndex) * 12)
                     If ErvenyesHangE(kimeno) Then
                         KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, kimeno, heldNotes(n))
                         noteOn(csatornaIndex, n) = True
@@ -288,6 +314,22 @@ Namespace Modellek
             ElseIf Not regi AndAlso ujErtek Then
                 ZonaHangokMegszolaltatasa(csatornaSzam, True)
             End If
+        End Sub
+
+        ''' <summary>
+        ''' Csatornánkénti oktáv-eltolás interaktív beállítása - AZONNALI
+        ''' (retroaktív) hatással: a csatornán jelenleg szóló hangokat
+        ''' leállítja, majd a frissített oktávval azonnal újraszólaltatja
+        ''' a jelenleg lenyomva tartott hangokat.
+        ''' </summary>
+        Public Sub OktavValtas(csatornaSzam As Integer, ujOktav As Integer)
+            Dim csatornaIndex As Integer = csatornaSzam - 1
+            csatornaOktavTomb(csatornaIndex) = ujOktav
+
+            If Not csatornaAktivTomb(csatornaIndex) Then Return
+
+            HangokKikapcsolasa(csatornaSzam)
+            LenyomottHangokMegszolaltatasa(csatornaSzam)
         End Sub
 
         Public Sub ProgramValtas(csatornaSzam As Integer, hangszerIndex As Integer)

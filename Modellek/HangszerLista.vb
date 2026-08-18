@@ -43,6 +43,14 @@
             "Telephone Ring", "Helicopter", "Applause", "Gunshot"
         }
 
+        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét, tartományellenőrzéssel - "?" ha érvénytelen</summary>
+        Public Function Nev(index As Integer) As String
+            If index >= 0 AndAlso index < Nevek.Length Then
+                Return Nevek(index)
+            End If
+            Return "?"
+        End Function
+
     End Module
 
 End Namespace

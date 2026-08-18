@@ -63,7 +63,7 @@ Public Class MainForm
     ''' <summary>A 4 fizikai HangszerPanel és keret létrehozása - a végleges elrendezéshez igazítva</summary>
     Private Sub HangszerPanelekLetrehozasa()
         Dim xKoordinatak() As Integer = {25, 331}
-        Dim yKoordinatak() As Integer = {53, 361}
+        Dim yKoordinatak() As Integer = {53, 415}
 
         For i As Integer = 0 To 3
             Dim oszlop As Integer = i Mod 2
@@ -71,7 +71,7 @@ Public Class MainForm
 
             Dim keret As New GroupBox()
             keret.Location = New Point(xKoordinatak(oszlop), yKoordinatak(sor))
-            keret.Size = New Size(300, 300)
+            keret.Size = New Size(300, 354)
 
             Dim panel As New HangszerPanel()
             panel.Location = New Point(10, 20)
@@ -89,6 +89,7 @@ Public Class MainForm
             AddHandler panel.AktivValtozott, AddressOf HangszerPanel_AktivValtozott
             AddHandler panel.AlulValtozott, AddressOf HangszerPanel_AlulValtozott
             AddHandler panel.FelulValtozott, AddressOf HangszerPanel_FelulValtozott
+            AddHandler panel.OktavValtozott, AddressOf HangszerPanel_OktavValtozott
         Next
     End Sub
 
@@ -286,6 +287,7 @@ Public Class MainForm
             midiMotor.CsatornaAktiv(i) = adat.Aktiv
             midiMotor.CsatornaAlul(i) = adat.Alul
             midiMotor.CsatornaFelul(i) = adat.Felul
+            midiMotor.CsatornaOktav(i) = adat.Oktav
             midiMotor.ProgramValtas(csatornaSzam, adat.Hangszer)
             CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
             midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
@@ -334,6 +336,7 @@ Public Class MainForm
             panel.Aktiv = adat.Aktiv
             panel.Alul = adat.Alul
             panel.Felul = adat.Felul
+            panel.Oktav = adat.Oktav
 
             Dim dobCsatorna As Boolean = (csatornaIndex = DOB_CSATORNA_INDEX)
             panel.Enabled = Not dobCsatorna
@@ -423,6 +426,14 @@ Public Class MainForm
         If idx < 0 Then Return
         csatornaAllapotok(idx).Felul = aktiv
         midiMotor.FelulValtas(idx + 1, aktiv)
+    End Sub
+
+    ''' <summary>Csatornánkénti oktáv-eltolás változott - a MidiEngine azonnali, retroaktív hatással alkalmazza</summary>
+    Private Sub HangszerPanel_OktavValtozott(sender As Object, ertek As Integer)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Oktav = ertek
+        midiMotor.OktavValtas(idx + 1, ertek)
     End Sub
 
     Private Sub CsatornaHangeroKuldes(csatornaSzam As Integer, csatornaErtek As Integer)
@@ -522,7 +533,7 @@ Public Class MainForm
             utolsoPedalErtek = vegsoAdat2
         End If
 
-        lblMidiUzenet.Text = "MIDI üzenetek: " & uzenet & ", " & adat1 & ", " & vegsoAdat2
+        lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
 
         If splitTanulasAktiv AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
             SplitPontBeallitasaTanulassal(adat1)
@@ -534,7 +545,7 @@ Public Class MainForm
 
     Private Sub chkPedal_CheckedChanged(sender As Object, e As EventArgs) Handles chkPedal.CheckedChanged
         utolsoPedalErtek = 127 - utolsoPedalErtek
-        lblMidiUzenet.Text = "MIDI üzenetek: " & CONTROLLER_CHANGE & ", " & DAMPER_PEDAL & ", " & utolsoPedalErtek
+        lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(CONTROLLER_CHANGE, DAMPER_PEDAL, utolsoPedalErtek)
         midiMotor.UzenetKuldes(CONTROLLER_CHANGE, DAMPER_PEDAL, utolsoPedalErtek)
     End Sub
 
@@ -622,6 +633,7 @@ Public Class MainForm
             cs.Aktiv = forras.Aktiv
             cs.Alul = forras.Alul
             cs.Felul = forras.Felul
+            cs.Oktav = forras.Oktav
             b.Csatornak.Add(cs)
         Next
 
@@ -662,9 +674,10 @@ Public Class MainForm
             Dim ujHangero As Integer = Korlatoz(cs.Hangero, 0, 127)
             Dim ujTer As Integer = Korlatoz(cs.Ter, -64, 63)
             Dim ujVibrato As Integer = Korlatoz(cs.Vibrato, 0, 127)
+            Dim ujOktav As Integer = Korlatoz(cs.Oktav, -2, 2)
 
             If ujHangszer <> cs.Hangszer OrElse ujHangero <> cs.Hangero OrElse
-           ujTer <> cs.Ter OrElse ujVibrato <> cs.Vibrato Then
+                ujTer <> cs.Ter OrElse ujVibrato <> cs.Vibrato OrElse ujOktav <> cs.Oktav Then
                 ertekKorrigalva = True
             End If
 
@@ -675,6 +688,7 @@ Public Class MainForm
             adat.Aktiv = cs.Aktiv
             adat.Alul = cs.Alul
             adat.Felul = cs.Felul
+            adat.Oktav = ujOktav
             csatornaAllapotok(i) = adat
         Next
 
@@ -729,6 +743,41 @@ Public Class MainForm
 
     Private Function Korlatoz(ertek As Integer, min As Integer, max As Integer) As Integer
         Return Math.Max(min, Math.Min(max, ertek))
+    End Function
+
+    ''' <summary>
+    ''' A nyers MIDI üzenetet (státuszbájt + 2 adatbájt) tömör, olvasható
+    ''' szöveggé alakítja a lblMidiUzenet kijelzőhöz - pl. "NoteOn C4 v90",
+    ''' "CC64 127", "PC Acoustic Grand Piano". A hangmagassághoz kötött
+    ''' üzeneteknél a Hangnevek.HangNev()-et, Program Change-nél a
+    ''' HangszerLista.Nev()-et használja fel, amiket már a Split
+    ''' pont/hangszerválasztó is használ máshol.
+    ''' </summary>
+    Private Function MidiUzenetSzoveg(uzenet As Integer, adat1 As Integer, adat2 As Integer) As String
+        Dim tipus As Integer = uzenet And &HF0
+
+        Select Case tipus
+            Case &H90
+                If adat2 > 0 Then
+                    Return "NoteOn " & Hangnevek.HangNev(adat1) & " v" & adat2
+                Else
+                    Return "NoteOff " & Hangnevek.HangNev(adat1)
+                End If
+            Case &H80
+                Return "NoteOff " & Hangnevek.HangNev(adat1)
+            Case &HA0
+                Return "PolyPress " & Hangnevek.HangNev(adat1) & " " & adat2
+            Case &HB0
+                Return "CC" & adat1 & " " & adat2
+            Case &HC0
+                Return "PC " & HangszerLista.Nev(adat1)
+            Case &HD0
+                Return "ChanPress " & adat1
+            Case &HE0
+                Return "PitchBend " & (adat1 + adat2 * 128)
+            Case Else
+                Return "Sys " & uzenet.ToString("X2") & " " & adat1 & " " & adat2
+        End Select
     End Function
 
     Private Sub CimsorFrissitese(teljesUtvonal As String)

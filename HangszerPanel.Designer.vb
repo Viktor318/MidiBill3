@@ -35,9 +35,13 @@ Partial Class HangszerPanel
         lblVibErtek = New Label()
         chkAlul = New CheckBox()
         chkFelul = New CheckBox()
+        trkOktav = New TrackBar()
+        lblOktav = New Label()
+        lblOktavErtek = New Label()
         CType(trkHangero, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkTer, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkVibrato, ComponentModel.ISupportInitialize).BeginInit()
+        CType(trkOktav, ComponentModel.ISupportInitialize).BeginInit()
         SuspendLayout()
         ' 
         ' cmbHangszer
@@ -109,7 +113,7 @@ Partial Class HangszerPanel
         ' 
         ' chkAktiv
         ' 
-        chkAktiv.Location = New Point(24, 222)
+        chkAktiv.Location = New Point(24, 276)
         chkAktiv.Name = "chkAktiv"
         chkAktiv.Size = New Size(70, 24)
         chkAktiv.TabIndex = 7
@@ -145,7 +149,7 @@ Partial Class HangszerPanel
         ' 
         ' chkAlul
         ' 
-        chkAlul.Location = New Point(110, 222)
+        chkAlul.Location = New Point(110, 276)
         chkAlul.Name = "chkAlul"
         chkAlul.Size = New Size(70, 24)
         chkAlul.TabIndex = 11
@@ -154,17 +158,48 @@ Partial Class HangszerPanel
         ' 
         ' chkFelul
         ' 
-        chkFelul.Location = New Point(196, 222)
+        chkFelul.Location = New Point(196, 276)
         chkFelul.Name = "chkFelul"
         chkFelul.Size = New Size(70, 24)
         chkFelul.TabIndex = 12
         chkFelul.Text = "Felül"
         chkFelul.UseVisualStyleBackColor = True
         ' 
+        ' trkOktav
+        ' 
+        trkOktav.AutoSize = False
+        trkOktav.Location = New Point(48, 216)
+        trkOktav.Maximum = 2
+        trkOktav.Minimum = -2
+        trkOktav.Name = "trkOktav"
+        trkOktav.Size = New Size(218, 50)
+        trkOktav.TabIndex = 13
+        ' 
+        ' lblOktav
+        ' 
+        lblOktav.Location = New Point(12, 216)
+        lblOktav.Name = "lblOktav"
+        lblOktav.Size = New Size(38, 25)
+        lblOktav.TabIndex = 14
+        lblOktav.Text = "Okt"
+        lblOktav.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' lblOktavErtek
+        ' 
+        lblOktavErtek.Location = New Point(12, 241)
+        lblOktavErtek.Name = "lblOktavErtek"
+        lblOktavErtek.Size = New Size(38, 25)
+        lblOktavErtek.TabIndex = 15
+        lblOktavErtek.Text = "0"
+        lblOktavErtek.TextAlign = ContentAlignment.TopCenter
+        ' 
         ' HangszerPanel
         ' 
-        AutoScaleDimensions = New SizeF(8.0F, 20.0F)
+        AutoScaleDimensions = New SizeF(8F, 20F)
         AutoScaleMode = AutoScaleMode.Font
+        Controls.Add(lblOktavErtek)
+        Controls.Add(lblOktav)
+        Controls.Add(trkOktav)
         Controls.Add(chkFelul)
         Controls.Add(chkAlul)
         Controls.Add(lblVibErtek)
@@ -179,10 +214,11 @@ Partial Class HangszerPanel
         Controls.Add(trkHangero)
         Controls.Add(cmbHangszer)
         Name = "HangszerPanel"
-        Size = New Size(280, 270)
+        Size = New Size(280, 324)
         CType(trkHangero, ComponentModel.ISupportInitialize).EndInit()
         CType(trkTer, ComponentModel.ISupportInitialize).EndInit()
         CType(trkVibrato, ComponentModel.ISupportInitialize).EndInit()
+        CType(trkOktav, ComponentModel.ISupportInitialize).EndInit()
         ResumeLayout(False)
     End Sub
 
@@ -199,5 +235,8 @@ Partial Class HangszerPanel
     Friend WithEvents lblVibErtek As Label
     Friend WithEvents chkAlul As CheckBox
     Friend WithEvents chkFelul As CheckBox
+    Friend WithEvents trkOktav As TrackBar
+    Friend WithEvents lblOktav As Label
+    Friend WithEvents lblOktavErtek As Label
 
 End Class
