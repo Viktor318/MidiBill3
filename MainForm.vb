@@ -23,6 +23,15 @@ Public Class MainForm
     Private Const TRANSZPONALAS_MIN As Integer = -24
     Private Const TRANSZPONALAS_MAX As Integer = 24
 
+    ' A MIDI üzenetek kijelzésének korlátozása: a lblMidiUzenet ténylegesen
+    ' csak a midiKijelzoIdozito ütemében (max. 10x/mp) frissül, függetlenül
+    ' attól, milyen sűrűn érkeznek a bejövő MIDI-üzenetek - ez elkerüli a
+    ' felesleges, követhetetlenül gyors UI-frissítést nagyon sűrű
+    ' billentyűjáték (pl. gyors arpeggio) esetén.
+    Private legutobbiMidiSzoveg As String = ""
+    Private midiSzovegValtozott As Boolean = False
+    Private WithEvents midiKijelzoIdozito As New Timer With {.Interval = 100}
+
     Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
 
     Private Const CONTROLLER_CHANGE As Integer = &HB0
@@ -42,6 +51,8 @@ Public Class MainForm
         CsatornaPanelekFrissitese()
 
         KezdetBeallitasokBetoltese()
+
+        midiKijelzoIdozito.Start()
     End Sub
 
     Private Sub MainForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
@@ -529,7 +540,8 @@ Public Class MainForm
             vegsoAdat2 = 127 - adat2
         End If
 
-        lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
+        legutobbiMidiSzoveg = MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
+        midiSzovegValtozott = True
 
         If splitTanulasAktiv AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
             SplitPontBeallitasaTanulassal(adat1)
@@ -537,6 +549,18 @@ Public Class MainForm
         End If
 
         midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
+    End Sub
+
+    ''' <summary>
+    ''' A MIDI-üzenet kijelzés tényleges frissítése, max. 10x/mp ütemben
+    ''' (a midiKijelzoIdozito Interval=100 beállítása szerint) - csak akkor
+    ''' ír, ha ténylegesen érkezett új üzenet az utolsó tikk óta.
+    ''' </summary>
+    Private Sub midiKijelzoIdozito_Tick(sender As Object, e As EventArgs) Handles midiKijelzoIdozito.Tick
+        If midiSzovegValtozott Then
+            lblMidiUzenet.Text = "MIDI üzenetek: " & legutobbiMidiSzoveg
+            midiSzovegValtozott = False
+        End If
     End Sub
 
     ' ============================================================
