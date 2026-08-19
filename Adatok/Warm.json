@@ -1,42 +1,167 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.17 22:02:01
+  // Készült: 2026.08.19 02:03:57
+  "Verzio": "1.3.0",
   "Csatornak": [
-    {
+    {  // 1. csatorna
       "Hangszer": 89,  // Pad 2 (warm)
       "Hangero": 79,
       "Ter": 0,
       "Vibrato": 0,
       "Aktiv": true,
       "Alul": true,
-      "Felul": true
+      "Felul": true,
+      "Oktav": 0
     },
-    {
+    {  // 2. csatorna
       "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
       "Aktiv": false,
       "Alul": true,
-      "Felul": true
+      "Felul": true,
+      "Oktav": 0
     },
-    {
+    {  // 3. csatorna
       "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
       "Aktiv": false,
       "Alul": true,
-      "Felul": true
+      "Felul": true,
+      "Oktav": 0
     },
-    {
+    {  // 4. csatorna
       "Hangszer": 0,  // Acoustic Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
       "Aktiv": false,
       "Alul": true,
-      "Felul": true
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 5. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 6. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 7. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 8. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 9. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 10. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 11. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 12. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 13. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 14. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 15. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
+    },
+    {  // 16. csatorna
+      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangero": 127,
+      "Ter": 0,
+      "Vibrato": 0,
+      "Aktiv": false,
+      "Alul": true,
+      "Felul": true,
+      "Oktav": 0
     }
   ],
   "AlapHangero": 70,
