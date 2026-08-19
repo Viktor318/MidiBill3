@@ -912,7 +912,7 @@ Public Class MainForm
     ''' <summary>A címsor tényleges kirajzolása a jelenlegi aktualisFajlNev és aktualisHangszerListaFajl alapján</summary>
     Private Sub CimSorUjrarajzolas()
         Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev &
-                  " (beállítások), " & aktualisHangszerListaFajl & " (hangszerlista)"
+                  ", " & aktualisHangszerListaFajl
     End Sub
 
     Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String, Optional alapMappa As String = Nothing)
