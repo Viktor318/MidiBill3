@@ -52,6 +52,15 @@ Namespace Modellek
         Public Property SplitPont As Integer = 60
         Public Property Transzponalas As Integer = 0
 
+        ''' <summary>
+        ''' Globális Reverb (visszhang) mélysége, 0-100% (a felhasználói
+        ''' felületen megjelenő, kerek érték - a tényleges MIDI CC91
+        ''' kiküldésekor 0-127-re számítódik át, hogy a teljes MIDI-tartomány
+        ''' kihasználható legyen). Egységes minden csatornára, nem
+        ''' csatornánkénti beállítás.
+        ''' </summary>
+        Public Property Reverb As Integer = 0
+
         Public Shared Function Alapertelmezett() As Beallitasok
             Dim b As New Beallitasok()
             Kiegeszit16Csatornara(b)

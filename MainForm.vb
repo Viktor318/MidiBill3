@@ -39,6 +39,7 @@ Public Class MainForm
     Private Const MAIN_VOLUME As Integer = 7
     Private Const PAN As Integer = 10
     Private Const MOD_WHEEL As Integer = 1
+    Private Const REVERB As Integer = 91
     Private Const NOTE_ON As Integer = &H90
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -303,6 +304,8 @@ Public Class MainForm
             midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
             midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
         Next
+
+        ReverbKuldes(trkReverb.Value)
     End Sub
 
     ' ============================================================
@@ -462,6 +465,27 @@ Public Class MainForm
 
         For i As Integer = 0 To 15
             CsatornaHangeroKuldes(i + 1, csatornaAllapotok(i).Hangero)
+        Next
+    End Sub
+
+    Private Sub trkReverb_ValueChanged(sender As Object, e As EventArgs) Handles trkReverb.ValueChanged
+        If Not inicializalasKesz Then Return
+
+        grpReverb.Text = "Reverb: " & trkReverb.Value & "%"
+        ReverbKuldes(trkReverb.Value)
+    End Sub
+
+    ''' <summary>
+    ''' A Reverb (0-100%) átszámítása MIDI CC91 értékre (0-127, a teljes
+    ''' MIDI-tartomány kihasználásához), és kiküldése MIND a 16 csatornára -
+    ''' ez egy globális, nem csatornánkénti beállítás, ezért az aktiváltságtól
+    ''' függetlenül mindig minden csatornára megy, ugyanúgy, ahogy a
+    ''' Hangszer/Hangerő/Tér/Vibrato is (lásd OsszesCsatornaUjrakuldese).
+    ''' </summary>
+    Private Sub ReverbKuldes(szazalek As Integer)
+        Dim midiErtek As Integer = szazalek * 127 \ 100
+        For c As Integer = 1 To 16
+            midiMotor.ControllerValtas(c, REVERB, midiErtek)
         Next
     End Sub
 
@@ -657,6 +681,7 @@ Public Class MainForm
         b.PedalInvertalva = chkPedal.Checked
         b.SplitPont = aktualisSplitPont
         b.Transzponalas = aktualisTranszponalas
+        b.Reverb = trkReverb.Value
 
         Return b
     End Function
@@ -722,6 +747,11 @@ Public Class MainForm
         Dim ujTranszponalas As Integer = Korlatoz(b.Transzponalas, TRANSZPONALAS_MIN, TRANSZPONALAS_MAX)
         If ujTranszponalas <> b.Transzponalas Then ertekKorrigalva = True
         TranszponalasFrissites(b.Transzponalas)
+
+        Dim ujReverb As Integer = Korlatoz(b.Reverb, 0, 100)
+        If ujReverb <> b.Reverb Then ertekKorrigalva = True
+        trkReverb.Value = ujReverb
+        grpReverb.Text = "Reverb: " & ujReverb & "%"
 
         Dim eszkozHianyzik As Boolean = False
 
