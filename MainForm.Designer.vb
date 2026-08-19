@@ -432,8 +432,8 @@ Partial Class MainForm
         ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(8F, 20F)
-        AutoScaleMode = AutoScaleMode.Font
+        AutoScaleDimensions = New SizeF(120.0F, 120.0F)
+        AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(942, 866)
         Controls.Add(grpReverb)
         Controls.Add(btnMidiFrissites)
@@ -448,8 +448,11 @@ Partial Class MainForm
         Controls.Add(grpVolume)
         Controls.Add(chkPedal)
         Controls.Add(menuStrip1)
+        FormBorderStyle = FormBorderStyle.FixedSingle
         Icon = CType(resources.GetObject("$this.Icon"), Icon)
         MainMenuStrip = menuStrip1
+        MaximizeBox = False
+        MinimizeBox = False
         Name = "MainForm"
         StartPosition = FormStartPosition.CenterScreen
         Text = "MainForm"
