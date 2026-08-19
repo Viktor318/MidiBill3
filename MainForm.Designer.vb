@@ -27,8 +27,10 @@ Partial Class MainForm
         mnuFajl = New ToolStripMenuItem()
         mnuBetolt = New ToolStripMenuItem()
         mnuMent = New ToolStripMenuItem()
-        ToolStripSeparator2 = New ToolStripSeparator()
+        ToolStripSeparator3 = New ToolStripSeparator()
         mnuImportMb3 = New ToolStripMenuItem()
+        ToolStripSeparator2 = New ToolStripSeparator()
+        mnuHangszerlistaBetoltese = New ToolStripMenuItem()
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
         mnuKilepesMentesNelkul = New ToolStripMenuItem()
@@ -65,6 +67,7 @@ Partial Class MainForm
         btnMidiFrissites = New Button()
         grpReverb = New GroupBox()
         trkReverb = New TrackBar()
+        dlgHangszerlista = New OpenFileDialog()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -89,7 +92,7 @@ Partial Class MainForm
         ' 
         ' mnuFajl
         ' 
-        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator2, mnuImportMb3, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator3, mnuImportMb3, ToolStripSeparator2, mnuHangszerlistaBetoltese, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
         mnuFajl.Name = "mnuFajl"
         mnuFajl.Size = New Size(45, 26)
         mnuFajl.Text = "&Fájl"
@@ -106,16 +109,27 @@ Partial Class MainForm
         mnuMent.Size = New Size(287, 26)
         mnuMent.Text = "Adatok &mentése"
         ' 
-        ' ToolStripSeparator2
+        ' ToolStripSeparator3
         ' 
-        ToolStripSeparator2.Name = "ToolStripSeparator2"
-        ToolStripSeparator2.Size = New Size(284, 6)
+        ToolStripSeparator3.Name = "ToolStripSeparator3"
+        ToolStripSeparator3.Size = New Size(284, 6)
         ' 
         ' mnuImportMb3
         ' 
         mnuImportMb3.Name = "mnuImportMb3"
         mnuImportMb3.Size = New Size(287, 26)
         mnuImportMb3.Text = "Régi .mb3 preset &importálása"
+        ' 
+        ' ToolStripSeparator2
+        ' 
+        ToolStripSeparator2.Name = "ToolStripSeparator2"
+        ToolStripSeparator2.Size = New Size(284, 6)
+        ' 
+        ' mnuHangszerlistaBetoltese
+        ' 
+        mnuHangszerlistaBetoltese.Name = "mnuHangszerlistaBetoltese"
+        mnuHangszerlistaBetoltese.Size = New Size(287, 26)
+        mnuHangszerlistaBetoltese.Text = "&Hangszerlista betöltése"
         ' 
         ' ToolStripSeparator1
         ' 
@@ -144,8 +158,8 @@ Partial Class MainForm
         ' mnuNevjegy
         ' 
         mnuNevjegy.Name = "mnuNevjegy"
-        mnuNevjegy.Size = New Size(155, 26)
-        mnuNevjegy.Text = "&Névjegy..."
+        mnuNevjegy.Size = New Size(224, 26)
+        mnuNevjegy.Text = "&Névjegy"
         ' 
         ' chkPedal
         ' 
@@ -215,7 +229,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
         btnReset.Location = New Point(640, 709)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
@@ -225,7 +239,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
+        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
         btnKilepes.Location = New Point(785, 709)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
@@ -235,7 +249,7 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Font = New Font("Segoe UI", 9F)
+        lblMidiUzenet.Font = New Font("Segoe UI", 9.0F)
         lblMidiUzenet.Location = New Point(331, 803)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(280, 25)
@@ -430,9 +444,13 @@ Partial Class MainForm
         trkReverb.TabIndex = 0
         trkReverb.TickFrequency = 10
         ' 
+        ' dlgHangszerlista
+        ' 
+        dlgHangszerlista.Filter = "Hangszerlista fájlok (*.lst)|*.lst"
+        ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(120F, 120F)
+        AutoScaleDimensions = New SizeF(120.0F, 120.0F)
         AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(942, 866)
         Controls.Add(grpReverb)
@@ -512,5 +530,8 @@ Partial Class MainForm
     Friend WithEvents btnMidiFrissites As Button
     Friend WithEvents grpReverb As GroupBox
     Friend WithEvents trkReverb As TrackBar
+    Friend WithEvents mnuHangszerlistaBetoltese As ToolStripMenuItem
+    Friend WithEvents ToolStripSeparator3 As ToolStripSeparator
+    Friend WithEvents dlgHangszerlista As OpenFileDialog
 
 End Class

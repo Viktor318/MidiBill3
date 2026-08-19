@@ -17,6 +17,7 @@ Public Class MainForm
     Private utolsoBetoltesMappa As String = ""
     Private utolsoMentesMappa As String = ""
     Private utolsoImportMappa As String = ""
+    Private utolsoHangszerlistaMappa As String = ""
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
@@ -801,13 +802,7 @@ Public Class MainForm
         ' preset esetén), az első elérhető hangszerre állítjuk - így a
         ' MIDI-kimenet MINDIG szinkronban lesz azzal, amit a panelek
         ' ténylegesen mutatnak majd, nem csak a jelenleg látható csoportnál.
-        Dim alapertelmezettHangszer As Integer = HangszerLista.Nevek.Keys.OrderBy(Function(k) k).FirstOrDefault()
-        For i As Integer = 0 To 15
-            If Not HangszerLista.Nevek.ContainsKey(csatornaAllapotok(i).Hangszer) Then
-                csatornaAllapotok(i).Hangszer = alapertelmezettHangszer
-                ertekKorrigalva = True
-            End If
-        Next
+        If HangszerekErvenyesitese() Then ertekKorrigalva = True
 
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()
@@ -822,6 +817,29 @@ Public Class MainForm
                MsgBoxStyle.Exclamation, "MidiBill")
         End If
     End Sub
+
+    ''' <summary>
+    ''' Ellenőrzi mind a 16 csatorna Hangszer-értékét az AKTUÁLIS
+    ''' hangszerlista alapján - ha egy tárolt patch-szám nem szerepel
+    ''' benne (pl. listaváltás vagy kézzel szerkesztett preset miatt), az
+    ''' első elérhető hangszerre állítja. Ezt hívja mind a preset-betöltés
+    ''' (BeallitasokAlkalmazasa), mind a menüből indított hangszerlista-
+    ''' váltás (mnuHangszerlistaBetoltese_Click) - egy helyen tartva a logikát.
+    ''' </summary>
+    ''' <returns>True, ha legalább egy csatornán korrigálni kellett</returns>
+    Private Function HangszerekErvenyesitese() As Boolean
+        Dim alapertelmezettHangszer As Integer = HangszerLista.Nevek.Keys.OrderBy(Function(k) k).FirstOrDefault()
+        Dim korrigalva As Boolean = False
+
+        For i As Integer = 0 To 15
+            If Not HangszerLista.Nevek.ContainsKey(csatornaAllapotok(i).Hangszer) Then
+                csatornaAllapotok(i).Hangszer = alapertelmezettHangszer
+                korrigalva = True
+            End If
+        Next
+
+        Return korrigalva
+    End Function
 
     Private Function Korlatoz(ertek As Integer, min As Integer, max As Integer) As Integer
         Return Math.Max(min, Math.Min(max, ertek))
@@ -887,12 +905,18 @@ Public Class MainForm
 
     Private Sub CimsorFrissitese(teljesUtvonal As String)
         aktualisFajlNev = IO.Path.GetFileName(teljesUtvonal)
-        Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev &
-              " (beállítások), " & aktualisHangszerListaFajl & " (hangszerlista)"
+        CimSorUjrarajzolas()
     End Sub
 
-    Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String)
-        dlg.InitialDirectory = If(String.IsNullOrEmpty(megjegyzettMappa), Application.StartupPath, megjegyzettMappa)
+    ''' <summary>A címsor tényleges kirajzolása a jelenlegi aktualisFajlNev és aktualisHangszerListaFajl alapján</summary>
+    Private Sub CimSorUjrarajzolas()
+        Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev &
+                  " (beállítások), " & aktualisHangszerListaFajl & " (hangszerlista)"
+    End Sub
+
+    Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String, Optional alapMappa As String = Nothing)
+        Dim tenylegesAlapMappa As String = If(alapMappa, Application.StartupPath)
+        dlg.InitialDirectory = If(String.IsNullOrEmpty(megjegyzettMappa), tenylegesAlapMappa, megjegyzettMappa)
     End Sub
 
     Private Sub DialogusAllapotMentese(dlg As FileDialog, teljesUtvonal As String, ByRef megjegyzettMappa As String)
@@ -952,6 +976,64 @@ Public Class MainForm
                        "Lehet, hogy sérült, vagy nem régi MidiBill .mb3 fájl." & vbCrLf & vbCrLf &
                        "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
             End Try
+        End If
+    End Sub
+
+    Private Sub mnuHangszerlistaBetoltese_Click(sender As Object, e As EventArgs) Handles mnuHangszerlistaBetoltese.Click
+        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
+        DialogusMappaBeallitasa(dlgHangszerlista, utolsoHangszerlistaMappa, adatokMappa)
+
+        If dlgHangszerlista.ShowDialog() = DialogResult.OK Then
+            Dim forrasUtvonal As String = dlgHangszerlista.FileName
+            Dim forrasMappa As String = IO.Path.GetDirectoryName(forrasUtvonal)
+            Dim fajlNev As String = IO.Path.GetFileName(forrasUtvonal)
+            Dim celUtvonal As String = IO.Path.Combine(adatokMappa, fajlNev)
+
+            If Not String.Equals(forrasMappa, adatokMappa, StringComparison.OrdinalIgnoreCase) Then
+                Dim felulirodik As Boolean = IO.File.Exists(celUtvonal)
+                Dim uzenet As String
+
+                If felulirodik Then
+                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül az Adatok mappába." & vbCrLf &
+                             "Ott már létezik egy azonos nevű fájl, ami FELÜLÍRÓDIK." & vbCrLf & vbCrLf &
+                             "Folytatod?"
+                Else
+                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül (átmásolódik) az Adatok mappába." & vbCrLf & vbCrLf &
+                             "Folytatod?"
+                End If
+
+                Dim valasz As MsgBoxResult = MsgBox(uzenet, MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")
+                If valasz = MsgBoxResult.No Then Return
+
+                Try
+                    IO.File.Copy(forrasUtvonal, celUtvonal, True)
+                Catch ex As Exception
+                    MsgBox("Nem sikerült átmásolni a fájlt az Adatok mappába." & vbCrLf & vbCrLf &
+                           "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
+                    Return
+                End Try
+            End If
+
+            If HangszerListaAlkalmazasa(fajlNev) Then
+                ' A lista sikeresen váltott - ellenőrizzük mind a 16
+                ' csatornát, hátha valamelyik olyan hangszert használt,
+                ' ami nem szerepel az új listában, majd frissítjük a
+                ' paneleket és ÚJRAKÜLDJÜK a MIDI-t minden csatornára -
+                ' e nélkül a szintetizátor a régi hangszereket tartaná
+                ' megszólaltatva.
+                Dim korrigalva As Boolean = HangszerekErvenyesitese()
+                CsatornaPanelekFrissitese()
+                OsszesCsatornaUjrakuldese()
+                CimSorUjrarajzolas()
+
+                If korrigalva Then
+                    MsgBox("Egy vagy több csatorna olyan hangszert használt, ami nem szerepel az új hangszerlistában." & vbCrLf &
+                           "Ezek automatikusan az első elérhető hangszerre álltak.",
+                           MsgBoxStyle.Exclamation, "MidiBill")
+                End If
+            End If
+
+            DialogusAllapotMentese(dlgHangszerlista, forrasUtvonal, utolsoHangszerlistaMappa)
         End If
     End Sub
 
