@@ -105,8 +105,9 @@ kiküldött hangmagasságra.
 
 **Globális Reverb (CC91, új)**
 - `grpReverb` + `trkReverb` csúszka, 0-100%-os felhasználói skálán
-  (a Transzponálás és a Csend legyen!/Kilépés gombok között - a gombok
-  emiatt már NEM esnek egybe a hangszerpanel aljával, ez szándékos)
+  (a Transzponálás és a Csend legyen!/Kilépés gombok között - **a gombok
+  visszakerültek az eredeti elrendezéshez**: alsó szélük ismét pontosan
+  egybeesik a hangszerpanel aljával, `Y=709`, `709+60=769`)
 - A 0-100%-os érték MIDI CC91-re (0-127) számítódik át küldéskor
   (`ertek*127\100`), hogy a teljes MIDI-tartomány kihasználható legyen
 - **Globális, nem csatornánkénti**: minden mozdításkor MIND a 16
