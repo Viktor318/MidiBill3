@@ -83,7 +83,7 @@ Partial Class MainForm
         menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl, SúgóToolStripMenuItem})
         menuStrip1.Location = New Point(0, 0)
         menuStrip1.Name = "menuStrip1"
-        menuStrip1.Size = New Size(942, 28)
+        menuStrip1.Size = New Size(942, 30)
         menuStrip1.TabIndex = 0
         menuStrip1.Text = "MenuStrip1"
         ' 
@@ -91,7 +91,7 @@ Partial Class MainForm
         ' 
         mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator2, mnuImportMb3, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
         mnuFajl.Name = "mnuFajl"
-        mnuFajl.Size = New Size(45, 24)
+        mnuFajl.Size = New Size(45, 26)
         mnuFajl.Text = "&Fájl"
         ' 
         ' mnuBetolt
@@ -138,7 +138,7 @@ Partial Class MainForm
         ' 
         SúgóToolStripMenuItem.DropDownItems.AddRange(New ToolStripItem() {mnuNevjegy})
         SúgóToolStripMenuItem.Name = "SúgóToolStripMenuItem"
-        SúgóToolStripMenuItem.Size = New Size(57, 24)
+        SúgóToolStripMenuItem.Size = New Size(57, 26)
         SúgóToolStripMenuItem.Text = "&Súgó"
         ' 
         ' mnuNevjegy
@@ -432,7 +432,7 @@ Partial Class MainForm
         ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(120.0F, 120.0F)
+        AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(942, 866)
         Controls.Add(grpReverb)
@@ -452,7 +452,6 @@ Partial Class MainForm
         Icon = CType(resources.GetObject("$this.Icon"), Icon)
         MainMenuStrip = menuStrip1
         MaximizeBox = False
-        MinimizeBox = False
         Name = "MainForm"
         StartPosition = FormStartPosition.CenterScreen
         Text = "MainForm"
