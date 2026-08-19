@@ -1,4 +1,5 @@
-﻿Namespace Modellek
+﻿Imports System.Linq
+Namespace Modellek
 
     ''' <summary>
     ''' A jelenleg aktív hangszerlista (patch index -> hangszernév), a
@@ -111,6 +112,20 @@
                 Return False
             End Try
         End Function
+
+        ''' <summary>
+        ''' Egy hangszerlistát (index=Név párok) elment egy .lst fájlba -
+        ''' ugyanabban a formátumban, amit a Betolt() beolvas. A
+        ''' SoundFont-importálás használja, hogy a beolvasott presetekből
+        ''' ténylegesen .lst fájlt hozzon létre.
+        ''' </summary>
+        Public Sub Ment(fajlUtvonal As String, nevek As Dictionary(Of Integer, String))
+            Dim sorok As New List(Of String)
+            For Each kulcs As Integer In nevek.Keys.OrderBy(Function(k) k)
+                sorok.Add(kulcs & "=" & nevek(kulcs))
+            Next
+            IO.File.WriteAllLines(fajlUtvonal, sorok)
+        End Sub
 
     End Module
 

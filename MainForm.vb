@@ -18,6 +18,7 @@ Public Class MainForm
     Private utolsoMentesMappa As String = ""
     Private utolsoImportMappa As String = ""
     Private utolsoHangszerlistaMappa As String = ""
+    Private utolsoSoundFontMappa As String = ""
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
@@ -1034,6 +1035,72 @@ Public Class MainForm
             End If
 
             DialogusAllapotMentese(dlgHangszerlista, forrasUtvonal, utolsoHangszerlistaMappa)
+        End If
+    End Sub
+
+    Private Sub mnuSoundFontImportalasa_Click(sender As Object, e As EventArgs) Handles mnuSoundFontImportalasa.Click
+        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
+        DialogusMappaBeallitasa(dlgSoundFont, utolsoSoundFontMappa, adatokMappa)
+
+        If dlgSoundFont.ShowDialog() = DialogResult.OK Then
+            Dim sf2Utvonal As String = dlgSoundFont.FileName
+            Dim sf2Nev As String = IO.Path.GetFileName(sf2Utvonal)
+            Dim ujLstNev As String = IO.Path.GetFileNameWithoutExtension(sf2Utvonal) & ".lst"
+            Dim celUtvonal As String = IO.Path.Combine(adatokMappa, ujLstNev)
+
+            ' 1. lépés: beolvasási kísérlet - ha sikertelen, azonnal hibaüzenet,
+            ' MÉG a felülírási kérdés előtt (felesleges lenne rákérdezni, ha
+            ' aztán úgysem sikerülne beolvasni a fájlt).
+            Dim eredmeny As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)
+            Try
+                eredmeny = SoundFontOlvaso.Beolvas(sf2Utvonal)
+            Catch ex As Exception
+                MsgBox("A(z) """ & sf2Nev & """ SoundFont fájl tartalmát nem sikerült beolvasni." & vbCrLf & vbCrLf &
+                       "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
+                Return
+            End Try
+
+            If eredmeny.Nevek.Count = 0 Then
+                MsgBox("A(z) """ & sf2Nev & """ SoundFont fájlban nem található " &
+                       "egyetlen General MIDI-kompatibilis (Bank 0) hangszer sem.",
+                       MsgBoxStyle.Exclamation, "MidiBill")
+                Return
+            End If
+
+            ' 2. lépés: csak SIKERES beolvasás UTÁN kérdezünk rá a felülírásra
+            If IO.File.Exists(celUtvonal) Then
+                Dim valasz As MsgBoxResult = MsgBox("A(z) """ & ujLstNev & """ hangszerlista már létezik az Adatok mappában." & vbCrLf &
+                                                     "Felülírjuk az újonnan importált SoundFont adataival?",
+                                                     MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")
+                If valasz = MsgBoxResult.No Then Return
+            End If
+
+            ' 3. lépés: .lst fájl létrehozása, aktiválása
+            HangszerLista.Ment(celUtvonal, eredmeny.Nevek)
+
+            If HangszerListaAlkalmazasa(ujLstNev) Then
+                Dim korrigalva As Boolean = HangszerekErvenyesitese()
+                CsatornaPanelekFrissitese()
+                OsszesCsatornaUjrakuldese()
+                CimSorUjrarajzolas()
+
+                ' 4. lépés: záró, sikeres visszajelzés
+                Dim osszegzes As String = """" & sf2Nev & """ SoundFont fájl adatai sikeresen beolvasva." & vbCrLf &
+                                           eredmeny.Nevek.Count & " hangszer betöltve" &
+                                           If(eredmeny.KihagyottSzam > 0,
+                                              ", " & eredmeny.KihagyottSzam & " magasabb bankban lévő preset kihagyva (GS-támogatás egyelőre nincs).",
+                                              ".")
+
+                MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill")
+
+                If korrigalva Then
+                    MsgBox("Egy vagy több csatorna olyan hangszert használt, ami nem szerepel az új hangszerlistában." & vbCrLf &
+                           "Ezek automatikusan az első elérhető hangszerre álltak.",
+                           MsgBoxStyle.Exclamation, "MidiBill")
+                End If
+            End If
+
+            DialogusAllapotMentese(dlgSoundFont, sf2Utvonal, utolsoSoundFontMappa)
         End If
     End Sub
 

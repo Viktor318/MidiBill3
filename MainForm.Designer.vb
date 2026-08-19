@@ -68,6 +68,8 @@ Partial Class MainForm
         grpReverb = New GroupBox()
         trkReverb = New TrackBar()
         dlgHangszerlista = New OpenFileDialog()
+        mnuSoundFontImportalasa = New ToolStripMenuItem()
+        dlgSoundFont = New OpenFileDialog()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -92,7 +94,7 @@ Partial Class MainForm
         ' 
         ' mnuFajl
         ' 
-        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator3, mnuImportMb3, ToolStripSeparator2, mnuHangszerlistaBetoltese, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator3, mnuImportMb3, ToolStripSeparator2, mnuHangszerlistaBetoltese, mnuSoundFontImportalasa, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
         mnuFajl.Name = "mnuFajl"
         mnuFajl.Size = New Size(45, 26)
         mnuFajl.Text = "&Fájl"
@@ -100,52 +102,52 @@ Partial Class MainForm
         ' mnuBetolt
         ' 
         mnuBetolt.Name = "mnuBetolt"
-        mnuBetolt.Size = New Size(287, 26)
+        mnuBetolt.Size = New Size(296, 26)
         mnuBetolt.Text = "Adatok &betöltése"
         ' 
         ' mnuMent
         ' 
         mnuMent.Name = "mnuMent"
-        mnuMent.Size = New Size(287, 26)
+        mnuMent.Size = New Size(296, 26)
         mnuMent.Text = "Adatok &mentése"
         ' 
         ' ToolStripSeparator3
         ' 
         ToolStripSeparator3.Name = "ToolStripSeparator3"
-        ToolStripSeparator3.Size = New Size(284, 6)
+        ToolStripSeparator3.Size = New Size(293, 6)
         ' 
         ' mnuImportMb3
         ' 
         mnuImportMb3.Name = "mnuImportMb3"
-        mnuImportMb3.Size = New Size(287, 26)
+        mnuImportMb3.Size = New Size(296, 26)
         mnuImportMb3.Text = "Régi .mb3 preset &importálása"
         ' 
         ' ToolStripSeparator2
         ' 
         ToolStripSeparator2.Name = "ToolStripSeparator2"
-        ToolStripSeparator2.Size = New Size(284, 6)
+        ToolStripSeparator2.Size = New Size(293, 6)
         ' 
         ' mnuHangszerlistaBetoltese
         ' 
         mnuHangszerlistaBetoltese.Name = "mnuHangszerlistaBetoltese"
-        mnuHangszerlistaBetoltese.Size = New Size(287, 26)
+        mnuHangszerlistaBetoltese.Size = New Size(296, 26)
         mnuHangszerlistaBetoltese.Text = "&Hangszerlista betöltése"
         ' 
         ' ToolStripSeparator1
         ' 
         ToolStripSeparator1.Name = "ToolStripSeparator1"
-        ToolStripSeparator1.Size = New Size(284, 6)
+        ToolStripSeparator1.Size = New Size(293, 6)
         ' 
         ' mnuKilepes
         ' 
         mnuKilepes.Name = "mnuKilepes"
-        mnuKilepes.Size = New Size(287, 26)
+        mnuKilepes.Size = New Size(296, 26)
         mnuKilepes.Text = "&Kilépés"
         ' 
         ' mnuKilepesMentesNelkul
         ' 
         mnuKilepesMentesNelkul.Name = "mnuKilepesMentesNelkul"
-        mnuKilepesMentesNelkul.Size = New Size(287, 26)
+        mnuKilepesMentesNelkul.Size = New Size(296, 26)
         mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
         ' 
         ' SúgóToolStripMenuItem
@@ -158,7 +160,7 @@ Partial Class MainForm
         ' mnuNevjegy
         ' 
         mnuNevjegy.Name = "mnuNevjegy"
-        mnuNevjegy.Size = New Size(224, 26)
+        mnuNevjegy.Size = New Size(146, 26)
         mnuNevjegy.Text = "&Névjegy"
         ' 
         ' chkPedal
@@ -448,6 +450,16 @@ Partial Class MainForm
         ' 
         dlgHangszerlista.Filter = "Hangszerlista fájlok (*.lst)|*.lst"
         ' 
+        ' mnuSoundFontImportalasa
+        ' 
+        mnuSoundFontImportalasa.Name = "mnuSoundFontImportalasa"
+        mnuSoundFontImportalasa.Size = New Size(296, 26)
+        mnuSoundFontImportalasa.Text = "&SoundFont adatok importálása"
+        ' 
+        ' dlgSoundFont
+        ' 
+        dlgSoundFont.Filter = "SoundFont fájlok (*.sf2)|*.sf2"
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(120.0F, 120.0F)
@@ -533,5 +545,7 @@ Partial Class MainForm
     Friend WithEvents mnuHangszerlistaBetoltese As ToolStripMenuItem
     Friend WithEvents ToolStripSeparator3 As ToolStripSeparator
     Friend WithEvents dlgHangszerlista As OpenFileDialog
+    Friend WithEvents mnuSoundFontImportalasa As ToolStripMenuItem
+    Friend WithEvents dlgSoundFont As OpenFileDialog
 
 End Class
