@@ -9,17 +9,12 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.3.0 (SemVer: Major.Minor.Patch), **egységesen kezelve**
-  a `Directory.Build.props`-ban (a megoldás gyökerében) - mindhárom
-  projekt (`MidiBill3`, `PresetKonvertalo`, `Mb3Konvertalo`) innen
-  örökli automatikusan, nincs saját `<Version>` egyik `.vbproj`-ban sem
+- **Verzió**: 1.4.0 (SemVer), egységesen kezelve a `Directory.Build.props`-ban
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
 - **Fájlformátum**: JSON (`System.Text.Json`), emberi olvasást segítő
-  `//` megjegyzésekkel kiegészítve (hangszernevek, split pont hangneve,
-  transzponálás félhang-szövege, csatorna-sorszámok, fejléc) – ezeket a
-  `Betoltes()` a `JsonCommentHandling.Skip` miatt simán átugorja
+  `//` megjegyzésekkel kiegészítve
 - **Fejlesztői környezet**: Visual Studio 2026 Community, két gépen
   (`C:\Dev\MidiBill3` mindkettőn – **soha ne Documents/OneDrive alá**)
 - **Verziókezelés**: GitHub, rendszeres commit+push munkafolyamattal
@@ -31,91 +26,96 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 MidiBill3/
 ├── MainForm.vb / .Designer.vb   - Fő ablak
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
-│                                   példány, amik a kiválasztott csatornacsoportot
-│                                   "mutatják"
+│                                   példány, a kiválasztott csatornacsoportot mutatja
 ├── ApplicationEvents.vb         - Globális hibanaplózás (HibaNaplo.txt)
-├── Directory.Build.props        - Egységes <Version> mindhárom projekthez
+├── Directory.Build.props        - Egységes verziószám mindhárom projekthez
 ├── Modellek/
-│   ├── AppInfo.vb               - Közös AppVerzio() függvény (linkelve mindhárom
-│   │                               projektbe)
-│   ├── Beallitasok.vb           - Adatmodell (16 csatorna) + JSON mentés/
-│   │                               betöltés + .mb3 import + hibavédelem
-│   ├── MidiEngine.vb            - MIDI be-/kimenet, fan-out (16 csatorna),
-│   │                               split pont, transzponálás logika
-│   ├── HangszerLista.vb         - 128 General MIDI hangszernév
-│   └── Hangnevek.vb             - MIDI hangszám -> hangnév (pl. "C4")
-├── PresetKonvertalo/            - Segédprogram: régi .json presetek tömeges
-│                                   frissítése az aktuális formátumra
-├── Mb3Konvertalo/                - Segédprogram: régi .mb3 -> .json tömeges
-│                                   konvertálás
-├── Adatok/                      - Régi, megőrzött preset fájlok (verziókövetve)
-├── MidiBill3.ico                - Alkalmazásikon
-└── Kezdet.json                  - Automatikus induló-állapot (NEM verziókövetve)
+│   ├── AppInfo.vb               - Közös verziószám lekérdezés
+│   ├── Beallitasok.vb           - Adatmodell (16 csatorna) + JSON mentés/betöltés
+│   ├── MidiEngine.vb            - MIDI be-/kimenet, fan-out, split pont,
+│   │                               transzponálás (globális + csatornánkénti)
+│   ├── HangszerLista.vb         - General MIDI hangszernevek
+│   └── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
+├── PresetKonvertalo/            - Segédprogram: régi presetek frissítése
+├── Mb3Konvertalo/                - Segédprogram: régi .mb3 -> .json konvertálás
+└── Adatok/                      - Megőrzött preset fájlok
 ```
-
-**Megjegyzés**: a `PresetKonvertalo`/`Mb3Konvertalo` egyelőre a projekt
-gyökerében, külön-külön mappában vannak (nem egy közös `Segedprogramok`
-mappában) - a `MidiBill3.vbproj` mindkettőt egyenként zárja ki az implicit
-fájlfelismerésből. Az egységes mappába rendezés felmerült ötlet, de még
-nincs megvalósítva.
 
 ## Elkészült funkciók
 
-**Alapfunkciók** - 16 MIDI csatorna, csatorna-választó (1-4/5-8/9-12/13-16
-RadioButton-okkal), Split Point, Globális Transzponálás, pedál-inverzió,
-"Csend legyen!" pánikgomb, "Kilépés"/"Kilépés mentés nélkül", hibatűrő
-MIDI-küldés, egységes `FormClosing`. (Részletek: lásd korábbi fejlesztési
-történet vagy a forráskód.)
+**Alapfunkciók**: 16 MIDI csatorna, csatorna-választó (1-4/5-8/9-12/13-16
+RadioButton-okkal, egyszerre 4 szerkeszthető, 10. csatorna dob-ra letiltva),
+Split Point, pedál-inverzió, "Csend legyen!" pánikgomb, "Kilépés"/"Kilépés
+mentés nélkül", hibatűrő MIDI-küldés, egységes `FormClosing`.
 
-**Fájlkezelés**
-- JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet tárolás
-- Régi `.mb3` fájlok importálása (csak 1-4. csatornára)
-- `Kezdet.json` automatikus betöltés induláskor / mentés kilépéskor
-- Fájlműveletek külön-külön jegyzik meg a legutóbb használt mappájukat
-- `Adatok` mappa automatikusan másolva a kimeneti mappába build/publish-kor
-- **Segédprogramok** (`PresetKonvertalo`, `Mb3Konvertalo`): linkelt
-  fájlokat használnak, automatikusan öröklik a 16-csatornás modellt és a
-  verziószám-mentést is
+**Fájlkezelés**: JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet
+tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés,
+`Adatok` mappa build/publish-kor automatikusan másolva, `PresetKonvertalo`/
+`Mb3Konvertalo` segédprogramok (linkelt fájlokkal).
 
-**MIDI eszközkezelés (finomítva)**
-- **"MIDI eszközök frissítése" gomb** (a `grpMidiOut` alatt, a hangszerpanel
-  aljához igazítva): újra lekérdezi a Windows-tól az eszközöket, megtartja
-  a jelenlegi kiválasztást, ha még elérhető
-- **`EszkozListaEgyezikE()`**: minden MIDI In/Out kiválasztás előtt frissen
-  összehasonlítja a `ComboBox` tartalmát a Windows aktuális eszközlistájával
-  - ez védi ki azt a "csendes" hibát, amikor egy eszköz ki-/behúzása miatt
-    eltolódott index miatt a program véletlenül egy MÁSIK, létező eszközt
-    nyitna meg hibaüzenet nélkül
-  - eltérés vagy sikertelen megnyitás esetén egy üzenet + azonnali,
-    automatikus lista-frissítés (nincs külön rákérdezés)
-- **Induláskori bemenet/kimenet-hiány kezelése**:
-  - nincs bemeneti eszköz → figyelmeztetés, de a program **folytatódik**
-    (üres `cmbMidiIn`, pótolható a frissítés gombbal)
-  - nincs kimeneti eszköz → figyelmeztetés + a program **kilép**
-    (`Environment.Exit(1)` - azonnali, garantált leállás)
-  - korábbi hiba javítva: az `Application.Exit()` nem állította meg
-    ténylegesen a `MainForm_Load` további futását, emiatt félkész,
-    működésképtelen ablak jelenhetett volna meg MIDI kimenet nélkül
+**MIDI eszközkezelés**: "MIDI eszközök frissítése" gomb, `EszkozListaEgyezikE()`
+minden kiválasztás előtt validál (véd az eszköz-index-eltolódás ellen),
+induláskori bemenet/kimenet-hiány kezelése (`Environment.Exit(1)` ha nincs
+kimenet).
 
-**JSON betöltés hibakezelése (finomítva)**
-- `Kiegeszit16Csatornara`: a `Csatornak` listát pontosan 16 elemre
-  egészíti ki/vágja, ÉS a `null` elemeket is friss, alapértelmezett
-  `CsatornaBeallitas`-ra cseréli (véd `NullReferenceException` ellen egy
-  kézzel szerkesztett, sérült JSON esetén)
-- **Figyelmeztető üzenet**, ha a betöltött fájl nem létező MIDI
-  eszköznevet tartalmazott ("...amit a program figyelmen kívül hagyott")
-- **Figyelmeztető üzenet**, ha bármely érték a `Korlatoz()` miatt
-  ténylegesen módosult (csak akkor jelenik meg, ha valódi eltérés történt)
-- **10. csatorna (dob) - explicit mentés/betöltés védelem**: mivel a UI-ból
-  sosem konfigurálható, az adatait **sosem mentjük** (mindig friss
-  alapérték kerül a fájlba) és **sosem olvassuk be** (a fájlban esetlegesen
-  szereplő adatot figyelmen kívül hagyjuk) - a `MidiEngine.CsatornaAktiv`
-  setter is véd (index 9 mindig False)
-- **Csatorna-sorszám kommentek** a JSON-ban (`{  // 1. csatorna` stb.) -
-  tisztán tájékoztató, a betöltés továbbra is a lista POZÍCIÓJA alapján
-  azonosít, nem ezt a kommentet olvassa
-- **`Verzio` mező**: a mentéskori programverzió elmentve a JSON-ba (tisztán
-  tájékoztató, nem befolyásolja a betöltést; régi fájloknál üres)
+**JSON betöltés hibakezelése**: `null` csatorna-elem védelem, figyelmeztető
+üzenetek (hiányzó MIDI eszköznév / tartományon kívüli, korrigált érték),
+10. csatorna adatai sosem mentve/beolvasva, csatorna-sorszám kommentek,
+`Verzio` mező mentve (tisztán tájékoztató).
+
+**Globális Transzponálás**: `GroupBox` 4 gombbal (Félhang fel/le, Oktáv
+fel/le, ±24 félhang), NEM retroaktív (élő váltás nem érinti a már tartott
+hangokat).
+
+**Split Point**: csatornánként Alul/Felül zóna, kézi vagy "Tanulás" gombos
+beállítás, NEM retroaktív, Note Off mindig "hazatalál" a ténylegesen
+kiküldött hangmagasságra.
+
+**Csatornánkénti oktáv-transzponálás (új)**
+- `HangszerPanel`-en új `TrackBar` (Her/Tér/Vib sorok alatt): **-2..+2 oktáv**
+  (panel magassága 270→324, keret 300→354, `MainForm` 942×866 véglegesen)
+- **Összeadódik** a globális (félhangos) transzponálással:
+  `kimeno = eredeti + globális_félhang + csatorna_oktáv*12`
+- **AZONNALI (retroaktív)** hatású, eltérően a globálistól - csúszka
+  mozgatásakor a már tartott hangok is azonnal az új oktávra váltanak
+  (`MidiEngine.OktavValtas()`, a `HangokKikapcsolasa`+
+  `LenyomottHangokMegszolaltatasa` páros újrahasznosításával)
+- `CsatornaBeallitas.Oktav` mentve/betöltve, korlátozás `-2..2`
+
+**MIDI üzenet-kijelzés (finomítva)**
+- Olvasható formátum nyers számok helyett: `"MIDI üzenetek: NoteOn C4 v90"`,
+  `"PC Acoustic Grand Piano"` stb. (`MidiUzenetSzoveg()`, felhasználva a
+  `Hangnevek.HangNev()`-et és az új `HangszerLista.Nev()`-et)
+- **Max. 10×/mp frissítési korlát** (`midiKijelzoIdozito`, Timer
+  Interval=100) - sűrű játék (gyors arpeggio) esetén a felirat nem villog
+  kaotikusan; a tényleges MIDI-küldés időzítését ez NEM érinti, csak a
+  kijelzést
+- `lblMidiUzenet` szélesítve (280 px) a hosszabb szöveges üzenetekhez
+
+**Pedál-invertálás (javítva)**
+- **Hiba volt**: `chkPedal.Checked` bepipálása/betöltése aktívan küldött
+  egy CC64 üzenetet - ez preset betöltéskor (programozott
+  `chkPedal.Checked = ...`) egy HAMIS pedál-állapotot küldött ki, elrontva
+  a szintetizátor sustain-szinkronját a valódi fizikai pedálhoz képest
+- **Javítva**: a checkbox mostantól **teljesen passzív "mód"-kapcsoló**
+  (mint egy hardveres invertáló kapcsoló a pedál vezetékében) - sosem
+  kezdeményez MIDI-küldést, csak azt szabályozza, hogy a KÖVETKEZŐ
+  ténylegesen beérkező CC64-et invertáljuk-e. `chkPedal_CheckedChanged`
+  és `utolsoPedalErtek` mező törölve, a logika állapotmentes lett
+
+**Globális Reverb (CC91, új)**
+- `grpReverb` + `trkReverb` csúszka, 0-100%-os felhasználói skálán
+  (a Transzponálás és a Csend legyen!/Kilépés gombok között - a gombok
+  emiatt már NEM esnek egybe a hangszerpanel aljával, ez szándékos)
+- A 0-100%-os érték MIDI CC91-re (0-127) számítódik át küldéskor
+  (`ertek*127\100`), hogy a teljes MIDI-tartomány kihasználható legyen
+- **Globális, nem csatornánkénti**: minden mozdításkor MIND a 16
+  csatornára kimegy, függetlenül azok aktiváltságától - ugyanaz a minta,
+  mint a Hangszer/Hangerő/Tér/Vibrato (`OsszesCsatornaUjrakuldese`-be is
+  bekötve)
+- `Beallitasok.Reverb` mentve/betöltve
+- **Chorus (CC93) szándékosan kihagyva** - nincs rá jelenlegi igény,
+  elvi terv megvan, ha valaha kellene
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -124,9 +124,9 @@ történet vagy a forráskód.)
 - Panic gomb pufferelés szándékosan nincs
 - ComboBox-ok explicit elvesztik a fókuszt kiválasztás után
 - RadioButton a csatorna-választóhoz (natív kizárás)
-- **Verziószám egységesen a `Directory.Build.props`-ban** - ha verziót
-  lépsz, csak EZT az egy fájlt kell módosítani, mindhárom projekt
-  (fő program + 2 konvertáló) automatikusan követi
+- Verziószám egységesen a `Directory.Build.props`-ban
+- **Kódmódosításoknál a meglévő kommenteket MINDIG meg kell tartani**
+  (explicit felhasználói elvárás, memóriában rögzítve)
 
 ## Globális hibanaplózás
 
@@ -135,41 +135,42 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 
 ## Következő lépések / nyitott témák
 
-Fontossági/tervezett sorrendben:
+1. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta lenne, mint a
+   Reverb (globális vagy esetleg később csatornánkénti - még nem
+   eldöntött, ha egyáltalán szükség lesz rá)
 
-1. **Csatornánkénti transzponálás** - új `TrackBar` a `HangszerPanel`-en,
-   a globális transzponálás mellett/kiegészítéseként. A bővített,
-   16-csatornás modellhez kell tervezni - az összeadódási logika
-   (globális + csatornánkénti) még nincs eldöntve
-
-2. **Reverb és Chorus csatornánként** - elvi terv kész (General MIDI
-   Controller Change: Reverb=91, Chorus=93). Eszközfüggő tényleges hatás -
-   ki kell próbálni a konkrét MIDI-kimeneti eszközön
-
-3. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
+2. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
    - **A NYERS BEMENETET vesszük fel** (pedál-inverzió UTÁN, split pont/
      transzponálás/csatorna-szétosztás ELŐTT), NEM a feldolgozott kimenetet
    - Visszajátszáskor a felvett jel újra végigmegy a
      `MidiEngine.UzenetKuldes()`-en, a **visszajátszás pillanatában
-     érvényes** beállításokkal (rugalmas újrajátszás)
+     érvényes** beállításokkal
    - NAudio.Midi ad építőelemeket, a pontos időzítésű lejátszó saját
      fejlesztés lesz. Még nincs elkezdve
 
-4. **Telepítő (Inno Setup)** - eldöntött irány (`.iss` szkript), még
+3. **Telepítő (Inno Setup)** - eldöntött irány (`.iss` szkript), még
    nincs elkezdve
 
-5. **`Segedprogramok` közös mappa** - felmerült ötlet a két konvertáló
-   egy közös mappába rendezésére (jelenleg külön-külön vannak a gyökérben,
-   külön-külön kizárva a fő projektből) - nincs sürgető, bármikor
-   megcsinálható
+4. **`Segedprogramok` közös mappa** - felmerült ötlet a két konvertáló
+   egy közös mappába rendezésére, nincs sürgető, bármikor megcsinálható
+
+5. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi
+   téma, átbeszélve: jelenleg a `MidiUzenetFeldolgozasa` (hangküldést
+   IS tartalmazó) szinkron `Invoke`-on megy a NAudio háttérszáláról.
+   Ha valaha hallható döccenést tapasztalnál (pl. amikor egy `MsgBox`
+   van nyitva, és közben játszol), ez a hely, ahol érdemes lenne a
+   hangküldést leválasztani a UI-szálról (szál-biztonsági `SyncLock`
+   bevezetésével a `MidiEngine` belső állapotára). **Eddig nem volt
+   probléma, nem sürgős.**
 
 6. Végigtesztelési checklist még nincs összeállítva
 
-7. **Elméleti téma, lezárva**: felmerült az iOS/iPadOS-portolás kérdése -
-   megállapítottuk, hogy ez egy jelentős, hónapokat igénylő újraírás lenne
-   (.NET MAUI + VB.NET class library reuse, vagy teljes natív Swift
-   újraírás). Rövid távú megoldásként a Windows gép távoli asztali
-   eléréssel (RDP/Chrome Remote Desktop) használható iPadről, feltéve
-   hogy a fizikai MIDI billentyűzet a Windows gépnél marad (a hang és a
-   MIDI-feldolgozás helyben történik, alacsony késleltetéssel; a hangot
-   NEM szabad a távoli munkamenetbe is belevonni).
+7. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - jelentős újraírás
+   lenne (.NET MAUI + VB.NET class library reuse, vagy natív Swift).
+   Rövid távú alternatíva: távoli asztali elérés (RDP/Chrome Remote
+   Desktop) iPadről, ha a fizikai MIDI billentyűzet a Windows gépnél
+   marad (hangot NEM szabad távoli munkamenetbe vonni, késleltetés miatt).
+
+8. **Csatornánkénti oktáv bővítése ±3-ra** - átbeszélve, egyszerű
+   módosítás lenne (TrackBar Min/Max + `Korlatoz()` határok a
+   `BeallitasokAlkalmazasa`-ban), jelenleg nem szükséges, ±2 elegendő.
