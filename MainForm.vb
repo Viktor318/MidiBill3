@@ -887,7 +887,8 @@ Public Class MainForm
 
     Private Sub CimsorFrissitese(teljesUtvonal As String)
         aktualisFajlNev = IO.Path.GetFileName(teljesUtvonal)
-        Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev
+        Me.Text = "MIDI billentyűzet megszólaltatása 16 csatornán : " & aktualisFajlNev &
+              " (beállítások), " & aktualisHangszerListaFajl & " (hangszerlista)"
     End Sub
 
     Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String)

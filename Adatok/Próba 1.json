@@ -1,6 +1,6 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.19 10:12:49
+  // Készült: 2026.08.19 16:13:16
   "Verzio": "1.4.0",
   "Csatornak": [
     {  // 1. csatorna
@@ -170,5 +170,6 @@
   "PedalInvertalva": false,
   "SplitPont": 60,  // C4
   "Transzponalas": 0,  // 0 félhang
-  "Reverb": 0
+  "Reverb": 0,
+  "HangszerListaFajl": "GM.lst"
 }
