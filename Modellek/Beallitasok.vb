@@ -61,6 +61,13 @@ Namespace Modellek
         ''' </summary>
         Public Property Reverb As Integer = 0
 
+        ''' <summary>
+        ''' A jelenleg aktív hangszerlista fájlneve (az Adatok mappában, pl.
+        ''' "GM.lst" vagy egy egyedi lista neve). Preset betöltésekor a
+        ''' program megpróbálja ezt a fájlt betölteni az Adatok mappából.
+        ''' </summary>
+        Public Property HangszerListaFajl As String = "GM.lst"
+
         Public Shared Function Alapertelmezett() As Beallitasok
             Dim b As New Beallitasok()
             Kiegeszit16Csatornara(b)
@@ -154,11 +161,9 @@ Namespace Modellek
             End While
         End Sub
 
+        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét a jelenleg aktív listából</summary>
         Private Shared Function HangszerNev(index As Integer) As String
-            If index >= 0 AndAlso index < HangszerLista.Nevek.Length Then
-                Return HangszerLista.Nevek(index)
-            End If
-            Return "Ismeretlen hangszer"
+            Return HangszerLista.Nev(index, "Ismeretlen hangszer")
         End Function
 
         Private Shared Function KommentekHozzaadasa(json As String) As String

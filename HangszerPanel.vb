@@ -1,19 +1,24 @@
 ﻿Imports MidiBill3.Modellek
 Imports System.ComponentModel
+Imports System.Linq
 
 Public Class HangszerPanel
 
     ' Belső jelző: betöltés/kezdeti feltöltés közben ne tüzeljünk felesleges eseményeket
     Private betoltesAlatt As Boolean = False
 
+    ' A cmbHangszer minden pozíciójához tartozó VALÓDI MIDI patch-szám,
+    ' index-igazítva (hangszerKulcsok(0) = a combo 0. elemének patch-száma,
+    ' stb.) - ritkás (nem 0-127 folytonos) hangszerlistáknál a combo
+    ' pozíciója NEM egyezik meg a patch-számmal, ezért kell ez a leképezés.
+    Private hangszerKulcsok As New List(Of Integer)
+
     Public Sub New()
         InitializeComponent()
 
         cmbHangszer.DropDownStyle = ComboBoxStyle.DropDownList
         betoltesAlatt = True
-        For Each nev As String In HangszerLista.Nevek
-            cmbHangszer.Items.Add(nev)
-        Next
+        HangszerListaItemekFeltoltese()
         cmbHangszer.SelectedIndex = 0 ' alapértelmezett hangszer: az első a listában (ua., mint a VB6-ban)
         betoltesAlatt = False
 
@@ -24,9 +29,44 @@ Public Class HangszerPanel
         lblOktavErtek.Text = OktavSzoveg(trkOktav.Value)
     End Sub
 
+    ''' <summary>
+    ''' Feltölti a cmbHangszer Items listáját és a hangszerKulcsok leképezést
+    ''' az aktuális HangszerLista.Nevek alapján, patch-szám szerint rendezve.
+    ''' </summary>
+    Private Sub HangszerListaItemekFeltoltese()
+        cmbHangszer.Items.Clear()
+        hangszerKulcsok.Clear()
+        For Each kulcs As Integer In HangszerLista.Nevek.Keys.OrderBy(Function(k) k)
+            hangszerKulcsok.Add(kulcs)
+            cmbHangszer.Items.Add(HangszerLista.Nevek(kulcs))
+        Next
+    End Sub
+
+    ''' <summary>
+    ''' Újratölti a hangszer legördülőt az AKTUÁLIS HangszerLista.Nevek
+    ''' alapján - akkor hívjuk, amikor menet közben (induláskor vagy preset
+    ''' betöltésekor) megváltozik az aktív hangszerlista. Megpróbálja
+    ''' megtartani a jelenlegi kiválasztás VALÓDI PATCH-SZÁMÁT, ha az még
+    ''' szerepel az új listában; ha nem, az első elemre esik vissza -
+    ''' SOHA nem dob kivételt, még akkor sem, ha az új lista sokkal
+    ''' kisebb/ritkásabb, mint a régi volt.
+    ''' </summary>
+    Public Sub HangszerListaFrissitese()
+        Dim regiPatch As Integer = Hangszer ' a JELENLEGI (régi lista szerinti) valódi patch-szám
+        betoltesAlatt = True
+        HangszerListaItemekFeltoltese()
+        Dim ujPozicio As Integer = hangszerKulcsok.IndexOf(regiPatch)
+        If ujPozicio >= 0 Then
+            cmbHangszer.SelectedIndex = ujPozicio
+        ElseIf cmbHangszer.Items.Count > 0 Then
+            cmbHangszer.SelectedIndex = 0
+        End If
+        betoltesAlatt = False
+    End Sub
+
     ' --- Eseménydeklarációk: ezekre iratkozik fel a MainForm ---
 
-    ''' <summary>Hangszerválasztás változott (a paraméter a 0-127 patch index)</summary>
+    ''' <summary>Hangszerválasztás változott (a paraméter a VALÓDI 0-127 patch szám, nem a combo pozíciója)</summary>
     Public Event HangszerValtozott(sender As Object, patchIndex As Integer)
 
     ''' <summary>Hangerő csúszka változott (0-127)</summary>
@@ -58,14 +98,28 @@ Public Class HangszerPanel
     ' hogy ezek tisztán futásidejű property-k, sose próbálja szerializálni
     ' őket a .Designer.vb fájlba (WFO1000 figyelmeztetés/hiba elkerülése).
 
+    ''' <summary>
+    ''' A kiválasztott hangszer VALÓDI MIDI patch-száma (0-127) - NEM a
+    ''' combo pozíciója! Íráskor, ha a megadott patch-szám nem szerepel a
+    ''' jelenlegi hangszerlistában, biztonságosan az első elemre esik
+    ''' vissza (nem dob kivételt).
+    ''' </summary>
     <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Hangszer As Integer
         Get
-            Return cmbHangszer.SelectedIndex
+            If cmbHangszer.SelectedIndex >= 0 AndAlso cmbHangszer.SelectedIndex < hangszerKulcsok.Count Then
+                Return hangszerKulcsok(cmbHangszer.SelectedIndex)
+            End If
+            Return 0
         End Get
         Set(value As Integer)
             betoltesAlatt = True
-            cmbHangszer.SelectedIndex = value
+            Dim pozicio As Integer = hangszerKulcsok.IndexOf(value)
+            If pozicio >= 0 Then
+                cmbHangszer.SelectedIndex = pozicio
+            ElseIf cmbHangszer.Items.Count > 0 Then
+                cmbHangszer.SelectedIndex = 0
+            End If
             betoltesAlatt = False
         End Set
     End Property
@@ -160,7 +214,7 @@ Public Class HangszerPanel
     Private Sub cmbHangszer_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbHangszer.SelectedIndexChanged
         If betoltesAlatt Then Return
         If cmbHangszer.SelectedIndex < 0 Then Return
-        RaiseEvent HangszerValtozott(Me, cmbHangszer.SelectedIndex)
+        RaiseEvent HangszerValtozott(Me, hangszerKulcsok(cmbHangszer.SelectedIndex))
     End Sub
     Private Sub trkHangero_ValueChanged(sender As Object, e As EventArgs) Handles trkHangero.ValueChanged
         lblHerErtek.Text = trkHangero.Value.ToString()

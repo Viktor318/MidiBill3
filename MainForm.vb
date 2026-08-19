@@ -1,4 +1,5 @@
 ﻿Imports MidiBill3.Modellek
+Imports System.Linq
 
 Public Class MainForm
 
@@ -19,6 +20,8 @@ Public Class MainForm
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
+    ' A jelenleg aktív hangszerlista fájlneve (az Adatok mappán belül).
+    Private aktualisHangszerListaFajl As String = "GM.lst"
     Private aktualisTranszponalas As Integer = 0
     Private Const TRANSZPONALAS_MIN As Integer = -24
     Private Const TRANSZPONALAS_MAX As Integer = 24
@@ -43,6 +46,7 @@ Public Class MainForm
     Private Const NOTE_ON As Integer = &H90
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        HangszerListaBetoltese()
         HangszerPanelekLetrehozasa()
         CsatornaAllapotokInicializalasa()
         SplitPontFeltoltese()
@@ -117,6 +121,21 @@ Public Class MainForm
             cmbSplitPont.Items.Add(Hangnevek.HangNev(szam) & " (" & szam & ")")
         Next
         cmbSplitPont.SelectedIndex = 60
+    End Sub
+
+    ''' <summary>
+    ''' A hangszerlista betöltése a Adatok\GM.lst fájlból induláskor - ennek
+    ''' A HangszerPanelekLetrehozasa ELŐTT kell lefutnia, mert a HangszerPanel
+    ''' konstruktora azonnal a HangszerLista.Nevek alapján tölti fel a saját
+    ''' cmbHangszer legördülőjét.
+    ''' </summary>
+    Private Sub HangszerListaBetoltese()
+        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", "GM.lst")
+        If Not HangszerLista.Betolt(utvonal) Then
+            MsgBox("Nem sikerült betölteni a hangszerlistát innen:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
+                   "A beépített General MIDI lista kerül alkalmazásra.",
+                   MsgBoxStyle.Exclamation, "MidiBill")
+        End If
     End Sub
 
     Private Sub MidiEszkozokFeltoltese()
@@ -682,6 +701,7 @@ Public Class MainForm
         b.SplitPont = aktualisSplitPont
         b.Transzponalas = aktualisTranszponalas
         b.Reverb = trkReverb.Value
+        b.HangszerListaFajl = aktualisHangszerListaFajl
 
         Return b
     End Function
@@ -771,6 +791,24 @@ Public Class MainForm
             End If
         End If
 
+        If Not String.IsNullOrWhiteSpace(b.HangszerListaFajl) Then
+            HangszerListaAlkalmazasa(b.HangszerListaFajl)
+        End If
+
+        ' A hangszerlista-váltás UTÁN ellenőrizzük mind a 16 csatorna
+        ' Hangszer-értékét: ha egy tárolt patch-szám nem szerepel az
+        ' AKTUÁLIS listában (pl. kézzel szerkesztett, ellentmondásos
+        ' preset esetén), az első elérhető hangszerre állítjuk - így a
+        ' MIDI-kimenet MINDIG szinkronban lesz azzal, amit a panelek
+        ' ténylegesen mutatnak majd, nem csak a jelenleg látható csoportnál.
+        Dim alapertelmezettHangszer As Integer = HangszerLista.Nevek.Keys.OrderBy(Function(k) k).FirstOrDefault()
+        For i As Integer = 0 To 15
+            If Not HangszerLista.Nevek.ContainsKey(csatornaAllapotok(i).Hangszer) Then
+                csatornaAllapotok(i).Hangszer = alapertelmezettHangszer
+                ertekKorrigalva = True
+            End If
+        Next
+
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()
 
@@ -787,6 +825,29 @@ Public Class MainForm
 
     Private Function Korlatoz(ertek As Integer, min As Integer, max As Integer) As Integer
         Return Math.Max(min, Math.Min(max, ertek))
+    End Function
+
+    ''' <summary>
+    ''' Megpróbálja betölteni a megadott hangszerlista fájlt az Adatok
+    ''' mappából, és sikeres esetben minden fizikai HangszerPanel legördülőjét
+    ''' frissíti. Sikertelenség esetén figyelmeztet, de a JELENLEG AKTÍV
+    ''' lista marad érvényben (nincs "csendes" visszaesés).
+    ''' </summary>
+    Private Function HangszerListaAlkalmazasa(fajlNev As String) As Boolean
+        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", fajlNev)
+
+        If HangszerLista.Betolt(utvonal) Then
+            aktualisHangszerListaFajl = fajlNev
+            For Each panel As HangszerPanel In hangszerPanelek
+                panel.HangszerListaFrissitese()
+            Next
+            Return True
+        Else
+            MsgBox("A(z) """ & fajlNev & """ hangszerlista fájl nem található vagy hibás az Adatok mappában." & vbCrLf &
+                   "A megadott hangszerlista betöltése nem lehetséges - a jelenleg aktív lista marad érvényben.",
+                   MsgBoxStyle.Exclamation, "MidiBill")
+            Return False
+        End If
     End Function
 
     ''' <summary>

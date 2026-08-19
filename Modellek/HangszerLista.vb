@@ -1,14 +1,19 @@
 ﻿Namespace Modellek
 
     ''' <summary>
-    ''' A General MIDI szabvány 128 hangszerneve, sorrendben (a lista indexe
-    ''' = a MIDI patch szám, 0-127). Közös hely, hogy a HangszerPanel (UI)
-    ''' és a Beallitasok (JSON-mentés, névkommentek generálása) ugyanabból
-    ''' a listából dolgozzon, ne legyen duplikálva.
+    ''' A jelenleg aktív hangszerlista (patch index -> hangszernév), a
+    ''' cmbHangszer és a JSON-kommentelés/MIDI-üzenet-kijelzés is ezt
+    ''' használja. Dictionary-alapú, hogy a jövőben RITKÁS, nem
+    ''' folytonos indexelésű, egyedi (SoundFont-alapú) listákat is
+    ''' problémamentesen kezelhessen, nem csak a teljes 128-elemű
+    ''' General MIDI listát.
     ''' </summary>
     Public Module HangszerLista
 
-        Public ReadOnly Nevek() As String = {
+        ' Beépített, "gyári" General MIDI lista - ez a végső biztonsági
+        ' háló, ha a GM.lst fájl hiányzik vagy sérült: a program EKKOR IS
+        ' el tud indulni, sosem omlik össze emiatt.
+        Private ReadOnly alapNevek() As String = {
             "Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honkytonk Piano",
             "Rhodes Piano", "Chorus Piano", "Harpsichord", "Clavinet",
             "Celesta", "Glockenspiel", "Music Box", "Vibraphone",
@@ -43,12 +48,68 @@
             "Telephone Ring", "Helicopter", "Applause", "Gunshot"
         }
 
-        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét, tartományellenőrzéssel - "?" ha érvénytelen</summary>
-        Public Function Nev(index As Integer) As String
-            If index >= 0 AndAlso index < Nevek.Length Then
-                Return Nevek(index)
+        ''' <summary>A jelenleg aktív hangszerlista: patch index -> hangszernév</summary>
+        Public Property Nevek As Dictionary(Of Integer, String) = Alapertelmezett()
+
+        ''' <summary>A beépített General MIDI lista Dictionary-vé alakítva (0-127, folytonos)</summary>
+        Public Function Alapertelmezett() As Dictionary(Of Integer, String)
+            Dim d As New Dictionary(Of Integer, String)
+            For i As Integer = 0 To alapNevek.Length - 1
+                d(i) = alapNevek(i)
+            Next
+            Return d
+        End Function
+
+        ''' <summary>
+        ''' Egy patch index alapján biztonságosan visszaadja a hangszer nevét
+        ''' a JELENLEG AKTÍV listából - ha az index nem szerepel benne (pl.
+        ''' ritkás egyedi lista esetén), az ismeretlenSzoveg-et adja vissza.
+        ''' </summary>
+        Public Function Nev(index As Integer, Optional ismeretlenSzoveg As String = "?") As String
+            Dim ertek As String = Nothing
+            If Nevek.TryGetValue(index, ertek) Then
+                Return ertek
             End If
-            Return "?"
+            Return ismeretlenSzoveg
+        End Function
+
+        ''' <summary>
+        ''' Betölti a hangszerlistát egy "index=Hangszernév" formátumú
+        ''' szöveges fájlból (pl. Adatok/GM.lst). Sikertelen betöltés
+        ''' (hiányzó/sérült/üres fájl) esetén a JELENLEG AKTÍV lista
+        ''' VÁLTOZATLANUL megmarad (nem áll vissza a beépített GM-listára) -
+        ''' a hívó felelőssége eldönteni, mit tegyen a sikertelenség esetén
+        ''' (pl. figyelmeztető üzenet, a régi lista megtartása).
+        ''' </summary>
+        ''' <returns>True, ha sikerült a fájlból betölteni; False, ha nem (a Nevek ekkor érintetlen marad)</returns>
+        Public Function Betolt(fajlUtvonal As String) As Boolean
+            Try
+                If Not IO.File.Exists(fajlUtvonal) Then Return False
+
+                Dim uj As New Dictionary(Of Integer, String)
+                For Each sor As String In IO.File.ReadAllLines(fajlUtvonal)
+                    Dim tisztaSor As String = sor.Trim()
+                    If tisztaSor.Length = 0 Then Continue For
+
+                    Dim elvalaszto As Integer = tisztaSor.IndexOf("="c)
+                    If elvalaszto <= 0 Then Continue For
+
+                    Dim indexResz As String = tisztaSor.Substring(0, elvalaszto).Trim()
+                    Dim nevResz As String = tisztaSor.Substring(elvalaszto + 1).Trim()
+
+                    Dim index As Integer
+                    If Integer.TryParse(indexResz, index) AndAlso nevResz.Length > 0 Then
+                        uj(index) = nevResz
+                    End If
+                Next
+
+                If uj.Count = 0 Then Return False
+
+                Nevek = uj
+                Return True
+            Catch ex As Exception
+                Return False
+            End Try
         End Function
 
     End Module
