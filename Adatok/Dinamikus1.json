@@ -1,7 +1,7 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.19 16:13:16
-  "Verzio": "1.4.0",
+  // Készült: 2026.08.20 15:24:17
+  "Verzio": "1.6.0",
   "Csatornak": [
     {  // 1. csatorna
       "Hangszer": 0,  // Acoustic Grand Piano

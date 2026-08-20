@@ -1123,6 +1123,7 @@ Public Class MainForm
                 Dim nev As String = IO.Path.GetFileName(fajl)
                 Try
                     Dim b As Beallitasok = Beallitasok.Betoltes(fajl)
+                    b.Verzio = AppInfo.AppVerzio()
                     b.Mentes(IO.Path.Combine(kimenoMappa, nev))
                     sikeres += 1
                 Catch ex As Exception
@@ -1172,6 +1173,7 @@ Public Class MainForm
                 Dim nev As String = IO.Path.GetFileName(fajl)
                 Try
                     Dim b As Beallitasok = Beallitasok.ImportMb3(fajl)
+                    b.Verzio = AppInfo.AppVerzio()
                     b.MidiBemenetNev = midiBe
                     b.MidiKimenetNev = midiKi
                     Dim ujNev As String = IO.Path.GetFileNameWithoutExtension(nev) & ".json"
