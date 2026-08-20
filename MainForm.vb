@@ -19,6 +19,8 @@ Public Class MainForm
     Private utolsoImportMappa As String = ""
     Private utolsoHangszerlistaMappa As String = ""
     Private utolsoSoundFontMappa As String = ""
+    Private utolsoPresetKonvertalasMappa As String = ""
+    Private utolsoMb3KonvertalasMappa As String = ""
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
@@ -1101,6 +1103,94 @@ Public Class MainForm
             End If
 
             DialogusAllapotMentese(dlgSoundFont, sf2Utvonal, utolsoSoundFontMappa)
+        End If
+    End Sub
+
+    Private Sub mnuPresetFajlokFrissitese_Click(sender As Object, e As EventArgs) Handles mnuPresetFajlokFrissitese.Click
+        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
+        DialogusMappaBeallitasa(dlgPresetKonvertalas, utolsoPresetKonvertalasMappa, adatokMappa)
+
+        If dlgPresetKonvertalas.ShowDialog() = DialogResult.OK Then
+            Dim fajlok As String() = dlgPresetKonvertalas.FileNames
+            Dim forrasMappa As String = IO.Path.GetDirectoryName(fajlok(0))
+            Dim kimenoMappa As String = IO.Path.Combine(forrasMappa, "Konvertalva")
+            IO.Directory.CreateDirectory(kimenoMappa)
+
+            Dim sikeres As Integer = 0
+            Dim hibaUzenetek As New List(Of String)
+
+            For Each fajl As String In fajlok
+                Dim nev As String = IO.Path.GetFileName(fajl)
+                Try
+                    Dim b As Beallitasok = Beallitasok.Betoltes(fajl)
+                    b.Mentes(IO.Path.Combine(kimenoMappa, nev))
+                    sikeres += 1
+                Catch ex As Exception
+                    hibaUzenetek.Add(nev & ": " & ex.Message)
+                End Try
+            Next
+
+            Dim osszegzes As String = "Kész. Sikeres: " & sikeres & ", hibás: " & hibaUzenetek.Count & "." & vbCrLf &
+                                       "A konvertált fájlok itt találhatók:" & vbCrLf & kimenoMappa
+            If hibaUzenetek.Count > 0 Then
+                osszegzes &= vbCrLf & vbCrLf & "Hibák:" & vbCrLf & String.Join(vbCrLf, hibaUzenetek)
+            End If
+
+            MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill - Preset fájlok frissítése")
+
+            DialogusAllapotMentese(dlgPresetKonvertalas, fajlok(0), utolsoPresetKonvertalasMappa)
+        End If
+    End Sub
+
+    Private Sub mnuMb3FajlokKonvertalasa_Click(sender As Object, e As EventArgs) Handles mnuMb3FajlokKonvertalasa.Click
+        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
+        DialogusMappaBeallitasa(dlgMb3Konvertalas, utolsoMb3KonvertalasMappa, adatokMappa)
+
+        If dlgMb3Konvertalas.ShowDialog() = DialogResult.OK Then
+            Dim fajlok As String() = dlgMb3Konvertalas.FileNames
+
+            Dim alapBemenet As String = If(cmbMidiIn.SelectedItem IsNot Nothing, cmbMidiIn.SelectedItem.ToString(), "")
+            Dim alapKimenet As String = If(cmbMidiOut.SelectedItem IsNot Nothing, cmbMidiOut.SelectedItem.ToString(), "")
+
+            Dim midiBe As String = InputBox(
+                "Add meg a MIDI bemeneti eszköz nevét, amit a konvertált fájlokba be szeretnél állítani." & vbCrLf &
+                "(A jelenleg kiválasztott eszköz van alapértelmezettként megadva.)",
+                "MidiBill - MIDI bemenet", alapBemenet)
+            Dim midiKi As String = InputBox(
+                "Add meg a MIDI kimeneti eszköz nevét, amit a konvertált fájlokba be szeretnél állítani." & vbCrLf &
+                "(A jelenleg kiválasztott eszköz van alapértelmezettként megadva.)",
+                "MidiBill - MIDI kimenet", alapKimenet)
+
+            Dim forrasMappa As String = IO.Path.GetDirectoryName(fajlok(0))
+            Dim kimenoMappa As String = IO.Path.Combine(forrasMappa, "Konvertalva")
+            IO.Directory.CreateDirectory(kimenoMappa)
+
+            Dim sikeres As Integer = 0
+            Dim hibaUzenetek As New List(Of String)
+
+            For Each fajl As String In fajlok
+                Dim nev As String = IO.Path.GetFileName(fajl)
+                Try
+                    Dim b As Beallitasok = Beallitasok.ImportMb3(fajl)
+                    b.MidiBemenetNev = midiBe
+                    b.MidiKimenetNev = midiKi
+                    Dim ujNev As String = IO.Path.GetFileNameWithoutExtension(nev) & ".json"
+                    b.Mentes(IO.Path.Combine(kimenoMappa, ujNev))
+                    sikeres += 1
+                Catch ex As Exception
+                    hibaUzenetek.Add(nev & ": " & ex.Message)
+                End Try
+            Next
+
+            Dim osszegzes As String = "Kész. Sikeres: " & sikeres & ", hibás: " & hibaUzenetek.Count & "." & vbCrLf &
+                                       "A konvertált fájlok itt találhatók:" & vbCrLf & kimenoMappa
+            If hibaUzenetek.Count > 0 Then
+                osszegzes &= vbCrLf & vbCrLf & "Hibák:" & vbCrLf & String.Join(vbCrLf, hibaUzenetek)
+            End If
+
+            MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill - Régi .mb3 fájlok konvertálása")
+
+            DialogusAllapotMentese(dlgMb3Konvertalas, fajlok(0), utolsoMb3KonvertalasMappa)
         End If
     End Sub
 
