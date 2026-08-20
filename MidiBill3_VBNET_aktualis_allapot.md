@@ -9,7 +9,8 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.5.0 (SemVer), egységesen kezelve a `Directory.Build.props`-ban
+- **Verzió**: 1.6.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a `Directory.Build.props` megszűnt - lásd lent)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -22,21 +23,22 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 - **Ablak**: `AutoScaleMode.Dpi` + `ApplicationHighDpiMode = PerMonitorV2`,
   `FormBorderStyle = FixedSingle`, `MaximizeBox = False`, `MinimizeBox`
   alapértelmezett `True`
-- **Címsor**: `"MIDI billentyűzet megszólaltatása 16 csatornán : <beállítások
-  fájlneve>, <hangszerlista fájlneve>"` (`CimSorUjrarajzolas()` metódus -
-  ez az EGYETLEN hely, ahol a `Me.Text` ténylegesen összeáll)
+- **Címsor**: rövidített forma - `"MIDI billentyűzet megszólaltatása 16
+  csatornán : <beállítások fájlneve>, <hangszerlista fájlneve>"`
+  (`CimSorUjrarajzolas()` - az EGYETLEN hely, ahol a `Me.Text` összeáll)
 
 ## Projektstruktúra
 
 ```
-MidiBill3/
+MidiBill3/                        - EGYETLEN projekt (a korábbi
+│                                    PresetKonvertalo/Mb3Konvertalo
+│                                    konzolos projektek megszűntek)
 ├── MainForm.vb / .Designer.vb   - Fő ablak
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
 │                                   példány, a kiválasztott csatornacsoportot mutatja
 ├── ApplicationEvents.vb         - Globális hibanaplózás (HibaNaplo.txt)
-├── Directory.Build.props        - Egységes verziószám mindhárom projekthez
 ├── Modellek/
-│   ├── AppInfo.vb               - Közös verziószám lekérdezés
+│   ├── AppInfo.vb               - Verziószám lekérdezés
 │   ├── Beallitasok.vb           - Adatmodell (16 csatorna) + JSON mentés/betöltés
 │   ├── MidiEngine.vb            - MIDI be-/kimenet, fan-out, split pont,
 │   │                               transzponálás (globális + csatornánkénti)
@@ -44,8 +46,6 @@ MidiBill3/
 │   │                               Betolt()/Ment())
 │   ├── SoundFontOlvaso.vb       - .sf2 fájlok "phdr" blokkjának beolvasása
 │   └── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
-├── PresetKonvertalo/            - Segédprogram: régi presetek frissítése
-├── Mb3Konvertalo/                - Segédprogram: régi .mb3 -> .json konvertálás
 └── Adatok/                      - Preset fájlok + hangszerlista fájlok (GM.lst,
                                     Teszt.lst stb.)
 ```
@@ -61,53 +61,45 @@ nélkül", MIDI eszközlista frissítés+validálás, olvasható MIDI
 hibakezelés. (Részletek: forráskód vagy korábbi fejlesztési történet.)
 
 **Fájlkezelés**: JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet
-tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés,
-`PresetKonvertalo`/`Mb3Konvertalo` segédprogramok.
+tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés.
 
-**Betölthető hangszerlisták - TELJES (fájlból betöltés, menüpontos váltás, SoundFont-import)**
+**Betölthető hangszerlisták - TELJES**: `Dictionary(Of Integer, String)`
+alapú (ritkás listákra is felkészítve), `.lst` fájlformátum
+(`index=Hangszernév`), "Hangszerlista betöltése..." menüpont (tetszőleges
+helyről, automatikus másolás az `Adatok` mappába), `HangszerekErvenyesitese()`
+robusztus validálás (csak a patch-szám számít, a név nem), SoundFont
+(.sf2) importálás "phdr" blokk beolvasásával (csak Bank=0/GM-kompatibilis
+presetek, magasabb bankok kihagyva és jelentve), címsorban megjelenő
+aktuális lista. (Részletek: korábbi fejlesztési történet.)
 
-*Adatmodell (korábbi kör):*
-- `Modellek/HangszerLista.vb`: **`Dictionary(Of Integer, String)`**-alapú
-  (patch-szám -> hangszernév) - RITKÁS, nem folytonos indexelésű listákat
-  is támogat (a jövőbeli GS-támogatáshoz és egyedi SoundFont-listákhoz)
-- **Fájlformátum**: `index=Hangszernév` soronként (`.lst` kiterjesztés),
-  `Adatok/GM.lst` a beépített 128 General MIDI hangszer
-- `HangszerLista.Betolt()`/`Ment()`: fájlból olvasás / fájlba írás
-- `HangszerPanel.Hangszer` property: **VALÓDI patch-számot** kezel, nem a
-  combo pozícióját (`hangszerKulcsok` leképezéssel) - kritikus javítás
-  ritkás listáknál, hogy a UI és a ténylegesen kiküldött MIDI mindig
-  szinkronban maradjon
-- `Beallitasok.HangszerListaFajl` mező: minden preset megjegyzi, melyik
-  listával készült
-
-*Menüpontos betöltés + robusztus validálás (ez a kör eleje):*
-- **"Hangszerlista betöltése..." menüpont** (Fájl menü): tetszőleges
-  helyről választható `.lst`, ha nem az `Adatok` mappából jön, megerősítő
-  kérdés után átmásolódik oda (felülírás-figyelmeztetéssel, ha szükséges)
-- **`HangszerekErvenyesitese()`**: közös, kiemelt validáló metódus - mind
-  a 16 csatornát ellenőrzi (CSAK a patch-szám/index számít, a hangszernév
-  NEM), a nem szereplő hangszereket az első elérhetőre állítja. Preset
-  betöltésnél ÉS listaváltásnál is ugyanez fut
-- Listaváltás után MINDIG újraküldi a MIDI-t minden csatornára
-  (`OsszesCsatornaUjrakuldese`)
-- Címsor mutatja az aktuális hangszerlista fájlnevét is
-
-**SoundFont (.sf2) importálása hangszerlistává (v1.5.0, ez a kör vége)**
-- `Modellek/SoundFontOlvaso.vb`: RIFF/SF2 fájlok `phdr` (Preset Headers)
-  blokkjának beolvasása - CSAK metaadat, a hangminta-adatot (`sdta`)
-  átugorja, gyors nagy fájloknál is
-- **Csak Bank=0 (GM-kompatibilis) preseteket** vesz figyelembe -
-  magasabb bankok (pl. dobkészletek) egyelőre kihagyva és jelentve
-  (számuk megjelenik az összegzésben) - GS-támogatás hiányában a program
-  úgysem tudná ezeket helyesen megszólaltatni (nincs Bank Select küldés)
-- **"SoundFont importálása..." menüpont** (Fájl menü): fájlválasztás →
-  beolvasási kísérlet (siker/hiba) → (ha 0 hangszer, jelzés és vége) →
-  CSAK sikeres beolvasás UTÁN felülírás-megerősítés, ha a célnévvel már
-  van `.lst` → `HangszerLista.Ment()` a generált `.lst`-hez → azonnali
-  betöltés+validálás+MIDI-újraküldés+címsor → záró összegző üzenet
-  (betöltött/kihagyott hangszerek száma)
-- `Teszt.sf2`: szintetikus, csak `phdr`-blokkot tartalmazó teszt-fájl a
-  konverter logika ellenőrzéséhez (NEM valódi, lejátszható SoundFont)
+**Segédprogramok beépítve a főprogramba (ÚJ, ez a kör)**
+- **A korábbi különálló `PresetKonvertalo` és `Mb3Konvertalo` konzolos
+  projektek MEGSZŰNTEK** - funkciójukat egy új **"Segédprogramok"** menü
+  váltotta ki, közvetlenül a `MainForm`-ban:
+  - **"Preset fájlok frissítése..."** - egy vagy több `.json` preset
+    (`OpenFileDialog` `Multiselect=True`) újramentése az aktuális
+    formátumra
+  - **"Régi .mb3 fájlok konvertálása..."** - egy vagy több régi `.mb3`
+    fájl JSON-ná alakítása; a MIDI be-/kimeneti eszköznevet `InputBox`
+    kéri be, alapértelmezettként a jelenleg kiválasztott eszközökkel
+    előtöltve
+  - Mindkettő a `Beallitasok.Betoltes()`/`ImportMb3()`/`Mentes()`-t
+    használja közvetlenül (nincs szükség linkelt fájlokra, hiszen már a
+    főprojekt része) - a forrásfájl(ok) mappájában létrejövő
+    `Konvertalva` almappába menti az eredményt, névazonos fájlt kérdés
+    nélkül felülír (ugyanaz a viselkedés, mint a régi konzolos
+    verzióknál volt)
+  - Összegző üzenet a végén (sikeres/hibás fájlok száma + hibalista)
+- **HIBAJAVÍTÁS**: az áthelyezéskor kimaradt a `b.Verzio =
+  AppInfo.AppVerzio()` sor mindkét eseménykezelőből - emiatt a
+  konvertált fájlokban a régi (preset-frissítésnél) vagy üres
+  (`.mb3`-konvertálásnál) verziószám maradt. Javítva, mindkét helyen
+  a `Mentes()` hívás előtt beállítva
+- **`Directory.Build.props` megszüntetve**: mivel most már csak EGY
+  projekt van (nincs több konzolos segédprogram, aminek szinkronban
+  kellett volna tartania a verziószámát), feleslegessé vált a közös
+  verziószám-kezelő fájl - a `<Version>` visszakerült közvetlenül a
+  `MidiBill3.vbproj`-ba, egyszerűbb
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -116,15 +108,14 @@ tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés,
 - Panic gomb pufferelés szándékosan nincs
 - ComboBox-ok explicit elvesztik a fókuszt kiválasztás után
 - RadioButton a csatorna-választóhoz (natív kizárás)
-- Verziószám egységesen a `Directory.Build.props`-ban
+- **Verziószám most már közvetlenül a `MidiBill3.vbproj`-ban** (a
+  `Directory.Build.props`-os megközelítést elhagytuk, miután a
+  segédprogramok beépültek a főprojektbe - most már csak 1 helyen kell
+  kezelni, nincs szükség a közös fájlra)
 - **Kódmódosításoknál a meglévő kommenteket MINDIG meg kell tartani**
   (explicit felhasználói elvárás, memóriában rögzítve)
-- Hangszerlista fájlformátum: `index=Név` szöveges fájl (nem JSON/XML) -
-  tudatos döntés, konzisztens a projekt "kézzel is olvasható/szerkeszthető"
-  filozófiájával; a jövőbeli GS-bővítés (`bank.program=Név`) visszamenőleg
-  kompatibilis lesz ezzel a formátummal
-- SoundFont-import: csak Bank=0, a Bank>0 presetek kihagyva (nem beleírva
-  nagy kulcsokkal) - egyszerűbb, amíg nincs GS-támogatás
+- Hangszerlista fájlformátum: `index=Név` szöveges fájl (nem JSON/XML)
+- SoundFont-import: csak Bank=0, a Bank>0 presetek kihagyva
 
 ## Globális hibanaplózás
 
@@ -133,14 +124,13 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 
 ## Következő lépések / nyitott témák
 
-1. **GS-támogatás** - a felhasználó jelezte, hogy hamarosan ebbe az
-   irányba szeretne továbbmenni. Ehhez szükséges lenne:
+1. **GS-támogatás** - a felhasználó jelezte, hogy ebbe az irányba
+   szeretne továbbmenni. Ehhez szükséges lenne:
    - Bank Select (CC0 MSB + CC32 LSB) küldése Program Change előtt
    - A `.lst` formátum kiterjesztése `bank.program=Név` szintaktikára
      (visszamenőleg kompatibilis - pont nélküli sor = bank 0)
    - A `Dictionary(Of Integer, String)` kulcsot `bank*128+program`-ra
-     váltani (ELVILEG már ma is működne emiatt, csak a MIDI-küldés oldalán
-     kellene Bank Select-et hozzáadni)
+     váltani
    - A SoundFont-importálás jelenleg kihagyja a Bank>0 preseteket - ezt
      GS-támogatással be lehetne kapcsolni
 
