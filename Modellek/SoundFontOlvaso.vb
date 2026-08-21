@@ -2,23 +2,29 @@
 
     ''' <summary>
     ''' SoundFont (.sf2) fájlok "phdr" (Preset Headers) blokkjának beolvasása,
-    ''' hogy a benne definiált hangszerek egy .lst formátumú hangszerlistává
-    ''' alakíthatók legyenek. A tényleges hangminta-adatokat (sdta blokk) NEM
-    ''' olvassuk be - csak a metaadatokat, ez gyors feldolgozást tesz
-    ''' lehetővé nagy fájloknál is.
-    ''' Minden bankból beolvassa a preseteket - a kulcs bank*128+program
-    ''' formában kombinálva (bank=0 esetén ez megegyezik a puszta patch-
-    ''' számmal, visszamenőleg kompatibilis marad a GM-only listákkal).
+    ''' hogy a benne definiált hangszerek egy .lst, a dobkészlet-presetek
+    ''' (Bank 128) pedig egy .drm formátumú fájllá alakíthatók legyenek. A
+    ''' tényleges hangminta-adatokat (sdta blokk) NEM olvassuk be - csak a
+    ''' metaadatokat, ez gyors feldolgozást tesz lehetővé nagy fájloknál is.
+    ''' A hangszereknél a kulcs bank*128+program formában kombinálva (bank=0
+    ''' esetén ez megegyezik a puszta patch-számmal, visszamenőleg
+    ''' kompatibilis marad a GM-only listákkal); a dobkészleteknél a kulcs
+    ''' közvetlenül a Program szám (0-127).
     ''' </summary>
     Public Module SoundFontOlvaso
 
         ''' <summary>
         ''' Beolvassa egy .sf2 fájl preset-listáját. A visszaadott Nevek
         ''' Dictionary közvetlenül felhasználható .lst fájl generálásához
-        ''' (a kulcs bank*128+program formában kombinálva, 0-16383).
+        ''' (a kulcs bank*128+program formában kombinálva, 0-16383). A
+        ''' Dobok Dictionary a Bank 128-as (SF2-konvenció szerinti
+        ''' dobkészlet) preseteket tartalmazza KÜLÖN, a .drm fájlhoz - ezek
+        ''' sosem küldhetők ki szabványos Bank Select-tel (a 128 túllépi a
+        ''' MIDI 7-bites adatbájt-korlátot), de a 10. csatorna dedikált
+        ''' dobkészlet-listájában közvetlenül felhasználhatók.
         ''' </summary>
         ''' <exception cref="IO.InvalidDataException">Ha a fájl nem érvényes RIFF/SoundFont formátumú, vagy nincs benne phdr blokk</exception>
-        Public Function Beolvas(fajlUtvonal As String) As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)
+        Public Function Beolvas(fajlUtvonal As String) As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
             Using fs As New IO.FileStream(fajlUtvonal, IO.FileMode.Open, IO.FileAccess.Read)
                 Using br As New IO.BinaryReader(fs, Text.Encoding.ASCII)
 
@@ -78,13 +84,14 @@
             End Using
         End Function
 
-        ''' <summary>A phdr blokk nyers bájtjait alakítja Dictionary-vé (MINDEN bankból), + az érvénytelen rekordok száma</summary>
-        Private Function FeldolgozPhdr(phdrAdat As Byte()) As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)
+        ''' <summary>A phdr blokk nyers bájtjait alakítja két Dictionary-vé (hangszerek + Bank 128-as dobkészletek), + az érvénytelen rekordok listája</summary>
+        Private Function FeldolgozPhdr(phdrAdat As Byte()) As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
             Const REKORD_MERET As Integer = 38
             Dim rekordSzam As Integer = phdrAdat.Length \ REKORD_MERET
 
             Dim eredmeny As New Dictionary(Of Integer, String)
-            Dim kihagyottSzam As Integer = 0
+            Dim dobEredmeny As New Dictionary(Of Integer, String)
+            Dim kihagyottak As New List(Of String)
 
             ' Az utolsó rekord mindig a lezáró "EOP" (End Of Preset) bejegyzés - ezt kihagyjuk
             For i As Integer = 0 To rekordSzam - 2
@@ -97,15 +104,30 @@
                 Dim program As Integer = BitConverter.ToUInt16(phdrAdat, offset + 20)
                 Dim bank As Integer = BitConverter.ToUInt16(phdrAdat, offset + 22)
 
-                If program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
+                If program >= 0 AndAlso program <= 127 AndAlso bank = 128 AndAlso nev.Length > 0 Then
+                    ' Bank 128 = dobkészlet-preset (SF2-konvenció) - a .drm fájlhoz
+                    ' gyűjtjük külön, a Program szám itt közvetlenül a dobkészlet-
+                    ' lista kulcsa lesz.
+                    dobEredmeny(program) = nev
+                ElseIf program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
                     Dim kombinaltKulcs As Integer = bank * 128 + program
                     eredmeny(kombinaltKulcs) = nev
                 Else
-                    kihagyottSzam += 1
+                    Dim ok As String
+                    If nev.Length = 0 Then
+                        ok = "üres név"
+                    ElseIf program > 127 Then
+                        ok = "Program túl nagy (" & program & ")"
+                    ElseIf bank > 128 Then
+                        ok = "Bank túl nagy (" & bank & ")"
+                    Else
+                        ok = "ismeretlen ok"
+                    End If
+                    kihagyottak.Add("Bank " & bank & ", Program " & program & ": """ & nev & """ (" & ok & ")")
                 End If
             Next
 
-            Return (eredmeny, kihagyottSzam)
+            Return (eredmeny, dobEredmeny, kihagyottak)
         End Function
 
     End Module

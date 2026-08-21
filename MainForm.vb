@@ -134,10 +134,19 @@ Public Class MainForm
     ''' cmbHangszer legördülőjét.
     ''' </summary>
     Private Sub HangszerListaBetoltese()
-        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", "GM.lst")
+        Dim lstFajlNev As String = "GM.lst"
+        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", lstFajlNev)
         If Not HangszerLista.Betolt(utvonal) Then
             MsgBox("Nem sikerült betölteni a hangszerlistát innen:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
                    "A beépített General MIDI lista kerül alkalmazásra.",
+                   MsgBoxStyle.Exclamation, "MidiBill")
+        End If
+
+        Dim dobFajlNev As String = IO.Path.GetFileNameWithoutExtension(lstFajlNev) & ".drm"
+        Dim dobUtvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", dobFajlNev)
+        If Not HangszerLista.BetoltDobKeszletet(dobUtvonal) Then
+            MsgBox("Nem sikerült betölteni a dobkészlet-listát innen:" & vbCrLf & dobUtvonal & vbCrLf & vbCrLf &
+                   "A beépített alapértelmezett dobkészlet-lista kerül alkalmazásra.",
                    MsgBoxStyle.Exclamation, "MidiBill")
         End If
     End Sub
@@ -356,6 +365,15 @@ Public Class MainForm
         aktivCsoportIndex = ujCsoportIndex
         CsatornaPanelekFrissitese()
     End Sub
+    ''' <summary>A csatorna-keret feliratának összeállítása - a 10. (dob) csatornánál "(dob)" jelzéssel kiegészítve</summary>
+    Private Function CsatornaFelirat(csatornaIndex As Integer, aktiv As Boolean) As String
+        Dim alapNev As String = (csatornaIndex + 1).ToString() & ". csatorna"
+        If csatornaIndex = DOB_CSATORNA_INDEX Then
+            Return If(aktiv, alapNev & " (dob): Aktív", alapNev & " (dob)")
+        Else
+            Return If(aktiv, alapNev & ": Aktív", alapNev)
+        End If
+    End Function
 
     Private Sub CsatornaPanelekFrissitese()
         For i As Integer = 0 To 3
@@ -364,6 +382,9 @@ Public Class MainForm
             Dim adat As CsatornaBeallitas = csatornaAllapotok(csatornaIndex)
             Dim panel As HangszerPanel = hangszerPanelek(i)
             Dim keret As GroupBox = hangszerKeretek(i)
+
+            Dim dobCsatorna As Boolean = (csatornaIndex = DOB_CSATORNA_INDEX)
+            panel.HangszerListaForrasBeallitasa(If(dobCsatorna, HangszerLista.DobNevek, Nothing))
 
             panel.Hangszer = adat.Hangszer
             panel.Hangero = adat.Hangero
@@ -374,15 +395,7 @@ Public Class MainForm
             panel.Felul = adat.Felul
             panel.Oktav = adat.Oktav
 
-            Dim dobCsatorna As Boolean = (csatornaIndex = DOB_CSATORNA_INDEX)
-            panel.Enabled = Not dobCsatorna
-
-            Dim alapNev As String = csatornaSzam.ToString() & ". csatorna"
-            If dobCsatorna Then
-                keret.Text = alapNev & " (dob - nem konfigurálható)"
-            Else
-                keret.Text = If(adat.Aktiv, alapNev & ": Aktív", alapNev)
-            End If
+            keret.Text = CsatornaFelirat(csatornaIndex, adat.Aktiv)
         Next
     End Sub
 
@@ -429,15 +442,13 @@ Public Class MainForm
     Private Sub HangszerPanel_AktivValtozott(sender As Object, aktiv As Boolean)
         Dim idx As Integer = CsatornaIndexTol(sender)
         If idx < 0 Then Return
-        If idx = DOB_CSATORNA_INDEX Then Return
 
         csatornaAllapotok(idx).Aktiv = aktiv
 
         Dim panel As HangszerPanel = CType(sender, HangszerPanel)
         Dim panelPozicio As Integer = Array.IndexOf(hangszerPanelek, panel)
         If panelPozicio >= 0 Then
-            Dim alapNev As String = (idx + 1).ToString() & ". csatorna"
-            hangszerKeretek(panelPozicio).Text = If(aktiv, alapNev & ": Aktív", alapNev)
+            hangszerKeretek(panelPozicio).Text = CsatornaFelirat(idx, aktiv)
         End If
 
         Dim csatornaSzam As Integer = idx + 1
@@ -660,8 +671,8 @@ Public Class MainForm
 
     Private Sub mnuNevjegy_Click(sender As Object, e As EventArgs) Handles mnuNevjegy.Click
         MsgBox("MidiBill3 2026, " & "Verzió: " & AppInfo.AppVerzio() & vbCrLf & vbCrLf &
-           "MIDI billentyűzet megszólaltatása 15 csatornán." & vbCrLf &
-           "(A dob csatorna nem szerkeszthető)" & vbCrLf &
+           "MIDI billentyűzet megszólaltatása 16 csatornán." & vbCrLf &
+           "(A 10. csatorna dedikált dobkészlet-listát használ)" & vbCrLf &
            ".NET 10 / WinForms port a VB6-os eredetiből.",
            MsgBoxStyle.Information, "Névjegy - MidiBill3")
     End Sub
@@ -677,14 +688,6 @@ Public Class MainForm
 
         For i As Integer = 0 To 15
             Dim cs As New CsatornaBeallitas()
-
-            If i = DOB_CSATORNA_INDEX Then
-                ' A 10. csatorna (dob) sosem konfigurálható, ezért az adatait
-                ' sosem mentjük - mindig friss, alapértelmezett érték kerül a
-                ' fájlba, függetlenül attól, mi van a memóriában.
-                b.Csatornak.Add(cs)
-                Continue For
-            End If
 
             Dim forras As CsatornaBeallitas = csatornaAllapotok(i)
             cs.Hangszer = forras.Hangszer
@@ -722,14 +725,6 @@ Public Class MainForm
 
         For i As Integer = 0 To 15
             Dim adat As New CsatornaBeallitas()
-
-            If i = DOB_CSATORNA_INDEX Then
-                ' A 10. csatorna (dob) sosem konfigurálható, ezért a fájlban
-                ' esetlegesen szereplő adatát figyelmen kívül hagyjuk - mindig
-                ' friss, alapértelmezett (inaktív) állapotba kerül.
-                csatornaAllapotok(i) = adat
-                Continue For
-            End If
 
             Dim cs As CsatornaBeallitas = b.Csatornak(i)
 
@@ -832,11 +827,15 @@ Public Class MainForm
     ''' <returns>True, ha legalább egy csatornán korrigálni kellett</returns>
     Private Function HangszerekErvenyesitese() As Boolean
         Dim alapertelmezettHangszer As Integer = HangszerLista.Nevek.Keys.OrderBy(Function(k) k).FirstOrDefault()
+        Dim alapertelmezettDobHangszer As Integer = HangszerLista.DobNevek.Keys.OrderBy(Function(k) k).FirstOrDefault()
         Dim korrigalva As Boolean = False
 
         For i As Integer = 0 To 15
-            If Not HangszerLista.Nevek.ContainsKey(csatornaAllapotok(i).Hangszer) Then
-                csatornaAllapotok(i).Hangszer = alapertelmezettHangszer
+            Dim dobCsatorna As Boolean = (i = DOB_CSATORNA_INDEX)
+            Dim aktivLista As Dictionary(Of Integer, String) = If(dobCsatorna, HangszerLista.DobNevek, HangszerLista.Nevek)
+
+            If Not aktivLista.ContainsKey(csatornaAllapotok(i).Hangszer) Then
+                csatornaAllapotok(i).Hangszer = If(dobCsatorna, alapertelmezettDobHangszer, alapertelmezettHangszer)
                 korrigalva = True
             End If
         Next
@@ -859,6 +858,14 @@ Public Class MainForm
 
         If HangszerLista.Betolt(utvonal) Then
             aktualisHangszerListaFajl = fajlNev
+
+            ' Ha van azonos nevű .drm fájl (pl. Teszt.lst mellett Teszt.drm),
+            ' azt is betöltjük - ha nincs, csendben a jelenlegi dob-lista
+            ' marad érvényben (ez NEM hiba, csak egy opcionális párosítás).
+            Dim dobFajlNev As String = IO.Path.GetFileNameWithoutExtension(fajlNev) & ".drm"
+            Dim dobUtvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", dobFajlNev)
+            HangszerLista.BetoltDobKeszletet(dobUtvonal) ' visszatérési értéke szándékosan figyelmen kívül hagyva
+
             For Each panel As HangszerPanel In hangszerPanelek
                 panel.HangszerListaFrissitese()
             Next
@@ -1047,13 +1054,13 @@ Public Class MainForm
         If dlgSoundFont.ShowDialog() = DialogResult.OK Then
             Dim sf2Utvonal As String = dlgSoundFont.FileName
             Dim sf2Nev As String = IO.Path.GetFileName(sf2Utvonal)
-            Dim ujLstNev As String = IO.Path.GetFileNameWithoutExtension(sf2Utvonal) & ".lst"
-            Dim celUtvonal As String = IO.Path.Combine(adatokMappa, ujLstNev)
+            Dim alapNev As String = IO.Path.GetFileNameWithoutExtension(sf2Utvonal)
+            Dim ujLstNev As String = alapNev & ".lst"
+            Dim ujDrmNev As String = alapNev & ".drm"
+            Dim lstUtvonal As String = IO.Path.Combine(adatokMappa, ujLstNev)
+            Dim drmUtvonal As String = IO.Path.Combine(adatokMappa, ujDrmNev)
 
-            ' 1. lépés: beolvasási kísérlet - ha sikertelen, azonnal hibaüzenet,
-            ' MÉG a felülírási kérdés előtt (felesleges lenne rákérdezni, ha
-            ' aztán úgysem sikerülne beolvasni a fájlt).
-            Dim eredmeny As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)
+            Dim eredmeny As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
             Try
                 eredmeny = SoundFontOlvaso.Beolvas(sf2Utvonal)
             Catch ex As Exception
@@ -1062,23 +1069,27 @@ Public Class MainForm
                 Return
             End Try
 
-            If eredmeny.Nevek.Count = 0 Then
-                MsgBox("A(z) """ & sf2Nev & """ SoundFont fájlban nem található " &
-                       "egyetlen General MIDI-kompatibilis (Bank 0) hangszer sem.",
+            If eredmeny.Nevek.Count = 0 AndAlso eredmeny.Dobok.Count = 0 Then
+                MsgBox("A(z) """ & sf2Nev & """ SoundFont fájlban nem található egyetlen felhasználható preset sem.",
                        MsgBoxStyle.Exclamation, "MidiBill")
                 Return
             End If
 
-            ' 2. lépés: csak SIKERES beolvasás UTÁN kérdezünk rá a felülírásra
-            If IO.File.Exists(celUtvonal) Then
-                Dim valasz As MsgBoxResult = MsgBox("A(z) """ & ujLstNev & """ hangszerlista már létezik az Adatok mappában." & vbCrLf &
-                                                     "Felülírjuk az újonnan importált SoundFont adataival?",
-                                                     MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")
-                If valasz = MsgBoxResult.No Then Return
+            Dim lstLetezik As Boolean = IO.File.Exists(lstUtvonal)
+            Dim drmLetezik As Boolean = eredmeny.Dobok.Count > 0 AndAlso IO.File.Exists(drmUtvonal)
+            If lstLetezik OrElse drmLetezik Then
+                Dim uzenet As String = "A(z) """ & ujLstNev & """" & If(drmLetezik, " és """ & ujDrmNev & """", "") &
+                                        " már létezik az Adatok mappában." & vbCrLf &
+                                        "Felülírjuk az újonnan importált SoundFont adataival?"
+                If MsgBox(uzenet, MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill") = MsgBoxResult.No Then Return
             End If
 
-            ' 3. lépés: .lst fájl létrehozása, aktiválása
-            HangszerLista.Ment(celUtvonal, eredmeny.Nevek)
+            If eredmeny.Nevek.Count > 0 Then
+                HangszerLista.Ment(lstUtvonal, eredmeny.Nevek)
+            End If
+            If eredmeny.Dobok.Count > 0 Then
+                HangszerLista.Ment(drmUtvonal, eredmeny.Dobok)
+            End If
 
             If HangszerListaAlkalmazasa(ujLstNev) Then
                 Dim korrigalva As Boolean = HangszerekErvenyesitese()
@@ -1086,12 +1097,11 @@ Public Class MainForm
                 OsszesCsatornaUjrakuldese()
                 CimSorUjrarajzolas()
 
-                ' 4. lépés: záró, sikeres visszajelzés
                 Dim osszegzes As String = """" & sf2Nev & """ SoundFont fájl adatai sikeresen beolvasva." & vbCrLf &
-                           eredmeny.Nevek.Count & " hangszer betöltve" &
-                           If(eredmeny.KihagyottSzam > 0,
-                              ", " & eredmeny.KihagyottSzam & " érvénytelen bejegyzés kihagyva.",
-                              ".")
+                                           eredmeny.Nevek.Count & " hangszer és " & eredmeny.Dobok.Count & " dobkészlet betöltve" &
+                                           If(eredmeny.Kihagyottak.Count > 0,
+                                              ", " & eredmeny.Kihagyottak.Count & " érvénytelen bejegyzés kihagyva.",
+                                              ".")
 
                 MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill")
 

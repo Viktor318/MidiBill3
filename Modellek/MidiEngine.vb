@@ -8,7 +8,6 @@ Namespace Modellek
         Private Const NOTE_ON_STATUS As Integer = &H90
         Private Const NOTE_OFF_STATUS As Integer = &H80
         Private Const POLY_PRESSURE_STATUS As Integer = &HA0
-        Private Const DOB_CSATORNA_INDEX As Integer = 9
 
         Private midiKimenet As MidiOut = Nothing
         Private midiBemenet As MidiIn = Nothing
@@ -23,7 +22,7 @@ Namespace Modellek
                 Return csatornaAktivTomb(index)
             End Get
             Set(value As Boolean)
-                csatornaAktivTomb(index) = If(index = DOB_CSATORNA_INDEX, False, value)
+                csatornaAktivTomb(index) = value
             End Set
         End Property
         Private csatornaAktivTomb(15) As Boolean

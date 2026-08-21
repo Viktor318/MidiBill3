@@ -13,6 +13,10 @@ Public Class HangszerPanel
     ' pozíciója NEM egyezik meg a patch-számmal, ezért kell ez a leképezés.
     Private hangszerKulcsok As New List(Of Integer)
 
+    ' Ha NEM Nothing, ez a lista van használva HangszerLista.Nevek helyett -
+    ' a 10. (dob) csatornánál a MainForm ide adja át a HangszerLista.DobNevek-et.
+    Private aktivHangszerforras As Dictionary(Of Integer, String) = Nothing
+
     Public Sub New()
         InitializeComponent()
 
@@ -31,33 +35,58 @@ Public Class HangszerPanel
 
     ''' <summary>
     ''' Feltölti a cmbHangszer Items listáját és a hangszerKulcsok leképezést
-    ''' az aktuális HangszerLista.Nevek alapján, patch-szám szerint rendezve.
+    ''' az aktuális hangszerforrás (AktivHangszerLista - a globális
+    ''' HangszerLista.Nevek, vagy a HangszerListaForrasBeallitasa()-val
+    ''' beállított dedikált lista) alapján, patch-szám szerint rendezve.
     ''' Bank≠0 hangszereknél a névhez hozzáfűzi a "(B<bank>)" jelzést, hogy
     ''' egyértelmű legyen, ha egy hangszer nem a sima GM-bankból jön.
     ''' </summary>
     Private Sub HangszerListaItemekFeltoltese()
         cmbHangszer.Items.Clear()
         hangszerKulcsok.Clear()
-        For Each kulcs As Integer In HangszerLista.Nevek.Keys.OrderBy(Function(k) k)
+        For Each kulcs As Integer In AktivHangszerLista.Keys.OrderBy(Function(k) k)
             hangszerKulcsok.Add(kulcs)
             Dim bank As Integer = kulcs \ 128
-            Dim nev As String = HangszerLista.Nevek(kulcs)
+            Dim nev As String = AktivHangszerLista(kulcs)
             Dim megjelenitettNev As String = If(bank = 0, nev, nev & " (B" & bank & ")")
             cmbHangszer.Items.Add(megjelenitettNev)
         Next
     End Sub
 
+    Private ReadOnly Property AktivHangszerLista As Dictionary(Of Integer, String)
+        Get
+            Return If(aktivHangszerforras, HangszerLista.Nevek)
+        End Get
+    End Property
+
     ''' <summary>
-    ''' Újratölti a hangszer legördülőt az AKTUÁLIS HangszerLista.Nevek
-    ''' alapján - akkor hívjuk, amikor menet közben (induláskor vagy preset
-    ''' betöltésekor) megváltozik az aktív hangszerlista. Megpróbálja
-    ''' megtartani a jelenlegi kiválasztás VALÓDI PATCH-SZÁMÁT, ha az még
-    ''' szerepel az új listában; ha nem, az első elemre esik vissza -
-    ''' SOHA nem dob kivételt, még akkor sem, ha az új lista sokkal
-    ''' kisebb/ritkásabb, mint a régi volt.
+    ''' <summary>
+    ''' Újratölti a hangszer legördülőt az AKTUÁLIS hangszerforrás alapján
+    ''' (lásd AktivHangszerLista) - akkor hívjuk, amikor menet közben
+    ''' (induláskor vagy preset betöltésekor) megváltozik az aktív hangszerlista. 
+    ''' Megpróbálja megtartani a jelenlegi kiválasztás VALÓDI PATCH-SZÁMÁT,
+    ''' ha az még szerepel az új listában; ha nem, az első elemre esik vissza -
+    ''' SOHA nem dob kivételt, még akkor sem, ha az új lista sokkal kisebb/ritkásabb,
+    ''' mint a régi volt.
     ''' </summary>
     Public Sub HangszerListaFrissitese()
-        Dim regiPatch As Integer = Hangszer ' a JELENLEGI (régi lista szerinti) valódi patch-szám
+        UjratoltesMegorzottPatchhal()
+    End Sub
+
+    ''' <summary>
+    ''' Beállítja, MELYIK hangszerlistát használja a panel: Nothing esetén a
+    ''' globális, aktív HangszerLista.Nevek-et (a legtöbb csatornánál),
+    ''' egyébként a megadott, DEDIKÁLT listát (pl. HangszerLista.DobNevek a
+    ''' 10. csatornánál). Azonnal újratölti a combo-t az új listával, a
+    ''' jelenlegi kiválasztás patch-számát megőrizve, ha az szerepel benne.
+    ''' </summary>
+    Public Sub HangszerListaForrasBeallitasa(lista As Dictionary(Of Integer, String))
+        aktivHangszerforras = lista
+        UjratoltesMegorzottPatchhal()
+    End Sub
+
+    Private Sub UjratoltesMegorzottPatchhal()
+        Dim regiPatch As Integer = Hangszer
         betoltesAlatt = True
         HangszerListaItemekFeltoltese()
         Dim ujPozicio As Integer = hangszerKulcsok.IndexOf(regiPatch)

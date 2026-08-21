@@ -62,6 +62,30 @@ Namespace Modellek
         End Function
 
         ''' <summary>
+        ''' A 10. (dob) csatornán megjelenő, KÜLÖN hangszerlista - független
+        ''' az általános Nevek listától, mivel dob-csatornán a Program Change
+        ''' a GM2 szabvány szerint dobkészlet-VARIÁCIÓT választ, nem
+        ''' hagyományos hangszert.
+        ''' </summary>
+        Public Property DobNevek As Dictionary(Of Integer, String) = AlapertelmezettDobKeszlet()
+
+        ''' <summary>Beépített, "gyári" GM2-stílusú dobkészlet-lista,
+        ''' ha a GM.drm hiányzik/sérült</summary>
+        Public Function AlapertelmezettDobKeszlet() As Dictionary(Of Integer, String)
+            Return New Dictionary(Of Integer, String) From {
+                {0, "Standard Kit"},
+                {8, "Room Kit"},
+                {16, "Power Kit"},
+                {24, "Electronic Kit"},
+                {25, "Analog Kit"},
+                {32, "Jazz Kit"},
+                {40, "Brush Kit"},
+                {48, "Orchestra Kit"},
+                {56, "SFX Kit"}
+            }
+        End Function
+
+        ''' <summary>
         ''' Egy patch index alapján biztonságosan visszaadja a hangszer nevét
         ''' a JELENLEG AKTÍV listából - ha az index nem szerepel benne (pl.
         ''' ritkás egyedi lista esetén), az ismeretlenSzoveg-et adja vissza.
@@ -87,8 +111,28 @@ Namespace Modellek
         ''' </summary>
         ''' <returns>True, ha sikerült a fájlból betölteni; False, ha nem (a Nevek ekkor érintetlen marad)</returns>
         Public Function Betolt(fajlUtvonal As String) As Boolean
+            Dim eredmeny As Dictionary(Of Integer, String) = FajlbolBetoltesBelso(fajlUtvonal)
+            If eredmeny Is Nothing Then Return False
+            Nevek = eredmeny
+            Return True
+        End Function
+
+        ''' <summary>
+        ''' Betölti a 10. csatorna dedikált dobkészlet-listáját egy .lst
+        ''' fájlból - ugyanazt a fájlformátumot használja, mint a Betolt(),
+        ''' csak a DobNevek property-be tölt, nem a Nevek-be.
+        ''' </summary>
+        Public Function BetoltDobKeszletet(fajlUtvonal As String) As Boolean
+            Dim eredmeny As Dictionary(Of Integer, String) = FajlbolBetoltesBelso(fajlUtvonal)
+            If eredmeny Is Nothing Then Return False
+            DobNevek = eredmeny
+            Return True
+        End Function
+
+        ''' <summary>A tényleges fájlolvasó/elemző logika - a Betolt() és a BetoltDobKeszletet() közös alapja</summary>
+        Private Function FajlbolBetoltesBelso(fajlUtvonal As String) As Dictionary(Of Integer, String)
             Try
-                If Not IO.File.Exists(fajlUtvonal) Then Return False
+                If Not IO.File.Exists(fajlUtvonal) Then Return Nothing
 
                 Dim uj As New Dictionary(Of Integer, String)
                 For Each sor As String In IO.File.ReadAllLines(fajlUtvonal)
@@ -109,12 +153,10 @@ Namespace Modellek
                     End If
                 Next
 
-                If uj.Count = 0 Then Return False
-
-                Nevek = uj
-                Return True
+                If uj.Count = 0 Then Return Nothing
+                Return uj
             Catch ex As Exception
-                Return False
+                Return Nothing
             End Try
         End Function
 
