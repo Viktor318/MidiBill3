@@ -348,7 +348,7 @@ Namespace Modellek
             Dim program As Integer = kombinaltKulcs Mod 128
 
             KuldesEgyCsatornara(&HB0 + csatornaIndex, 0, 0)        ' Bank Select MSB (CC0) - mindig 0
-            KuldesEgyCsatornara(&HB0 + csatornaIndex, 32, bank)    ' Bank Select LSB (CC32) - a tényleges banksz\u00e1m
+            KuldesEgyCsatornara(&HB0 + csatornaIndex, 32, bank)    ' Bank Select LSB (CC32) - a tényleges bankszám
             KuldesEgyCsatornara(&HC0 + csatornaIndex, program, 0)  ' Program Change
         End Sub
 

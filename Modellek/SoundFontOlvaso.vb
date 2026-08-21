@@ -15,7 +15,7 @@
         ''' <summary>
         ''' Beolvassa egy .sf2 fájl preset-listáját. A visszaadott Nevek
         ''' Dictionary közvetlenül felhasználható .lst fájl generálásához
-        ''' (a kulcs már a MIDI Program Change szám, 0-127).
+        ''' (a kulcs bank*128+program formában kombinálva, 0-16383).
         ''' </summary>
         ''' <exception cref="IO.InvalidDataException">Ha a fájl nem érvényes RIFF/SoundFont formátumú, vagy nincs benne phdr blokk</exception>
         Public Function Beolvas(fajlUtvonal As String) As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)

@@ -71,7 +71,10 @@ Public Class HangszerPanel
 
     ' --- Eseménydeklarációk: ezekre iratkozik fel a MainForm ---
 
-    ''' <summary>Hangszerválasztás változott (a paraméter a VALÓDI 0-127 patch szám, nem a combo pozíciója)</summary>
+    ''' <summary>
+    ''' Hangszerválasztás változott (a paraméter a VALÓDI kombinált kulcs,
+    ''' bank*128+program, 0-16383 - nem a combo pozíciója)
+    ''' </summary>
     Public Event HangszerValtozott(sender As Object, patchIndex As Integer)
 
     ''' <summary>Hangerő csúszka változott (0-127)</summary>
@@ -104,10 +107,10 @@ Public Class HangszerPanel
     ' őket a .Designer.vb fájlba (WFO1000 figyelmeztetés/hiba elkerülése).
 
     ''' <summary>
-    ''' A kiválasztott hangszer VALÓDI MIDI patch-száma (0-127) - NEM a
-    ''' combo pozíciója! Íráskor, ha a megadott patch-szám nem szerepel a
-    ''' jelenlegi hangszerlistában, biztonságosan az első elemre esik
-    ''' vissza (nem dob kivételt).
+    ''' A kiválasztott hangszer VALÓDI kombinált kulcsa (bank*128+program,
+    ''' 0-16383) - NEM a combo pozíciója! ... Íráskor, ha a megadott patch-szám
+    ''' nem szerepel a jelenlegi hangszerlistában, biztonságosan az első elemre
+    ''' esik vissza (nem dob kivételt).
     ''' </summary>
     <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Hangszer As Integer
