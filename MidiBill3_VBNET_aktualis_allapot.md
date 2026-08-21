@@ -10,7 +10,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ## Alapadatok
 
 - **Verzió**: 1.7.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
-  (a mai kör után érdemes lehet léptetni - lásd lent)
+  (érdemes lehet léptetni a mai/legutóbbi hibajavítások után)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -47,7 +47,9 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               és DobNevek (dedikált, 10. csatorna) -
 │   │                               Betolt()/BetoltDobKeszletet()/Ment()
 │   ├── SoundFontOlvaso.vb       - .sf2 "phdr" beolvasása: hangszerek (Nevek) ÉS
-│   │                               dobkészlet-presetek (Dobok, Bank 128) külön
+│   │                               dobkészlet-presetek (Dobok, ISMERT DOBKÉSZLET-
+│   │                               BANKOK: 120 [GM2 szabvány] és 128 [SF2-
+│   │                               szerkesztői konvenció]) külön
 │   └── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
 └── Adatok/                      - Preset fájlok + hangszerlista fájlok:
                                     GM.lst (hangszerek) + GM.drm (dobkészletek,
@@ -57,14 +59,13 @@ MidiBill3/                        - EGYETLEN projekt
 
 ## Elkészült funkciók
 
-**Alapfunkciók**: 16 MIDI csatorna (MIND szerkeszthető - lásd lent),
-csatorna-választó, Split Point, Globális Transzponálás, csatornánkénti
-oktáv-transzponálás (±2, azonnali/retroaktív hatással), globális Reverb
-(CC91), pedál-inverzió (passzív "mód"-kapcsoló), "Csend legyen!"
-pánikgomb, "Kilépés"/"Kilépés mentés nélkül", MIDI eszközlista
-frissítés+validálás, olvasható MIDI üzenet-kijelzés (max. 10x/mp),
-hibatűrő MIDI-küldés, robusztus JSON hibakezelés. (Részletek: forráskód
-vagy korábbi fejlesztési történet.)
+**Alapfunkciók**: 16 MIDI csatorna (MIND szerkeszthető), csatorna-választó,
+Split Point, Globális Transzponálás, csatornánkénti oktáv-transzponálás
+(±2, azonnali/retroaktív hatással), globális Reverb (CC91), pedál-inverzió
+(passzív "mód"-kapcsoló), "Csend legyen!" pánikgomb, "Kilépés"/"Kilépés
+mentés nélkül", MIDI eszközlista frissítés+validálás, olvasható MIDI
+üzenet-kijelzés (max. 10x/mp), hibatűrő MIDI-küldés, robusztus JSON
+hibakezelés. (Részletek: forráskód vagy korábbi fejlesztési történet.)
 
 **Fájlkezelés**: JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet
 tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés.
@@ -77,74 +78,35 @@ fájlok frissítése, Régi .mb3 fájlok konvertálása).
 Change-t, `.lst` formátum `bank.program=Név` szintaktikával, `HangszerPanel`
 `Név (B<bank>)` megjelenítéssel. (Részletek: korábbi fejlesztési történet.)
 
-**10. csatorna feloldása + dedikált dobkészlet-hangszerlista (ÚJ, ez a kör)**
+**10. csatorna feloldása + dedikált dobkészlet-hangszerlista (.lst/.drm párosítás)**:
+`HangszerLista.DobNevek` önálló Dictionary a 10. csatornához,
+`HangszerPanel.HangszerListaForrasBeallitasa()` a panel forrás-cseréjéhez,
+a `.drm` fájlnév mindig az aktív `.lst` alapnevéből származik és
+automatikusan párosodik. A 10. csatorna teljesen szerkeszthető (aktiválás,
+hangszerválasztás, Split zóna, Oktáv, mentés/betöltés mind normálisan
+működik). (Részletek: korábbi fejlesztési történet.)
 
-*Miért volt letiltva, és miért oldottuk fel:*
-- A 10. csatorna letiltása **saját, szoftveres döntés** volt, NEM MIDI-
-  protokoll-korlát - egy GM2-kompatibilis szintetizátor a 10. csatornán
-  érkező Program Change-et dobkészlet-**variációként** értelmezi
-- A felhasználó feloldást kért, hogy a jövőben (KÜLÖN, KÉSŐBBI lépésben)
-  metronóm-funkcióra is használhassa a csatornát (konkrét ütős
-  hangokkal, pl. Claves/Side Stick - ez MÉG NINCS megvalósítva)
-
-*"Csatornánkénti hangszerlista" architektúra:*
-- `HangszerLista.DobNevek`: ÖNÁLLÓ Dictionary a 10. csatornához, a
-  `Nevek`-től (a másik 15 csatorna listája) FÜGGETLENÜL
-- `HangszerPanel.HangszerListaForrasBeallitasa(lista)`: a panel mostantól
-  tetszőleges Dictionary-t elfogadhat forrásként (`Nothing` = globális
-  `Nevek`, egyébként a megadott dedikált lista) - `MainForm.
-  CsatornaPanelekFrissitese` ez alapján dönt csatornánként
-- A 10. csatorna MOST MÁR: aktiválható, hangszerválasztható (a
-  dobkészlet-listából), Split zóna (Alul/Felül) és Oktáv is működik,
-  MENTÉS/BETÖLTÉS a normál úton (a korábbi "sosem mentjük/töltjük ezt a
-  csatornát" védőblokkok MIND törölve `BeallitasokAlkalmazasa`-ból és
-  `AktualisBeallitasokOsszegyujtese`-ből)
-- `HangszerekErvenyesitese`: csatornánként a MEGFELELŐ listát ellenőrzi
-  (10.-nél `DobNevek`, egyébként `Nevek`)
-
-*Fájlformátum és -párosítás (`.lst` + `.drm`):*
-- **Ugyanaz** a szöveges `index=Név` formátum, csak `.drm` kiterjesztéssel
-- **Alapértelmezett**: `Adatok/GM.lst` (hangszerek) + `Adatok/GM.drm`
-  (dobkészletek) - induláskor mindkettő betöltődik (`HangszerListaBetoltese`)
-- **Párosítás elve**: a `.drm` fájlnév mindig az AKTÍV `.lst` fájl
-  ALAPNEVÉBŐL származik (`GetFileNameWithoutExtension(lst) & ".drm"`) -
-  amikor egy másik `.lst`-et töltesz be, a program AUTOMATIKUSAN,
-  CSENDBEN megpróbálja betölteni a párosított `.drm`-et is
-  (`HangszerListaAlkalmazasa`); ha nincs ilyen, a JELENLEGI dob-lista
-  változatlanul marad (nem hiba, nincs figyelmeztetés)
-- **Nincs** külön `Beallitasok.DobListaFajl` mező - a dob-lista fájlneve
-  NEM kerül külön mentésre a presetbe, mindig a `.lst`-ből származtatva
-  töltődik újra
-- Egy jól dokumentált, GM2-stílusú alap `GM.drm` készült (Standard/Room/
-  Power/Electronic/Analog/Jazz/Brush/Orchestra/SFX Kit, program-számok:
-  0,8,16,24,25,32,40,48,56) - a felhasználó saját szintetizátorán a
-  pontos számozás eltérhet, a fájl szabadon szerkeszthető
-
-*SoundFont-import bővítése:*
-- `SoundFontOlvaso.Beolvas()`/`FeldolgozPhdr()`: HÁROMFELÉ bontja a
-  presetket: `Nevek` (Bank 0-127, hangszerek), `Dobok` (KIZÁRÓLAG Bank
-  128, a Program szám a kulcs), `Kihagyottak` (ténylegesen érvénytelen
-  rekordok - üres név, Program>127, Bank>128)
-  - **FONTOS**: a Bank 128 korábban "érvénytelenként" el lett dobva -
-    most FELISMERT, hasznos kategória (SF2-konvenció a dobkészletekhez)
-- SoundFont-importáláskor MOST MÁR KÉT fájl jön létre egyszerre, azonos
-  alapnévvel: pl. `Teszt.sf2` → `Teszt.lst` (hangszerek) + `Teszt.drm`
-  (dobkészletek, ha voltak Bank 128-as presetek a fájlban) - mindkettő
-  automatikusan alkalmazódik a `HangszerListaAlkalmazasa` párosítási
-  mechanizmusán keresztül
-  - Élesben tesztelve a felhasználó saját, valódi SoundFont-jával
-    (`JJazzLab-SoundFont.sf2`): 193 hangszer + a korábban "15 érvénytelen
-    bejegyzésként" jelzett Bank 128-as dobkészlet-presetek most már
-    helyesen a `.drm`-be kerülnek
-
-*HIBAJAVÍTÁS a feloldás során:*
-- **Csatorna-felirat duplikáció**: a `"N. csatorna (dob)"` felirat
-  összeállítása KÉT helyen volt megírva (`CsatornaPanelekFrissitese` ÉS
-  `HangszerPanel_AktivValtozott`) - az egyikből hiányzott a `"(dob)"`
-  jelzés, ami a checkbox KÖZVETLEN kattintásakor (nem csoportváltáskor/
-  betöltéskor) eltüntette a jelölést. Javítva egy közös
-  `CsatornaFelirat(csatornaIndex, aktiv)` segédfüggvénnyel, amit mindkét
-  hely hív - nincs többé duplikált logika
+**SoundFont-import - dobkészlet-bank felismerés bővítve (ÚJ, ez a kör)**
+- **A hiba, amit a felhasználó saját GS SoundFont-jával (`JJazzLab-
+  SoundFont.sf2`) tesztelve talált**: a `SoundFontOlvaso` korábban CSAK a
+  `Bank 128`-at (SoundFont-szerkesztői, pl. JJazzLab belső konvenciója)
+  ismerte fel dobkészletként - a `Bank 120` (a **GM2 SZABVÁNY** szerinti,
+  ténylegesen Bank Select-tel is elküldhető dobkészlet-bank, hiszen
+  `≤127`) tévesen a hangszerlistába (`.lst`) került, pl. `"Std Kit 1-
+  GM2"`, `"Room Kit-GM2"` stb. néven
+- **Javítva**: új `ismertDobBankok() = {120, 128}` tömb - bővíthető, ha a
+  jövőben további dobkészlet-bank-konvenciókkal találkoznánk. A
+  `FeldolgozPhdr` mostantól `Array.IndexOf(ismertDobBankok, bank) >= 0`
+  alapján dönt, nem csak `bank = 128`-at nézi
+- Dokumentációs kommentek pontosítva (a korábbi, mostanra téves
+  állítás - "a dobkészlet-presetek sosem küldhetők ki Bank Select-tel" -
+  csak a Bank 128-ra igaz, a Bank 120-ra NEM, ez most már helyesen
+  van dokumentálva)
+- **Mellékes tesztelési tanulság (nem programhiba)**: egy csatorna néma
+  maradása leggyakrabban a Hangerő=0 beállításra, az Aktív checkbox-ra,
+  vagy a Split zóna (Alul/Felül) egyikének sem bepipálására vezethető
+  vissza - érdemes ezt a hármat ellenőrizni elsőként "néma csatorna"
+  esetén, mielőtt kódhibát feltételeznénk
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -159,11 +121,9 @@ Change-t, `.lst` formátum `bank.program=Név` szintaktikával, `HangszerPanel`
 - Hangszerlista fájlformátum: `index=Név` vagy `bank.program=Név`
   szöveges fájl (nem JSON/XML)
 - Bank Select mindig MSB=0, mindig elküldve (még bank=0-nál is)
-- **`.lst`/`.drm` párosítás fájlnév-alapú, nem preset-be mentett mező** -
-  egyszerűbb, kevesebb állapot karbantartása
-- A 10. csatorna dobkészlet-listája NEM cserélhető külön menüből (nincs
-  "Dobkészlet betöltése..." menüpont) - csak a `.lst`-tel párosítva
-  vagy SoundFont-importtal frissül
+- `.lst`/`.drm` párosítás fájlnév-alapú, nem preset-be mentett mező
+- Dobkészlet-bankok bővíthető listája (`ismertDobBankok`), nem egyetlen
+  fixen kódolt szám - felkészítve további konvenciókra
 
 ## Globális hibanaplózás
 
@@ -172,34 +132,39 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 
 ## Következő lépések / nyitott témák
 
-1. **Metronóm-funkció** - a 10. csatorna feloldásának egyik indoka volt;
+1. **GS-támogatás további tesztelése** - a felhasználó folytatja a saját
+   GS SoundFont-jával való élesben tesztelést (hangszerek, dobkészletek)
+
+2. **10. csatorna működésének további tesztelése** - konkrétan, hogy a
+   Bank Select + Program Change mechanizmus a dobkészlet-választásnál
+   minden esetben helyesen viselkedik-e a felhasználó szintetizátorán
+
+3. **Új tervezett menüpont: "Beállítások törlése" / "Minden beállítás
+   alaphelyzetbe"** - a Fájl menübe. MÉG NINCS részletesen megtervezve,
+   tisztázandó kérdés lesz: mit jelentsen pontosan az "alaphelyzet"
+   (visszaálljon-e a hangszerlista is GM.lst/GM.drm-re, vagy csak a
+   csatorna-beállítások; törlődjön-e a Kezdet.json fájl is, vagy csak a
+   memóriában lévő állapot álljon vissza)
+
+4. **Metronóm-funkció** - a 10. csatorna feloldásának egyik indoka volt;
    konkrét ütős hangok (pl. Claves, Side Stick - fix GM percussion
    billentyű-kiosztás) Note On üzenetként való kiküldése, FÜGGETLENÜL a
    dobkészlet-választástól. MÉG NINCS megtervezve/megvalósítva
 
-2. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta, mint a Reverb.
+5. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta, mint a Reverb.
    Még nincs megvalósítva
 
-3. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
-   a NYERS BEMENETET vesszük fel (pedál-inverzió UTÁN, split pont/
-   transzponálás/csatorna-szétosztás ELŐTT), visszajátszáskor újra
-   végigmegy a `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve
+6. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
+   a NYERS BEMENETET vesszük fel, visszajátszáskor újra végigmegy a
+   `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve
 
-4. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
+7. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
 
-5. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
+8. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
    átbeszélve, eddig nem volt probléma, nem sürgős
 
-6. Végigtesztelési checklist még nincs összeállítva
+9. Végigtesztelési checklist még nincs összeállítva
 
-7. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
-   elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
-   fizikai MIDI billentyűzet a Windows gépnél marad
-
-8. **Bizonytalanság, tesztelésre vár**: a 10. csatornán a Bank Select +
-   Program Change küldési mechanizmus (ugyanaz, mint a többi
-   csatornánál) NEM garantáltan azonos módon viselkedik minden
-   szintetizátoron a dobkészlet-választásnál (némely eszköz esetleg
-   Bank Select nélkül, csak sima Program Change-t várna a 10.
-   csatornán) - a felhasználó saját GS SoundFont-jával tesztelte,
-   eredmény még nincs visszajelezve ebben a beszélgetésben
+10. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
+    elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
+    fizikai MIDI billentyűzet a Windows gépnél marad
