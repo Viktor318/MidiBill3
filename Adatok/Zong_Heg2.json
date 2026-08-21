@@ -1,10 +1,10 @@
 {
   // MidiBill3 beállítások - JSON formátumú preset fájl
-  // Készült: 2026.08.20 15:24:17
-  "Verzio": "1.6.0",
+  // Készült: 2026.08.21 15:57:35
+  "Verzio": "1.7.0",
   "Csatornak": [
     {  // 1. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -24,7 +24,7 @@
       "Oktav": 0
     },
     {  // 3. csatorna
-      "Hangszer": 91,  // Pad 4 (choir)
+      "Hangszer": 91,  // Space Voice
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -34,7 +34,7 @@
       "Oktav": 0
     },
     {  // 4. csatorna
-      "Hangszer": 49,  // String Ensemble 2
+      "Hangszer": 49,  // Slow Strings
       "Hangero": 70,
       "Ter": 0,
       "Vibrato": 0,
@@ -44,7 +44,7 @@
       "Oktav": 0
     },
     {  // 5. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -54,7 +54,7 @@
       "Oktav": 0
     },
     {  // 6. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -64,7 +64,7 @@
       "Oktav": 0
     },
     {  // 7. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -74,7 +74,7 @@
       "Oktav": 0
     },
     {  // 8. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -84,7 +84,7 @@
       "Oktav": 0
     },
     {  // 9. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -94,7 +94,7 @@
       "Oktav": 0
     },
     {  // 10. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -104,7 +104,7 @@
       "Oktav": 0
     },
     {  // 11. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -114,7 +114,7 @@
       "Oktav": 0
     },
     {  // 12. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -124,7 +124,7 @@
       "Oktav": 0
     },
     {  // 13. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -134,7 +134,7 @@
       "Oktav": 0
     },
     {  // 14. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -144,7 +144,7 @@
       "Oktav": 0
     },
     {  // 15. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
@@ -154,7 +154,7 @@
       "Oktav": 0
     },
     {  // 16. csatorna
-      "Hangszer": 0,  // Acoustic Grand Piano
+      "Hangszer": 0,  // Grand Piano
       "Hangero": 127,
       "Ter": 0,
       "Vibrato": 0,
