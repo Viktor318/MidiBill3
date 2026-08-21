@@ -96,7 +96,7 @@
         ' - 128: SoundFont-szerkesztők (pl. JJazzLab) belső, csak a fájlon
         '   belüli szervezésre használt konvenciója (sosem küldhető ki
         '   szabványos Bank Select-tel, mivel túllépi a 7-bites korlátot)
-        Private ReadOnly ismertDobBankok() As Integer = {120, 128}
+        Private ReadOnly ismertDobBankok() As Integer = {120, 127, 128}
 
         ''' <summary>A phdr blokk nyers bájtjait alakítja két Dictionary-vé
         ''' (hangszerek + ismert dobkészlet-bankokból származó dobkészletek), + az érvénytelen rekordok listája</summary>
