@@ -733,7 +733,7 @@ Public Class MainForm
 
             Dim cs As CsatornaBeallitas = b.Csatornak(i)
 
-            Dim ujHangszer As Integer = Korlatoz(cs.Hangszer, 0, 127)
+            Dim ujHangszer As Integer = Korlatoz(cs.Hangszer, 0, 16383)
             Dim ujHangero As Integer = Korlatoz(cs.Hangero, 0, 127)
             Dim ujTer As Integer = Korlatoz(cs.Ter, -64, 63)
             Dim ujVibrato As Integer = Korlatoz(cs.Vibrato, 0, 127)
@@ -1088,10 +1088,10 @@ Public Class MainForm
 
                 ' 4. lépés: záró, sikeres visszajelzés
                 Dim osszegzes As String = """" & sf2Nev & """ SoundFont fájl adatai sikeresen beolvasva." & vbCrLf &
-                                           eredmeny.Nevek.Count & " hangszer betöltve" &
-                                           If(eredmeny.KihagyottSzam > 0,
-                                              ", " & eredmeny.KihagyottSzam & " magasabb bankban lévő preset kihagyva (GS-támogatás egyelőre nincs).",
-                                              ".")
+                           eredmeny.Nevek.Count & " hangszer betöltve" &
+                           If(eredmeny.KihagyottSzam > 0,
+                              ", " & eredmeny.KihagyottSzam & " érvénytelen bejegyzés kihagyva.",
+                              ".")
 
                 MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill")
 

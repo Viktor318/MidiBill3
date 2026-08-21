@@ -76,7 +76,10 @@ Namespace Modellek
 
         ''' <summary>
         ''' Betölti a hangszerlistát egy "index=Hangszernév" formátumú
-        ''' szöveges fájlból (pl. Adatok/GM.lst). Sikertelen betöltés
+        ''' szöveges fájlból (pl. Adatok/GM.lst). Két index-formátumot
+        ''' ismer fel: sima "program" (bank=0, visszamenőleg kompatibilis a
+        ''' régi listákkal) és "bank.program" (Roland GS/Yamaha XG-stílusú
+        ''' Bank Select-tel elérhető hangszerekhez). Sikertelen betöltés
         ''' (hiányzó/sérült/üres fájl) esetén a JELENLEG AKTÍV lista
         ''' VÁLTOZATLANUL megmarad (nem áll vissza a beépített GM-listára) -
         ''' a hívó felelőssége eldönteni, mit tegyen a sikertelenség esetén
@@ -98,9 +101,11 @@ Namespace Modellek
                     Dim indexResz As String = tisztaSor.Substring(0, elvalaszto).Trim()
                     Dim nevResz As String = tisztaSor.Substring(elvalaszto + 1).Trim()
 
-                    Dim index As Integer
-                    If Integer.TryParse(indexResz, index) AndAlso nevResz.Length > 0 Then
-                        uj(index) = nevResz
+                    Dim kombinaltKulcs As Integer
+                    If Not IndexReszFeldolgozasa(indexResz, kombinaltKulcs) Then Continue For
+
+                    If nevResz.Length > 0 Then
+                        uj(kombinaltKulcs) = nevResz
                     End If
                 Next
 
@@ -114,15 +119,50 @@ Namespace Modellek
         End Function
 
         ''' <summary>
+        ''' Egy .lst sor bal oldalát (az "=" előtti részt) alakítja kombinált
+        ''' kulccsá. Két formátumot ismer fel:
+        ''' - "program" (pl. "40") -> bank=0, kulcs=program (visszamenőleg
+        '''   kompatibilis a régi, sima GM .lst fájlokkal)
+        ''' - "bank.program" (pl. "8.0") -> kulcs = bank*128+program
+        ''' </summary>
+        Private Function IndexReszFeldolgozasa(indexResz As String, ByRef kombinaltKulcs As Integer) As Boolean
+            Dim pontPoz As Integer = indexResz.IndexOf("."c)
+
+            If pontPoz < 0 Then
+                Dim program As Integer
+                If Integer.TryParse(indexResz, program) Then
+                    kombinaltKulcs = program
+                    Return True
+                End If
+                Return False
+            Else
+                Dim bankResz As String = indexResz.Substring(0, pontPoz).Trim()
+                Dim programResz As String = indexResz.Substring(pontPoz + 1).Trim()
+                Dim bank As Integer
+                Dim program As Integer
+                If Integer.TryParse(bankResz, bank) AndAlso Integer.TryParse(programResz, program) Then
+                    kombinaltKulcs = bank * 128 + program
+                    Return True
+                End If
+                Return False
+            End If
+        End Function
+
+        ''' <summary>
         ''' Egy hangszerlistát (index=Név párok) elment egy .lst fájlba -
-        ''' ugyanabban a formátumban, amit a Betolt() beolvas. A
-        ''' SoundFont-importálás használja, hogy a beolvasott presetekből
-        ''' ténylegesen .lst fájlt hozzon létre.
+        ''' ugyanabban a formátumban, amit a Betolt() beolvas. Bank=0
+        ''' kulcsoknál egyszerű "program=Név" sort ír (olvashatóbb,
+        ''' visszamenőleg kompatibilis), bank≠0-nál "bank.program=Név"
+        ''' formát. A SoundFont-importálás használja, hogy a beolvasott
+        ''' presetekből ténylegesen .lst fájlt hozzon létre.
         ''' </summary>
         Public Sub Ment(fajlUtvonal As String, nevek As Dictionary(Of Integer, String))
             Dim sorok As New List(Of String)
             For Each kulcs As Integer In nevek.Keys.OrderBy(Function(k) k)
-                sorok.Add(kulcs & "=" & nevek(kulcs))
+                Dim bank As Integer = kulcs \ 128
+                Dim program As Integer = kulcs Mod 128
+                Dim indexSzoveg As String = If(bank = 0, program.ToString(), bank & "." & program)
+                sorok.Add(indexSzoveg & "=" & nevek(kulcs))
             Next
             IO.File.WriteAllLines(fajlUtvonal, sorok)
         End Sub

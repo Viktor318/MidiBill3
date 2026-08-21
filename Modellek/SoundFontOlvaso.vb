@@ -6,11 +6,9 @@
     ''' alakíthatók legyenek. A tényleges hangminta-adatokat (sdta blokk) NEM
     ''' olvassuk be - csak a metaadatokat, ez gyors feldolgozást tesz
     ''' lehetővé nagy fájloknál is.
-    ''' Jelenleg csak a Bank=0 (General MIDI-kompatibilis) preseteket vesszük
-    ''' figyelembe - a magasabb bankokban (pl. dobkészletek) lévő presetek
-    ''' egyelőre kimaradnak (GS-támogatás híján a program úgysem tudná ezeket
-    ''' helyesen kiválasztani, mert nem küld Bank Select üzenetet), csak a
-    ''' számukat jelentjük vissza.
+    ''' Minden bankból beolvassa a preseteket - a kulcs bank*128+program
+    ''' formában kombinálva (bank=0 esetén ez megegyezik a puszta patch-
+    ''' számmal, visszamenőleg kompatibilis marad a GM-only listákkal).
     ''' </summary>
     Public Module SoundFontOlvaso
 
@@ -80,7 +78,7 @@
             End Using
         End Function
 
-        ''' <summary>A phdr blokk nyers bájtjait alakítja Dictionary-vé (csak Bank=0 presetek), + a kihagyottak száma</summary>
+        ''' <summary>A phdr blokk nyers bájtjait alakítja Dictionary-vé (MINDEN bankból), + az érvénytelen rekordok száma</summary>
         Private Function FeldolgozPhdr(phdrAdat As Byte()) As (Nevek As Dictionary(Of Integer, String), KihagyottSzam As Integer)
             Const REKORD_MERET As Integer = 38
             Dim rekordSzam As Integer = phdrAdat.Length \ REKORD_MERET
@@ -99,8 +97,9 @@
                 Dim program As Integer = BitConverter.ToUInt16(phdrAdat, offset + 20)
                 Dim bank As Integer = BitConverter.ToUInt16(phdrAdat, offset + 22)
 
-                If bank = 0 AndAlso program >= 0 AndAlso program <= 127 AndAlso nev.Length > 0 Then
-                    eredmeny(program) = nev
+                If program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
+                    Dim kombinaltKulcs As Integer = bank * 128 + program
+                    eredmeny(kombinaltKulcs) = nev
                 Else
                     kihagyottSzam += 1
                 End If

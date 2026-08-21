@@ -32,13 +32,18 @@ Public Class HangszerPanel
     ''' <summary>
     ''' Feltölti a cmbHangszer Items listáját és a hangszerKulcsok leképezést
     ''' az aktuális HangszerLista.Nevek alapján, patch-szám szerint rendezve.
+    ''' Bank≠0 hangszereknél a névhez hozzáfűzi a "(B<bank>)" jelzést, hogy
+    ''' egyértelmű legyen, ha egy hangszer nem a sima GM-bankból jön.
     ''' </summary>
     Private Sub HangszerListaItemekFeltoltese()
         cmbHangszer.Items.Clear()
         hangszerKulcsok.Clear()
         For Each kulcs As Integer In HangszerLista.Nevek.Keys.OrderBy(Function(k) k)
             hangszerKulcsok.Add(kulcs)
-            cmbHangszer.Items.Add(HangszerLista.Nevek(kulcs))
+            Dim bank As Integer = kulcs \ 128
+            Dim nev As String = HangszerLista.Nevek(kulcs)
+            Dim megjelenitettNev As String = If(bank = 0, nev, nev & " (B" & bank & ")")
+            cmbHangszer.Items.Add(megjelenitettNev)
         Next
     End Sub
 

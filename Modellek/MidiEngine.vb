@@ -332,8 +332,24 @@ Namespace Modellek
             LenyomottHangokMegszolaltatasa(csatornaSzam)
         End Sub
 
-        Public Sub ProgramValtas(csatornaSzam As Integer, hangszerIndex As Integer)
-            KuldesEgyCsatornara(&HC0 + (csatornaSzam - 1), hangszerIndex, 0)
+        ''' <summary>
+        ''' Hangszerváltás küldése egy csatornára. A kombinaltKulcs egy Bank
+        ''' Select-tel kombinált patch-szám (bank*128+program) - ugyanígy
+        ''' tárolja a HangszerLista/HangszerPanel is. MINDIG elküldi a teljes
+        ''' Bank Select párost (CC0 MSB=0, CC32 LSB=bank) a Program Change
+        ''' előtt, még sima GM (bank=0) hangszernél is - egyszerű, konzisztens
+        ''' kód, és ez teszi lehetővé a General MIDI-n túli, Bank Select-tel
+        ''' elérhető hangszerek (Roland GS, Yamaha XG, egyedi SoundFont-bankok)
+        ''' használatát.
+        ''' </summary>
+        Public Sub ProgramValtas(csatornaSzam As Integer, kombinaltKulcs As Integer)
+            Dim csatornaIndex As Integer = csatornaSzam - 1
+            Dim bank As Integer = kombinaltKulcs \ 128
+            Dim program As Integer = kombinaltKulcs Mod 128
+
+            KuldesEgyCsatornara(&HB0 + csatornaIndex, 0, 0)        ' Bank Select MSB (CC0) - mindig 0
+            KuldesEgyCsatornara(&HB0 + csatornaIndex, 32, bank)    ' Bank Select LSB (CC32) - a tényleges banksz\u00e1m
+            KuldesEgyCsatornara(&HC0 + csatornaIndex, program, 0)  ' Program Change
         End Sub
 
         Public Sub ControllerValtas(csatornaSzam As Integer, controllerSzam As Integer, ertek As Integer)
