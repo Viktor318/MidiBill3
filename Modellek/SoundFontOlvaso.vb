@@ -3,7 +3,8 @@
     ''' <summary>
     ''' SoundFont (.sf2) fájlok "phdr" (Preset Headers) blokkjának beolvasása,
     ''' hogy a benne definiált hangszerek egy .lst, a dobkészlet-presetek
-    ''' (Bank 128) pedig egy .drm formátumú fájllá alakíthatók legyenek. A
+    ''' (Bank 120 - GM2 szabvány, vagy Bank 128 - SoundFont-szerkesztői
+    ''' konvenció) pedig egy .drm formátumú fájllá alakíthatók legyenek. A
     ''' tényleges hangminta-adatokat (sdta blokk) NEM olvassuk be - csak a
     ''' metaadatokat, ez gyors feldolgozást tesz lehetővé nagy fájloknál is.
     ''' A hangszereknél a kulcs bank*128+program formában kombinálva (bank=0
@@ -17,11 +18,14 @@
         ''' Beolvassa egy .sf2 fájl preset-listáját. A visszaadott Nevek
         ''' Dictionary közvetlenül felhasználható .lst fájl generálásához
         ''' (a kulcs bank*128+program formában kombinálva, 0-16383). A
-        ''' Dobok Dictionary a Bank 128-as (SF2-konvenció szerinti
-        ''' dobkészlet) preseteket tartalmazza KÜLÖN, a .drm fájlhoz - ezek
-        ''' sosem küldhetők ki szabványos Bank Select-tel (a 128 túllépi a
-        ''' MIDI 7-bites adatbájt-korlátot), de a 10. csatorna dedikált
-        ''' dobkészlet-listájában közvetlenül felhasználhatók.
+        ''' Dobok Dictionary az ISMERT DOBKÉSZLET-BANKOKBÓL (lásd
+        ''' ismertDobBankok: 120 - GM2 szabvány, 128 - SoundFont-szerkesztői
+        ''' konvenció) származó preseteket tartalmazza KÜLÖN, a .drm fájlhoz
+        ''' - a Bank 128 sosem küldhető ki szabványos Bank Select-tel (túllépi
+        ''' a MIDI 7-bites adatbájt-korlátot), a Bank 120 viszont igen (ez a
+        ''' GM2 szabvány szerinti, ténylegesen elküldhető dobkészlet-bank);
+        ''' mindkettő közvetlenül felhasználható a 10. csatorna dedikált
+        ''' dobkészlet-listájában.
         ''' </summary>
         ''' <exception cref="IO.InvalidDataException">Ha a fájl nem érvényes RIFF/SoundFont formátumú, vagy nincs benne phdr blokk</exception>
         Public Function Beolvas(fajlUtvonal As String) As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
@@ -84,7 +88,18 @@
             End Using
         End Function
 
-        ''' <summary>A phdr blokk nyers bájtjait alakítja két Dictionary-vé (hangszerek + Bank 128-as dobkészletek), + az érvénytelen rekordok listája</summary>
+        ' Ismert "dobkészlet" bank-számok - ezekben a SoundFont ténylegesen
+        ' dobkészlet-preseteket tárol, nem hagyományos hangszereket, ezért a
+        ' .drm fájlba (Dobok) kerülnek, nem a .lst-be (Nevek):
+        ' - 120: GM2 szabvány szerinti dobkészlet-bank (ténylegesen
+        '   elküldhető Bank Select-tel is)
+        ' - 128: SoundFont-szerkesztők (pl. JJazzLab) belső, csak a fájlon
+        '   belüli szervezésre használt konvenciója (sosem küldhető ki
+        '   szabványos Bank Select-tel, mivel túllépi a 7-bites korlátot)
+        Private ReadOnly ismertDobBankok() As Integer = {120, 128}
+
+        ''' <summary>A phdr blokk nyers bájtjait alakítja két Dictionary-vé
+        ''' (hangszerek + ismert dobkészlet-bankokból származó dobkészletek), + az érvénytelen rekordok listája</summary>
         Private Function FeldolgozPhdr(phdrAdat As Byte()) As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
             Const REKORD_MERET As Integer = 38
             Dim rekordSzam As Integer = phdrAdat.Length \ REKORD_MERET
@@ -104,10 +119,10 @@
                 Dim program As Integer = BitConverter.ToUInt16(phdrAdat, offset + 20)
                 Dim bank As Integer = BitConverter.ToUInt16(phdrAdat, offset + 22)
 
-                If program >= 0 AndAlso program <= 127 AndAlso bank = 128 AndAlso nev.Length > 0 Then
-                    ' Bank 128 = dobkészlet-preset (SF2-konvenció) - a .drm fájlhoz
-                    ' gyűjtjük külön, a Program szám itt közvetlenül a dobkészlet-
-                    ' lista kulcsa lesz.
+                If program >= 0 AndAlso program <= 127 AndAlso Array.IndexOf(ismertDobBankok, bank) >= 0 AndAlso nev.Length > 0 Then
+                    ' Ismert dobkészlet-bank (120 vagy 128) - a .drm fájlhoz
+                    ' gyűjtjük külön, a Program szám itt közvetlenül a
+                    ' dobkészlet-lista kulcsa lesz.
                     dobEredmeny(program) = nev
                 ElseIf program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
                     Dim kombinaltKulcs As Integer = bank * 128 + program
