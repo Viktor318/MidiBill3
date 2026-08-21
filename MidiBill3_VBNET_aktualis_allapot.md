@@ -10,6 +10,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ## Alapadatok
 
 - **Verzió**: 1.7.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a mai kör után érdemes lehet léptetni - lásd lent)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -24,6 +25,8 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
   alapértelmezett `True`
 - **Címsor**: `"MIDI billentyűzet megszólaltatása 16 csatornán : <beállítások
   fájlneve>, <hangszerlista fájlneve>"` (`CimSorUjrarajzolas()`)
+- **Névjegy**: 16 csatorna, "a 10. csatorna dedikált dobkészlet-listát
+  használ" szöveggel
 
 ## Projektstruktúra
 
@@ -35,93 +38,113 @@ MidiBill3/                        - EGYETLEN projekt
 ├── ApplicationEvents.vb         - Globális hibanaplózás (HibaNaplo.txt)
 ├── Modellek/
 │   ├── AppInfo.vb               - Verziószám lekérdezés
-│   ├── Beallitasok.vb           - Adatmodell (16 csatorna) + JSON mentés/betöltés
-│   ├── MidiEngine.vb            - MIDI be-/kimenet, fan-out, split pont,
+│   ├── Beallitasok.vb           - Adatmodell (16 CSATORNA, MIND szerkeszthető,
+│   │                               beleértve a 10.-et is) + JSON mentés/betöltés
+│   ├── MidiEngine.vb            - MIDI be-/kimenet, fan-out (16 csatorna,
+│   │                               NINCS letiltott csatorna), split pont,
 │   │                               transzponálás, Bank Select-alapú hangszerváltás
-│   ├── HangszerLista.vb         - Betölthető hangszerlista (Dictionary-alapú,
-│   │                               Betolt()/Ment(), bank.program formátum)
-│   ├── SoundFontOlvaso.vb       - .sf2 fájlok "phdr" blokkjának beolvasása (MINDEN bank)
+│   ├── HangszerLista.vb         - KÉT hangszerlista: Nevek (globális, 15 csatorna)
+│   │                               és DobNevek (dedikált, 10. csatorna) -
+│   │                               Betolt()/BetoltDobKeszletet()/Ment()
+│   ├── SoundFontOlvaso.vb       - .sf2 "phdr" beolvasása: hangszerek (Nevek) ÉS
+│   │                               dobkészlet-presetek (Dobok, Bank 128) külön
 │   └── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
-└── Adatok/                      - Preset fájlok + hangszerlista fájlok (GM.lst,
-                                    Teszt.lst, TesztGS.lst stb.)
+└── Adatok/                      - Preset fájlok + hangszerlista fájlok:
+                                    GM.lst (hangszerek) + GM.drm (dobkészletek,
+                                    PÁROSÍTVA az alapnév alapján), Teszt.lst,
+                                    TesztGS.lst stb.
 ```
 
 ## Elkészült funkciók
 
-**Alapfunkciók**: 16 MIDI csatorna, csatorna-választó, Split Point,
-Globális Transzponálás, csatornánkénti oktáv-transzponálás (±2, azonnali/
-retroaktív hatással), globális Reverb (CC91), pedál-inverzió (passzív
-"mód"-kapcsoló), "Csend legyen!" pánikgomb, "Kilépés"/"Kilépés mentés
-nélkül", MIDI eszközlista frissítés+validálás, olvasható MIDI
-üzenet-kijelzés (max. 10x/mp), hibatűrő MIDI-küldés, robusztus JSON
-hibakezelés. (Részletek: forráskód vagy korábbi fejlesztési történet.)
+**Alapfunkciók**: 16 MIDI csatorna (MIND szerkeszthető - lásd lent),
+csatorna-választó, Split Point, Globális Transzponálás, csatornánkénti
+oktáv-transzponálás (±2, azonnali/retroaktív hatással), globális Reverb
+(CC91), pedál-inverzió (passzív "mód"-kapcsoló), "Csend legyen!"
+pánikgomb, "Kilépés"/"Kilépés mentés nélkül", MIDI eszközlista
+frissítés+validálás, olvasható MIDI üzenet-kijelzés (max. 10x/mp),
+hibatűrő MIDI-küldés, robusztus JSON hibakezelés. (Részletek: forráskód
+vagy korábbi fejlesztési történet.)
 
 **Fájlkezelés**: JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet
 tárolás, régi `.mb3` import, `Kezdet.json` automatikus be-/kimentés.
 
-**Segédprogramok beépítve a főprogramba**: "Segédprogramok" menü két
-menüponttal (Preset fájlok frissítése, Régi .mb3 fájlok konvertálása) -
-a korábbi, önálló `PresetKonvertalo`/`Mb3Konvertalo` konzolos projektek
-megszűntek, funkciójuk beépült a `MainForm`-ba (Multiselect
-`OpenFileDialog`, `Konvertalva` almappa a forrásmappában).
+**Segédprogramok beépítve a főprogramba**: "Segédprogramok" menü (Preset
+fájlok frissítése, Régi .mb3 fájlok konvertálása).
 
-**Betölthető hangszerlisták - GM/egyedi (Bank Select nélkül)**:
-`Dictionary(Of Integer, String)` alapú, `.lst` fájlformátum, "Hangszerlista
-betöltése..." menüpont, `HangszerekErvenyesitese()` robusztus validálás,
-SoundFont (.sf2) importálás, címsorban megjelenő aktuális lista.
-(Részletek: korábbi fejlesztési történet.)
+**Bank Select-alapú kiterjesztett hangszertámogatás (GS/XG-kompatibilis)**:
+`MidiEngine.ProgramValtas()` mindig küld Bank Select (CC0+CC32) + Program
+Change-t, `.lst` formátum `bank.program=Név` szintaktikával, `HangszerPanel`
+`Név (B<bank>)` megjelenítéssel. (Részletek: korábbi fejlesztési történet.)
 
-**Bank Select-alapú kiterjesztett hangszertámogatás (ÚJ, v1.7.0 - Roland GS / Yamaha XG-kompatibilis)**
-- **Fontos terminológiai pontosítás**: ez NEM egy szigorúan Roland
-  GS-specifikus vagy Yamaha XG-specifikus megvalósítás, hanem a **Bank
-  Select (CC0+CC32) + Program Change** device-agnosztikus MIDI-mechanizmus
-  támogatása - ez a MIDI szabvány része, bármely ezt tiszteletben tartó
-  szintetizátorral/SoundFont-lejátszóval (pl. VirtualMIDISynth) működik,
-  függetlenül attól, hogy az adott hangkészlet "hivatalosan" GS-nek vagy
-  XG-nek vallja-e magát
-- **`MidiEngine.ProgramValtas(csatornaSzam, kombinaltKulcs)`**: a
-  kombinált kulcsot (`bank*128+program`) szétbontja, és **MINDIG**
-  elküldi a teljes Bank Select párost (CC0 MSB=0, CC32 LSB=bank) a
-  Program Change előtt - még sima GM (bank=0) hangszernél is,
-  egyszerűség és konzisztencia kedvéért
-  - GS-nél a Bank Select MSB (CC0) mindig 0, csak az LSB (CC32) változik
-  - XG bizonyos speciális kategóriáinál (SFX-hangok) az MSB is eltérhetne
-    0-tól, de ez jelenleg NEM támogatott (nem is releváns, mert a
-    SoundFont `phdr` egyetlen Bank-számot ad, amit közvetlenül az LSB-be
-    küldünk) - ha valaha szükség lenne rá, egy jövőbeli, visszamenőleg
-    kompatibilis bővítés oldaná meg (`msb.lsb.program=Név` formátum)
-- **`HangszerLista.Betolt()`/`Ment()`**: `.lst` formátum bővítve
-  `bank.program=Név` szintaktikával (pl. `"8.0=Variation Piano"`),
-  visszamenőleg kompatibilis a sima `program=Név` formával (bank=0
-  implicit) - `IndexReszFeldolgozasa()` közös segédfüggvény dolgozza fel
-  mindkét formátumot
-- **`BeallitasokAlkalmazasa`**: a `Hangszer` mező tartományellenőrzése
-  `0-127`-ről `0-16383`-ra bővítve (127×128+127 = a legnagyobb lehetséges
-  kombinált kulcs)
-- **`SoundFontOlvaso`**: a korábbi "csak Bank=0" szűrés MEGSZŰNT -
-  mostantól minden bankból beolvassa a preseteket; a `KihagyottSzam`
-  jelentése megváltozott (most csak a ténylegesen érvénytelen/sérült
-  rekordokat számolja, nem a magasabb bankokat)
-- **`HangszerPanel`**: a legördülő listában a Bank≠0 hangszerek `Név
-  (B<bank>)` formában jelennek meg (pl. `"Variation Piano (B8)"`), a
-  Bank=0 hangszerek változatlanul, jelzés nélkül - a lista automatikusan
-  a kombinált kulcs szerint rendezve, ami bankonként csoportosítva
-  mutatja a hangszereket görgetéskor
-- **Miért volt (majdnem) ingyen**: a korábbi, ritkás listákra felkészített
-  architektúra (`HangszerPanel.Hangszer` VALÓDI patch-számmal, nem
-  pozícióval dolgozik; `csatornaAllapotok` tetszőleges egész számot
-  kezel) már eleve készen állt erre a bővítésre - a `MainForm.vb`-hez
-  gyakorlatilag NEM kellett hozzányúlni
-- **Nincs egyetlen "hivatalos" GS-lista beépítve** (`GS.lst`) - a Roland
-  GS-lista generációnként bővült (SC-55 → SC-88 → SC-8850), nincs
-  egyetlen végleges verzió, ezért a **saját SoundFont-importálás** a
-  javasolt, megbízható út egy adott GS/XG-kompatibilis hangkészlethez -
-  ez pontosan azt adja vissza, amit a felhasználó szintetizátora
-  ténylegesen támogat
-- `TesztGS.lst`: teszt-fájl a `bank.program` formátum ellenőrzéséhez
-  (kevert bank=0 és bank≠0 bejegyzésekkel)
-- **Élesben tesztelve** a felhasználó saját, valódi GS-kompatibilis
-  SoundFont-jával - működik
+**10. csatorna feloldása + dedikált dobkészlet-hangszerlista (ÚJ, ez a kör)**
+
+*Miért volt letiltva, és miért oldottuk fel:*
+- A 10. csatorna letiltása **saját, szoftveres döntés** volt, NEM MIDI-
+  protokoll-korlát - egy GM2-kompatibilis szintetizátor a 10. csatornán
+  érkező Program Change-et dobkészlet-**variációként** értelmezi
+- A felhasználó feloldást kért, hogy a jövőben (KÜLÖN, KÉSŐBBI lépésben)
+  metronóm-funkcióra is használhassa a csatornát (konkrét ütős
+  hangokkal, pl. Claves/Side Stick - ez MÉG NINCS megvalósítva)
+
+*"Csatornánkénti hangszerlista" architektúra:*
+- `HangszerLista.DobNevek`: ÖNÁLLÓ Dictionary a 10. csatornához, a
+  `Nevek`-től (a másik 15 csatorna listája) FÜGGETLENÜL
+- `HangszerPanel.HangszerListaForrasBeallitasa(lista)`: a panel mostantól
+  tetszőleges Dictionary-t elfogadhat forrásként (`Nothing` = globális
+  `Nevek`, egyébként a megadott dedikált lista) - `MainForm.
+  CsatornaPanelekFrissitese` ez alapján dönt csatornánként
+- A 10. csatorna MOST MÁR: aktiválható, hangszerválasztható (a
+  dobkészlet-listából), Split zóna (Alul/Felül) és Oktáv is működik,
+  MENTÉS/BETÖLTÉS a normál úton (a korábbi "sosem mentjük/töltjük ezt a
+  csatornát" védőblokkok MIND törölve `BeallitasokAlkalmazasa`-ból és
+  `AktualisBeallitasokOsszegyujtese`-ből)
+- `HangszerekErvenyesitese`: csatornánként a MEGFELELŐ listát ellenőrzi
+  (10.-nél `DobNevek`, egyébként `Nevek`)
+
+*Fájlformátum és -párosítás (`.lst` + `.drm`):*
+- **Ugyanaz** a szöveges `index=Név` formátum, csak `.drm` kiterjesztéssel
+- **Alapértelmezett**: `Adatok/GM.lst` (hangszerek) + `Adatok/GM.drm`
+  (dobkészletek) - induláskor mindkettő betöltődik (`HangszerListaBetoltese`)
+- **Párosítás elve**: a `.drm` fájlnév mindig az AKTÍV `.lst` fájl
+  ALAPNEVÉBŐL származik (`GetFileNameWithoutExtension(lst) & ".drm"`) -
+  amikor egy másik `.lst`-et töltesz be, a program AUTOMATIKUSAN,
+  CSENDBEN megpróbálja betölteni a párosított `.drm`-et is
+  (`HangszerListaAlkalmazasa`); ha nincs ilyen, a JELENLEGI dob-lista
+  változatlanul marad (nem hiba, nincs figyelmeztetés)
+- **Nincs** külön `Beallitasok.DobListaFajl` mező - a dob-lista fájlneve
+  NEM kerül külön mentésre a presetbe, mindig a `.lst`-ből származtatva
+  töltődik újra
+- Egy jól dokumentált, GM2-stílusú alap `GM.drm` készült (Standard/Room/
+  Power/Electronic/Analog/Jazz/Brush/Orchestra/SFX Kit, program-számok:
+  0,8,16,24,25,32,40,48,56) - a felhasználó saját szintetizátorán a
+  pontos számozás eltérhet, a fájl szabadon szerkeszthető
+
+*SoundFont-import bővítése:*
+- `SoundFontOlvaso.Beolvas()`/`FeldolgozPhdr()`: HÁROMFELÉ bontja a
+  presetket: `Nevek` (Bank 0-127, hangszerek), `Dobok` (KIZÁRÓLAG Bank
+  128, a Program szám a kulcs), `Kihagyottak` (ténylegesen érvénytelen
+  rekordok - üres név, Program>127, Bank>128)
+  - **FONTOS**: a Bank 128 korábban "érvénytelenként" el lett dobva -
+    most FELISMERT, hasznos kategória (SF2-konvenció a dobkészletekhez)
+- SoundFont-importáláskor MOST MÁR KÉT fájl jön létre egyszerre, azonos
+  alapnévvel: pl. `Teszt.sf2` → `Teszt.lst` (hangszerek) + `Teszt.drm`
+  (dobkészletek, ha voltak Bank 128-as presetek a fájlban) - mindkettő
+  automatikusan alkalmazódik a `HangszerListaAlkalmazasa` párosítási
+  mechanizmusán keresztül
+  - Élesben tesztelve a felhasználó saját, valódi SoundFont-jával
+    (`JJazzLab-SoundFont.sf2`): 193 hangszer + a korábban "15 érvénytelen
+    bejegyzésként" jelzett Bank 128-as dobkészlet-presetek most már
+    helyesen a `.drm`-be kerülnek
+
+*HIBAJAVÍTÁS a feloldás során:*
+- **Csatorna-felirat duplikáció**: a `"N. csatorna (dob)"` felirat
+  összeállítása KÉT helyen volt megírva (`CsatornaPanelekFrissitese` ÉS
+  `HangszerPanel_AktivValtozott`) - az egyikből hiányzott a `"(dob)"`
+  jelzés, ami a checkbox KÖZVETLEN kattintásakor (nem csoportváltáskor/
+  betöltéskor) eltüntette a jelölést. Javítva egy közös
+  `CsatornaFelirat(csatornaIndex, aktiv)` segédfüggvénnyel, amit mindkét
+  hely hív - nincs többé duplikált logika
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -130,15 +153,17 @@ SoundFont (.sf2) importálás, címsorban megjelenő aktuális lista.
 - Panic gomb pufferelés szándékosan nincs
 - ComboBox-ok explicit elvesztik a fókuszt kiválasztás után
 - RadioButton a csatorna-választóhoz (natív kizárás)
-- Verziószám közvetlenül a `MidiBill3.vbproj`-ban (egy projekt van)
+- Verziószám közvetlenül a `MidiBill3.vbproj`-ban
 - **Kódmódosításoknál a meglévő kommenteket MINDIG meg kell tartani**
   (explicit felhasználói elvárás, memóriában rögzítve)
 - Hangszerlista fájlformátum: `index=Név` vagy `bank.program=Név`
   szöveges fájl (nem JSON/XML)
-- Bank Select mindig MSB=0 (nincs teljes MSB+LSB rugalmasság - jövőbeli,
-  opcionális bővítés, ha valaha szükség lenne rá)
-- Bank Select mindig elküldve, még bank=0-nál is (egyszerűség, nem
-  feltételes logika)
+- Bank Select mindig MSB=0, mindig elküldve (még bank=0-nál is)
+- **`.lst`/`.drm` párosítás fájlnév-alapú, nem preset-be mentett mező** -
+  egyszerűbb, kevesebb állapot karbantartása
+- A 10. csatorna dobkészlet-listája NEM cserélhető külön menüből (nincs
+  "Dobkészlet betöltése..." menüpont) - csak a `.lst`-tel párosítva
+  vagy SoundFont-importtal frissül
 
 ## Globális hibanaplózás
 
@@ -147,31 +172,34 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 
 ## Következő lépések / nyitott témák
 
-1. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta, mint a Reverb.
+1. **Metronóm-funkció** - a 10. csatorna feloldásának egyik indoka volt;
+   konkrét ütős hangok (pl. Claves, Side Stick - fix GM percussion
+   billentyű-kiosztás) Note On üzenetként való kiküldése, FÜGGETLENÜL a
+   dobkészlet-választástól. MÉG NINCS megtervezve/megvalósítva
+
+2. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta, mint a Reverb.
    Még nincs megvalósítva
 
-2. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
+3. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
    a NYERS BEMENETET vesszük fel (pedál-inverzió UTÁN, split pont/
    transzponálás/csatorna-szétosztás ELŐTT), visszajátszáskor újra
    végigmegy a `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve
 
-3. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
+4. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
 
-4. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
+5. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
    átbeszélve, eddig nem volt probléma, nem sürgős
 
-5. Végigtesztelési checklist még nincs összeállítva
+6. Végigtesztelési checklist még nincs összeállítva
 
-6. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
+7. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
    elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
    fizikai MIDI billentyűzet a Windows gépnél marad
 
-7. **Lehetséges jövőbeli finomítás (nem sürgős)**: "Bank váltó" külön UI
-   (a jelenlegi "lapos", egy legördülős megoldás helyett/mellett), ha
-   nagy, sok-bankos GS/XG-listáknál a görgetés kényelmetlenné válna a
-   gyakorlatban - egyelőre az egyszerű, "Név (B<bank>)" jelzéses lapos
-   lista elegendőnek bizonyult
-
-8. **Lehetséges jövőbeli finomítás (nem sürgős)**: teljes Bank Select
-   MSB+LSB rugalmasság (`msb.lsb.program=Név` formátum), ha valaha
-   szükség lenne rá olyan XG-hangkészleteknél, ahol az MSB is eltér 0-tól
+8. **Bizonytalanság, tesztelésre vár**: a 10. csatornán a Bank Select +
+   Program Change küldési mechanizmus (ugyanaz, mint a többi
+   csatornánál) NEM garantáltan azonos módon viselkedik minden
+   szintetizátoron a dobkészlet-választásnál (némely eszköz esetleg
+   Bank Select nélkül, csak sima Program Change-t várna a 10.
+   csatornán) - a felhasználó saját GS SoundFont-jával tesztelte,
+   eredmény még nincs visszajelezve ebben a beszélgetésben
