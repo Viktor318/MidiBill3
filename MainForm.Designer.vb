@@ -75,6 +75,8 @@ Partial Class MainForm
         dlgSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
+        mnuBeallitasok = New ToolStripMenuItem()
+        mnuAlaphelyzetbeAllitas = New ToolStripMenuItem()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -90,7 +92,7 @@ Partial Class MainForm
         ' menuStrip1
         ' 
         menuStrip1.ImageScalingSize = New Size(20, 20)
-        menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl, mnuSegedprogramok, SúgóToolStripMenuItem})
+        menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl, mnuBeallitasok, mnuSegedprogramok, SúgóToolStripMenuItem})
         menuStrip1.Location = New Point(0, 0)
         menuStrip1.Name = "menuStrip1"
         menuStrip1.Size = New Size(942, 30)
@@ -261,7 +263,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
         btnReset.Location = New Point(640, 709)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
@@ -271,7 +273,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
         btnKilepes.Location = New Point(785, 709)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
@@ -281,7 +283,7 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Font = New Font("Segoe UI", 9.0F)
+        lblMidiUzenet.Font = New Font("Segoe UI", 9F)
         lblMidiUzenet.Location = New Point(331, 803)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(280, 25)
@@ -494,9 +496,22 @@ Partial Class MainForm
         dlgMb3Konvertalas.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
         dlgMb3Konvertalas.Multiselect = True
         ' 
+        ' mnuBeallitasok
+        ' 
+        mnuBeallitasok.DropDownItems.AddRange(New ToolStripItem() {mnuAlaphelyzetbeAllitas})
+        mnuBeallitasok.Name = "mnuBeallitasok"
+        mnuBeallitasok.Size = New Size(95, 26)
+        mnuBeallitasok.Text = "&Beállítások"
+        ' 
+        ' mnuAlaphelyzetbeAllitas
+        ' 
+        mnuAlaphelyzetbeAllitas.Name = "mnuAlaphelyzetbeAllitas"
+        mnuAlaphelyzetbeAllitas.Size = New Size(230, 26)
+        mnuAlaphelyzetbeAllitas.Text = "&Alaphelyzetbe állítás"
+        ' 
         ' MainForm
         ' 
-        AutoScaleDimensions = New SizeF(120.0F, 120.0F)
+        AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(942, 866)
         Controls.Add(grpReverb)
@@ -586,5 +601,7 @@ Partial Class MainForm
     Friend WithEvents mnuMb3FajlokKonvertalasa As ToolStripMenuItem
     Friend WithEvents dlgPresetKonvertalas As OpenFileDialog
     Friend WithEvents dlgMb3Konvertalas As OpenFileDialog
+    Friend WithEvents mnuBeallitasok As ToolStripMenuItem
+    Friend WithEvents mnuAlaphelyzetbeAllitas As ToolStripMenuItem
 
 End Class

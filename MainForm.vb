@@ -1206,4 +1206,46 @@ Public Class MainForm
         End If
     End Sub
 
+    Private Sub mnuAlaphelyzetbeAllitas_Click(sender As Object, e As EventArgs) Handles mnuAlaphelyzetbeAllitas.Click
+        Dim valasz As MsgBoxResult = MsgBox("Minden jelenlegi beállítás törlődni fog! Folytatja?",
+                                             MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")
+        If valasz = MsgBoxResult.No Then Return
+
+        AlaphelyzetbeAllitas()
+    End Sub
+
+    ''' <summary>
+    ''' Minden beállítást alaphelyzetbe állít - PONTOSAN úgy, mintha a program
+    ''' a Kezdet.json beolvasása NÉLKÜL indulna: a hangszerlista visszaáll
+    ''' GM.lst/GM.drm-re, a csatornák/Split pont/Transzponálás/Reverb/Pedál a
+    ''' beépített alapértékekre. A MIDI In/Out kiválasztás SZÁNDÉKOSAN
+    ''' változatlan marad (ez nem "beállítás" a felhasználó szemszögéből,
+    ''' hanem eszközkapcsolat). NEM törli a Kezdet.json fájlt a lemezről -
+    ''' normál kilépéskor a mostani (alaphelyzetbe állított) állapot
+    ''' felülírja majd, ha a felhasználó nem a "Kilépés mentés nélkül"
+    ''' opciót választja.
+    ''' </summary>
+    Private Sub AlaphelyzetbeAllitas()
+        HangszerListaBetoltese()
+
+        CsatornaAllapotokInicializalasa()
+
+        trkAlapHangero.Value = 70
+
+        splitTanulasAktiv = False
+        lblSplitInfo.Text = ""
+        cmbSplitPont.SelectedIndex = 60
+
+        TranszponalasFrissites(0)
+
+        trkReverb.Value = 0
+
+        chkPedal.Checked = False
+
+        CsatornaPanelekFrissitese()
+        OsszesCsatornaUjrakuldese()
+
+        CimsorFrissitese(kezdetFile)
+    End Sub
+
 End Class
