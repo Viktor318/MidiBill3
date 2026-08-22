@@ -9,8 +9,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.7.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
-  (érdemes lehet léptetni, ha még nem tetted meg a legutóbbi funkciók után)
+- **Verzió**: 1.8.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -93,7 +92,7 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   bővíthető tömb-architektúra miatt mindegyik csak **egysoros**
   módosítás volt
 
-**"Alaphelyzetbe állítás" menüpont (ÚJ, ez a kör)**
+**"Alaphelyzetbe állítás" menüpont**
 - Új top-level **"Beállítások"** menü a Fájl után, benne az
   **"Alaphelyzetbe állítás"** menüponttal
 - Megerősítő kérdés: *"Minden jelenlegi beállítás törlődni fog!
