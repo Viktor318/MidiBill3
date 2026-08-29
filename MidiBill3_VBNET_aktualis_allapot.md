@@ -21,7 +21,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 - **Alkalmazásikon**: `MidiBill3.ico`, beállítva projekt- és Form-szinten is
 - **Ablak**: `AutoScaleMode.Dpi` + `ApplicationHighDpiMode = PerMonitorV2`,
   `FormBorderStyle = FixedSingle`, `MaximizeBox = False`, `MinimizeBox`
-  alapértelmezett `True`, `ClientSize = 942 x 974`
+  alapértelmezett `True`, `ClientSize = 958 x 974`
 - **Címsor**: `"MIDI billentyűzet megszólaltatása 16 csatornán : <beállítások
   fájlneve>, <hangszerlista fájlneve>"` (`CimSorUjrarajzolas()`)
 - **README**: kétnyelvű - `README.md` (magyar, alapértelmezett) +
@@ -125,16 +125,25 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   mentés/betöltés/tartomány-validáció (`Korlatoz(cs.Chorus, 0, 127)`,
   bekapcsolva az `ertekKorrigalva` figyelmeztető rendszerbe),
   `OsszesCsatornaUjrakuldese`-be is bekötve
-- A fejlesztést és a form-elrendezés-módosítást **a felhasználó saját
-  maga végezte**, önállóan, a korábban megbeszélt minták alapján
 - `HangszerPanel` magassága 378, keret 408 (a Chorus sor beillesztése
   miatt nőtt); teljes form-elrendezés konzisztensen igazítva
-  (`ClientSize = 942 x 974`)
 - **Design-frissítés**: a jobb oldali sáv átrendezve - a Reverb doboz
   feljebb került, közvetlenül az Alap hangerő mellé; a Transzponálás
   doboz és a Csend legyen!/Kilépés gombok között **szándékosan** nagy
   (~120 px) üres hely maradt - ez **tudatos, előkészített hely egy
   jövőbeli funkcióhoz**, NEM hiba, ne kelljen legközelebb "kijavítani"
+- **Ablakszélesség-igazítás**: a második hangszerpanel és a jobb oldali
+  vezérlő-oszlop jobbra tolva (a bal margó változatlan maradt), a form
+  szélessége 942-ről 958 pixelre nőtt - közel négyzetes (958 x 974)
+  arány, szimmetrikusabb elrendezés a magasabbá vált panelek mellett
+- **Alap hangerő / Reverb feliratok**: az "Alap hangerő" felirat is
+  kiírja a százalékjelet (`"Alap hangerő: 70%"`), a "Reverb" felirat
+  pedig "Visszhang"-ra cserélve mindhárom előfordulási helyén
+- **Split pont visszajelzés bővítve**: a `"Beállítva: <hangnév>"`
+  üzenet eddig csak a "Tanulás" gombbal történő split pont
+  beállításnál jelent meg a `lblSplitInfo` címkén - mostantól a
+  `cmbSplitPont` legördülőből történő közvetlen kiválasztás is
+  ugyanezt az üzenetet írja ki
 
 ## Ismert, tudatosan meghozott döntések
 
