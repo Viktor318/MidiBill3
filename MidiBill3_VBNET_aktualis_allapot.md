@@ -9,7 +9,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.8.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.9.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -21,7 +21,7 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 - **Alkalmazásikon**: `MidiBill3.ico`, beállítva projekt- és Form-szinten is
 - **Ablak**: `AutoScaleMode.Dpi` + `ApplicationHighDpiMode = PerMonitorV2`,
   `FormBorderStyle = FixedSingle`, `MaximizeBox = False`, `MinimizeBox`
-  alapértelmezett `True`
+  alapértelmezett `True`, `ClientSize = 942 x 974`
 - **Címsor**: `"MIDI billentyűzet megszólaltatása 16 csatornán : <beállítások
   fájlneve>, <hangszerlista fájlneve>"` (`CimSorUjrarajzolas()`)
 - **README**: kétnyelvű - `README.md` (magyar, alapértelmezett) +
@@ -34,6 +34,8 @@ MidiBill3/                        - EGYETLEN projekt
 ├── MainForm.vb / .Designer.vb   - Fő ablak
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
 │                                   példány, a kiválasztott csatornacsoportot mutatja
+│                                   (magasság 378, keret 408 - Her/Tér/Vib/Chorus/
+│                                   Oktáv csúszkák + Aktív/Alul/Felül checkbox-ok)
 ├── ApplicationEvents.vb         - Globális hibanaplózás (HibaNaplo.txt)
 ├── Modellek/
 │   ├── AppInfo.vb               - Verziószám lekérdezés
@@ -116,6 +118,24 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   `OsszesCsatornaUjrakuldese`, `CimsorFrissitese`) - nincs új, önálló
   logika, `AlaphelyzetbeAllitas()` metódus csak összefűzi ezeket
 
+**Csatornánkénti Chorus (ÚJ, v1.9.0)**
+- Új csúszka a `HangszerPanel`-en (0-127, MIDI **CC93**) - pontosan az
+  Oktáv-csúszka bevált mintáját követve: `CsatornaBeallitas.Chorus`
+  mező, `HangszerPanel.Chorus` property + `ChorusValtozott` esemény,
+  mentés/betöltés/tartomány-validáció (`Korlatoz(cs.Chorus, 0, 127)`,
+  bekapcsolva az `ertekKorrigalva` figyelmeztető rendszerbe),
+  `OsszesCsatornaUjrakuldese`-be is bekötve
+- A fejlesztést és a form-elrendezés-módosítást **a felhasználó saját
+  maga végezte**, önállóan, a korábban megbeszélt minták alapján
+- `HangszerPanel` magassága 378, keret 408 (a Chorus sor beillesztése
+  miatt nőtt); teljes form-elrendezés konzisztensen igazítva
+  (`ClientSize = 942 x 974`)
+- **Design-frissítés**: a jobb oldali sáv átrendezve - a Reverb doboz
+  feljebb került, közvetlenül az Alap hangerő mellé; a Transzponálás
+  doboz és a Csend legyen!/Kilépés gombok között **szándékosan** nagy
+  (~120 px) üres hely maradt - ez **tudatos, előkészített hely egy
+  jövőbeli funkcióhoz**, NEM hiba, ne kelljen legközelebb "kijavítani"
+
 ## Ismert, tudatosan meghozott döntések
 
 - Hangnevek nemzetközi konvencióval (C, C#, D...)
@@ -136,6 +156,8 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   találkozunk
 - "Alaphelyzetbe állítás" a MIDI In/Out kiválasztást SZÁNDÉKOSAN nem
   érinti
+- A jobb oldali sáv Transzponálás és a gombok közti üres helye
+  SZÁNDÉKOS, egy jövőbeli funkciónak fenntartva
 
 ## Globális hibanaplózás
 
@@ -157,21 +179,18 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
    billentyű-kiosztás) Note On üzenetként való kiküldése, FÜGGETLENÜL a
    dobkészlet-választástól. MÉG NINCS megtervezve/megvalósítva
 
-4. **Chorus (CC93)** - elvi terv kész, ugyanaz a minta, mint a Reverb.
-   Még nincs megvalósítva
-
-5. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
+4. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
    a NYERS BEMENETET vesszük fel, visszajátszáskor újra végigmegy a
    `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve
 
-6. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
+5. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
 
-7. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
+6. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
    átbeszélve, eddig nem volt probléma, nem sürgős
 
-8. Végigtesztelési checklist még nincs összeállítva
+7. Végigtesztelési checklist még nincs összeállítva
 
-9. **Többnyelvű GUI (magyar + angol, később bővíthető)** - ELHALASZTVA,
+8. **Többnyelvű GUI (magyar + angol, később bővíthető)** - ELHALASZTVA,
    jelenleg nem sürgős, mivel egyelőre csak a felhasználó saját maga
    használja a programot, neki tökéletesen megfelel a magyar felület.
    A fejlesztés (kódkommentek, változónevek) továbbra is magyarul
@@ -199,11 +218,11 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
      külön kellene tárolni (pl. saját kis fájl vagy `My.Settings`),
      hogy se preset-váltás, se "Alaphelyzetbe állítás" ne érintse
 
-10. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
-    elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
-    fizikai MIDI billentyűzet a Windows gépnél marad
+9. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
+   elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
+   fizikai MIDI billentyűzet a Windows gépnél marad
 
-11. **Elméleti téma, lezárva**: Claude Desktop Cowork mód - a
+10. **Elméleti téma, lezárva**: Claude Desktop Cowork mód - a
     felhasználó megpróbálta, de az adott beszélgetésben nem volt
     elérhető a váltás, ezért a hagyományos (fájl-beillesztős)
     munkamódszernél maradtunk

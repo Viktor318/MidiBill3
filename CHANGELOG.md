@@ -16,6 +16,29 @@ _(még nincs bejegyzés - ide kerülnek majd a következő verzió változásai)
 
 ---
 
+## [1.9.0] - 2026-08-29
+
+### Hozzáadva
+- **Csatornánkénti Chorus** (MIDI CC93): a Vibratóhoz hasonlóan minden
+  csatornán önállóan állítható, új `Chorus` property a
+  `CsatornaBeallitas`-on (alapértelmezett 0, visszamenőleg kompatibilis
+  a régi presetekkel), új csúszka és értékkijelző a `HangszerPanel`-en,
+  teljes MIDI-küldés/mentés/betöltés/alaphelyzetbe állítás integráció
+  (a `CHORUS = 93` konstanssal a `MainForm`-ban)
+- A `HangszerPanel` és a hangszer-keretek magassága a Chorus-csúszka
+  helyének megfelelően nőtt, a lentebbi vezérlők (csatornaválasztó,
+  MIDI-üzenet kijelző, pedál-jelölő, Csend legyen!/Kilépés gombok)
+  ennek megfelelően lejjebb kerültek
+
+### Javítva
+- Az "Alap hangerő" felirat mostantól a Reverbhez hasonlóan kiírja a
+  százalékjelet is (pl. `"Alap hangerő: 70%"`)
+- A "Reverb" felirat magyar "Visszhang"-ra cserélve mindhárom
+  előfordulási helyén (csúszka-változás, beállítások alkalmazása,
+  kezdeti Designer-szöveg)
+
+---
+
 ## [1.8.0] - 2026-08-22
 
 ### Hozzáadva
