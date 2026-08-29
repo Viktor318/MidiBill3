@@ -95,7 +95,7 @@ Partial Class MainForm
         menuStrip1.Items.AddRange(New ToolStripItem() {mnuFajl, mnuBeallitasok, mnuSegedprogramok, SúgóToolStripMenuItem})
         menuStrip1.Location = New Point(0, 0)
         menuStrip1.Name = "menuStrip1"
-        menuStrip1.Size = New Size(942, 30)
+        menuStrip1.Size = New Size(958, 30)
         menuStrip1.TabIndex = 0
         menuStrip1.Text = "MenuStrip1"
         ' 
@@ -210,7 +210,7 @@ Partial Class MainForm
         ' 
         ' chkPedal
         ' 
-        chkPedal.Location = New Point(640, 912)
+        chkPedal.Location = New Point(656, 912)
         chkPedal.Name = "chkPedal"
         chkPedal.Size = New Size(220, 25)
         chkPedal.TabIndex = 1
@@ -220,7 +220,7 @@ Partial Class MainForm
         ' grpVolume
         ' 
         grpVolume.Controls.Add(trkAlapHangero)
-        grpVolume.Location = New Point(640, 53)
+        grpVolume.Location = New Point(656, 53)
         grpVolume.Name = "grpVolume"
         grpVolume.Size = New Size(277, 85)
         grpVolume.TabIndex = 2
@@ -241,7 +241,7 @@ Partial Class MainForm
         ' grpMidiIn
         ' 
         grpMidiIn.Controls.Add(cmbMidiIn)
-        grpMidiIn.Location = New Point(640, 233)
+        grpMidiIn.Location = New Point(656, 233)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
         grpMidiIn.TabIndex = 3
@@ -259,7 +259,7 @@ Partial Class MainForm
         ' grpMidiOut
         ' 
         grpMidiOut.Controls.Add(cmbMidiOut)
-        grpMidiOut.Location = New Point(640, 323)
+        grpMidiOut.Location = New Point(656, 323)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
         grpMidiOut.TabIndex = 4
@@ -276,8 +276,8 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
-        btnReset.Location = New Point(640, 817)
+        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Location = New Point(656, 817)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
         btnReset.TabIndex = 5
@@ -286,8 +286,8 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
-        btnKilepes.Location = New Point(785, 817)
+        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+        btnKilepes.Location = New Point(801, 817)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
         btnKilepes.TabIndex = 6
@@ -296,8 +296,8 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Font = New Font("Segoe UI", 9F)
-        lblMidiUzenet.Location = New Point(331, 912)
+        lblMidiUzenet.Font = New Font("Segoe UI", 9.0F)
+        lblMidiUzenet.Location = New Point(337, 912)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(280, 25)
         lblMidiUzenet.TabIndex = 7
@@ -321,7 +321,7 @@ Partial Class MainForm
         grpSplit.Controls.Add(btnSplitTanulas)
         grpSplit.Controls.Add(cmbSplitPont)
         grpSplit.Controls.Add(lblSplitCim)
-        grpSplit.Location = New Point(640, 469)
+        grpSplit.Location = New Point(656, 469)
         grpSplit.Name = "grpSplit"
         grpSplit.Size = New Size(277, 110)
         grpSplit.TabIndex = 8
@@ -368,7 +368,7 @@ Partial Class MainForm
         grpTranspose.Controls.Add(btnOktavFel)
         grpTranspose.Controls.Add(btnFelhangLe)
         grpTranspose.Controls.Add(btnFelhangFel)
-        grpTranspose.Location = New Point(640, 584)
+        grpTranspose.Location = New Point(656, 584)
         grpTranspose.Name = "grpTranspose"
         grpTranspose.Size = New Size(277, 112)
         grpTranspose.TabIndex = 9
@@ -464,7 +464,7 @@ Partial Class MainForm
         ' 
         ' btnMidiFrissites
         ' 
-        btnMidiFrissites.Location = New Point(640, 411)
+        btnMidiFrissites.Location = New Point(656, 411)
         btnMidiFrissites.Name = "btnMidiFrissites"
         btnMidiFrissites.Size = New Size(277, 50)
         btnMidiFrissites.TabIndex = 14
@@ -474,7 +474,7 @@ Partial Class MainForm
         ' grpReverb
         ' 
         grpReverb.Controls.Add(trkReverb)
-        grpReverb.Location = New Point(640, 143)
+        grpReverb.Location = New Point(656, 143)
         grpReverb.Name = "grpReverb"
         grpReverb.Size = New Size(277, 85)
         grpReverb.TabIndex = 15
@@ -513,7 +513,7 @@ Partial Class MainForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
-        ClientSize = New Size(942, 974)
+        ClientSize = New Size(958, 974)
         Controls.Add(grpReverb)
         Controls.Add(btnMidiFrissites)
         Controls.Add(grpCsatornaValaszto)

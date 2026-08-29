@@ -82,7 +82,7 @@ Public Class MainForm
 
     ''' <summary>A 4 fizikai HangszerPanel és keret létrehozása - a végleges elrendezéshez igazítva</summary>
     Private Sub HangszerPanelekLetrehozasa()
-        Dim xKoordinatak() As Integer = {25, 331}
+        Dim xKoordinatak() As Integer = {25, 337}
         Dim yKoordinatak() As Integer = {53, 469}
 
         For i As Integer = 0 To 3
@@ -545,6 +545,7 @@ Public Class MainForm
         aktualisSplitPont = cmbSplitPont.SelectedIndex
         midiMotor.SplitPont = aktualisSplitPont
         grpSplit.Text = "Split pont: " & Hangnevek.HangNev(aktualisSplitPont)
+        lblSplitInfo.Text = "Beállítva: " & Hangnevek.HangNev(aktualisSplitPont)
 
         ActiveControl = Nothing
     End Sub
