@@ -26,13 +26,16 @@ Partial Class HangszerPanel
         trkHangero = New TrackBar()
         trkTer = New TrackBar()
         trkVibrato = New TrackBar()
+        trkChorus = New TrackBar()
         lblHer = New Label()
         lblTer = New Label()
         lblVib = New Label()
+        lblChorus = New Label()
         chkAktiv = New CheckBox()
         lblHerErtek = New Label()
         lblTerErtek = New Label()
         lblVibErtek = New Label()
+        lblChorusErtek = New Label()
         chkAlul = New CheckBox()
         chkFelul = New CheckBox()
         trkOktav = New TrackBar()
@@ -41,6 +44,7 @@ Partial Class HangszerPanel
         CType(trkHangero, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkTer, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkVibrato, ComponentModel.ISupportInitialize).BeginInit()
+        CType(trkChorus, ComponentModel.ISupportInitialize).BeginInit()
         CType(trkOktav, ComponentModel.ISupportInitialize).BeginInit()
         SuspendLayout()
         ' 
@@ -84,6 +88,16 @@ Partial Class HangszerPanel
         trkVibrato.TabIndex = 3
         trkVibrato.TickFrequency = 16
         ' 
+        ' trkChorus
+        ' 
+        trkChorus.AutoSize = False
+        trkChorus.Location = New Point(48, 216)
+        trkChorus.Maximum = 127
+        trkChorus.Name = "trkChorus"
+        trkChorus.Size = New Size(218, 50)
+        trkChorus.TabIndex = 16
+        trkChorus.TickFrequency = 16
+        ' 
         ' lblHer
         ' 
         lblHer.Location = New Point(12, 54)
@@ -111,9 +125,18 @@ Partial Class HangszerPanel
         lblVib.Text = "Vib"
         lblVib.TextAlign = ContentAlignment.MiddleCenter
         ' 
+        ' lblChorus
+        ' 
+        lblChorus.Location = New Point(12, 216)
+        lblChorus.Name = "lblChorus"
+        lblChorus.Size = New Size(38, 25)
+        lblChorus.TabIndex = 17
+        lblChorus.Text = "Kór"
+        lblChorus.TextAlign = ContentAlignment.MiddleCenter
+        ' 
         ' chkAktiv
         ' 
-        chkAktiv.Location = New Point(24, 276)
+        chkAktiv.Location = New Point(24, 330)
         chkAktiv.Name = "chkAktiv"
         chkAktiv.Size = New Size(70, 24)
         chkAktiv.TabIndex = 7
@@ -147,9 +170,18 @@ Partial Class HangszerPanel
         lblVibErtek.Text = "0"
         lblVibErtek.TextAlign = ContentAlignment.TopCenter
         ' 
+        ' lblChorusErtek
+        ' 
+        lblChorusErtek.Location = New Point(12, 241)
+        lblChorusErtek.Name = "lblChorusErtek"
+        lblChorusErtek.Size = New Size(38, 25)
+        lblChorusErtek.TabIndex = 18
+        lblChorusErtek.Text = "0"
+        lblChorusErtek.TextAlign = ContentAlignment.TopCenter
+        ' 
         ' chkAlul
         ' 
-        chkAlul.Location = New Point(110, 276)
+        chkAlul.Location = New Point(110, 330)
         chkAlul.Name = "chkAlul"
         chkAlul.Size = New Size(70, 24)
         chkAlul.TabIndex = 11
@@ -158,7 +190,7 @@ Partial Class HangszerPanel
         ' 
         ' chkFelul
         ' 
-        chkFelul.Location = New Point(196, 276)
+        chkFelul.Location = New Point(196, 330)
         chkFelul.Name = "chkFelul"
         chkFelul.Size = New Size(70, 24)
         chkFelul.TabIndex = 12
@@ -168,7 +200,7 @@ Partial Class HangszerPanel
         ' trkOktav
         ' 
         trkOktav.AutoSize = False
-        trkOktav.Location = New Point(48, 216)
+        trkOktav.Location = New Point(48, 270)
         trkOktav.Maximum = 2
         trkOktav.Minimum = -2
         trkOktav.Name = "trkOktav"
@@ -177,7 +209,7 @@ Partial Class HangszerPanel
         ' 
         ' lblOktav
         ' 
-        lblOktav.Location = New Point(12, 216)
+        lblOktav.Location = New Point(12, 270)
         lblOktav.Name = "lblOktav"
         lblOktav.Size = New Size(38, 25)
         lblOktav.TabIndex = 14
@@ -186,7 +218,7 @@ Partial Class HangszerPanel
         ' 
         ' lblOktavErtek
         ' 
-        lblOktavErtek.Location = New Point(12, 241)
+        lblOktavErtek.Location = New Point(12, 295)
         lblOktavErtek.Name = "lblOktavErtek"
         lblOktavErtek.Size = New Size(38, 25)
         lblOktavErtek.TabIndex = 15
@@ -195,29 +227,33 @@ Partial Class HangszerPanel
         ' 
         ' HangszerPanel
         ' 
-        AutoScaleDimensions = New SizeF(8F, 20F)
+        AutoScaleDimensions = New SizeF(8.0F, 20.0F)
         AutoScaleMode = AutoScaleMode.Font
+        Controls.Add(cmbHangszer)
+        Controls.Add(lblHerErtek)
+        Controls.Add(lblHer)
+        Controls.Add(trkHangero)
+        Controls.Add(lblTerErtek)
+        Controls.Add(lblTer)
+        Controls.Add(trkTer)
+        Controls.Add(lblVibErtek)
+        Controls.Add(lblVib)
+        Controls.Add(trkVibrato)
+        Controls.Add(lblChorusErtek)
+        Controls.Add(lblChorus)
+        Controls.Add(trkChorus)
         Controls.Add(lblOktavErtek)
         Controls.Add(lblOktav)
         Controls.Add(trkOktav)
+        Controls.Add(chkAktiv)
         Controls.Add(chkFelul)
         Controls.Add(chkAlul)
-        Controls.Add(lblVibErtek)
-        Controls.Add(lblTerErtek)
-        Controls.Add(lblHerErtek)
-        Controls.Add(chkAktiv)
-        Controls.Add(lblVib)
-        Controls.Add(lblTer)
-        Controls.Add(lblHer)
-        Controls.Add(trkVibrato)
-        Controls.Add(trkTer)
-        Controls.Add(trkHangero)
-        Controls.Add(cmbHangszer)
         Name = "HangszerPanel"
-        Size = New Size(280, 324)
+        Size = New Size(280, 378)
         CType(trkHangero, ComponentModel.ISupportInitialize).EndInit()
         CType(trkTer, ComponentModel.ISupportInitialize).EndInit()
         CType(trkVibrato, ComponentModel.ISupportInitialize).EndInit()
+        CType(trkChorus, ComponentModel.ISupportInitialize).EndInit()
         CType(trkOktav, ComponentModel.ISupportInitialize).EndInit()
         ResumeLayout(False)
     End Sub
@@ -238,5 +274,8 @@ Partial Class HangszerPanel
     Friend WithEvents trkOktav As TrackBar
     Friend WithEvents lblOktav As Label
     Friend WithEvents lblOktavErtek As Label
+    Friend WithEvents trkChorus As TrackBar
+    Friend WithEvents lblChorusErtek As Label
+    Friend WithEvents lblChorus As Label
 
 End Class

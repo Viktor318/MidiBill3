@@ -47,6 +47,7 @@ Public Class MainForm
     Private Const PAN As Integer = 10
     Private Const MOD_WHEEL As Integer = 1
     Private Const REVERB As Integer = 91
+    Private Const CHORUS As Integer = 93
     Private Const NOTE_ON As Integer = &H90
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -82,7 +83,7 @@ Public Class MainForm
     ''' <summary>A 4 fizikai HangszerPanel és keret létrehozása - a végleges elrendezéshez igazítva</summary>
     Private Sub HangszerPanelekLetrehozasa()
         Dim xKoordinatak() As Integer = {25, 331}
-        Dim yKoordinatak() As Integer = {53, 415}
+        Dim yKoordinatak() As Integer = {53, 469}
 
         For i As Integer = 0 To 3
             Dim oszlop As Integer = i Mod 2
@@ -90,7 +91,7 @@ Public Class MainForm
 
             Dim keret As New GroupBox()
             keret.Location = New Point(xKoordinatak(oszlop), yKoordinatak(sor))
-            keret.Size = New Size(300, 354)
+            keret.Size = New Size(300, 408)
 
             Dim panel As New HangszerPanel()
             panel.Location = New Point(10, 20)
@@ -109,6 +110,7 @@ Public Class MainForm
             AddHandler panel.AlulValtozott, AddressOf HangszerPanel_AlulValtozott
             AddHandler panel.FelulValtozott, AddressOf HangszerPanel_FelulValtozott
             AddHandler panel.OktavValtozott, AddressOf HangszerPanel_OktavValtozott
+            AddHandler panel.ChorusValtozott, AddressOf HangszerPanel_ChorusValtozott
         Next
     End Sub
 
@@ -335,6 +337,7 @@ Public Class MainForm
             CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
             midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
             midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
+            midiMotor.ControllerValtas(csatornaSzam, CHORUS, adat.Chorus)
         Next
 
         ReverbKuldes(trkReverb.Value)
@@ -394,6 +397,7 @@ Public Class MainForm
             panel.Alul = adat.Alul
             panel.Felul = adat.Felul
             panel.Oktav = adat.Oktav
+            panel.Chorus = adat.Chorus
 
             keret.Text = CsatornaFelirat(csatornaIndex, adat.Aktiv)
         Next
@@ -483,6 +487,13 @@ Public Class MainForm
         midiMotor.OktavValtas(idx + 1, ertek)
     End Sub
 
+    Private Sub HangszerPanel_ChorusValtozott(sender As Object, ertek As Integer)
+        Dim idx As Integer = CsatornaIndexTol(sender)
+        If idx < 0 Then Return
+        csatornaAllapotok(idx).Chorus = ertek
+        midiMotor.ControllerValtas(idx + 1, CHORUS, ertek)
+    End Sub
+
     Private Sub CsatornaHangeroKuldes(csatornaSzam As Integer, csatornaErtek As Integer)
         Dim vegsoErtek As Integer = CInt(csatornaErtek * (trkAlapHangero.Value / 100.0))
         midiMotor.ControllerValtas(csatornaSzam, MAIN_VOLUME, vegsoErtek)
@@ -495,7 +506,7 @@ Public Class MainForm
     Private Sub trkAlapHangero_ValueChanged(sender As Object, e As EventArgs) Handles trkAlapHangero.ValueChanged
         If Not inicializalasKesz Then Return
 
-        grpVolume.Text = "Alap hangerő beállítása: " & trkAlapHangero.Value
+        grpVolume.Text = "Alap hangerő: " & trkAlapHangero.Value & "%"
 
         For i As Integer = 0 To 15
             CsatornaHangeroKuldes(i + 1, csatornaAllapotok(i).Hangero)
@@ -505,7 +516,7 @@ Public Class MainForm
     Private Sub trkReverb_ValueChanged(sender As Object, e As EventArgs) Handles trkReverb.ValueChanged
         If Not inicializalasKesz Then Return
 
-        grpReverb.Text = "Reverb: " & trkReverb.Value & "%"
+        grpReverb.Text = "Visszhang: " & trkReverb.Value & "%"
         ReverbKuldes(trkReverb.Value)
     End Sub
 
@@ -694,6 +705,7 @@ Public Class MainForm
             cs.Hangero = forras.Hangero
             cs.Ter = forras.Ter
             cs.Vibrato = forras.Vibrato
+            cs.Chorus = forras.Chorus
             cs.Aktiv = forras.Aktiv
             cs.Alul = forras.Alul
             cs.Felul = forras.Felul
@@ -732,10 +744,12 @@ Public Class MainForm
             Dim ujHangero As Integer = Korlatoz(cs.Hangero, 0, 127)
             Dim ujTer As Integer = Korlatoz(cs.Ter, -64, 63)
             Dim ujVibrato As Integer = Korlatoz(cs.Vibrato, 0, 127)
+            Dim ujChorus As Integer = Korlatoz(cs.Chorus, 0, 127)
             Dim ujOktav As Integer = Korlatoz(cs.Oktav, -2, 2)
 
             If ujHangszer <> cs.Hangszer OrElse ujHangero <> cs.Hangero OrElse
-                ujTer <> cs.Ter OrElse ujVibrato <> cs.Vibrato OrElse ujOktav <> cs.Oktav Then
+                ujTer <> cs.Ter OrElse ujVibrato <> cs.Vibrato OrElse
+                ujChorus <> cs.Chorus OrElse ujOktav <> cs.Oktav Then
                 ertekKorrigalva = True
             End If
 
@@ -743,6 +757,7 @@ Public Class MainForm
             adat.Hangero = ujHangero
             adat.Ter = ujTer
             adat.Vibrato = ujVibrato
+            adat.Chorus = ujChorus
             adat.Aktiv = cs.Aktiv
             adat.Alul = cs.Alul
             adat.Felul = cs.Felul
@@ -770,7 +785,7 @@ Public Class MainForm
         Dim ujReverb As Integer = Korlatoz(b.Reverb, 0, 100)
         If ujReverb <> b.Reverb Then ertekKorrigalva = True
         trkReverb.Value = ujReverb
-        grpReverb.Text = "Reverb: " & ujReverb & "%"
+        grpReverb.Text = "Visszhang: " & ujReverb & "%"
 
         Dim eszkozHianyzik As Boolean = False
 

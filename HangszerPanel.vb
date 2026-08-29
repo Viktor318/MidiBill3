@@ -30,6 +30,7 @@ Public Class HangszerPanel
         lblHerErtek.Text = trkHangero.Value.ToString()
         lblTerErtek.Text = trkTer.Value.ToString()
         lblVibErtek.Text = trkVibrato.Value.ToString()
+        lblChorusErtek.Text = trkChorus.Value.ToString()
         lblOktavErtek.Text = OktavSzoveg(trkOktav.Value)
     End Sub
 
@@ -115,6 +116,9 @@ Public Class HangszerPanel
     ''' <summary>Vibrato csúszka változott (0-127)</summary>
     Public Event VibratoValtozott(sender As Object, ertek As Integer)
 
+    ''' <summary>Csatornánkénti Chorus csúszka változott (0-127)</summary>
+    Public Event ChorusValtozott(sender As Object, ertek As Integer)
+
     ''' <summary>Aktív jelölőnégyzet állapota változott</summary>
     Public Event AktivValtozott(sender As Object, aktiv As Boolean)
 
@@ -198,6 +202,18 @@ Public Class HangszerPanel
     End Property
 
     <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
+    Public Property Chorus As Integer
+        Get
+            Return trkChorus.Value
+        End Get
+        Set(value As Integer)
+            betoltesAlatt = True
+            trkChorus.Value = value
+            betoltesAlatt = False
+        End Set
+    End Property
+
+    <DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)>
     Public Property Aktiv As Boolean
         Get
             Return chkAktiv.Checked
@@ -269,6 +285,12 @@ Public Class HangszerPanel
         lblVibErtek.Text = trkVibrato.Value.ToString()
         If betoltesAlatt Then Return
         RaiseEvent VibratoValtozott(Me, trkVibrato.Value)
+    End Sub
+
+    Private Sub trkChorus_ValueChanged(sender As Object, e As EventArgs) Handles trkChorus.ValueChanged
+        lblChorusErtek.Text = trkChorus.Value.ToString()
+        If betoltesAlatt Then Return
+        RaiseEvent ChorusValtozott(Me, trkChorus.Value)
     End Sub
 
     Private Sub trkOktav_ValueChanged(sender As Object, e As EventArgs) Handles trkOktav.ValueChanged

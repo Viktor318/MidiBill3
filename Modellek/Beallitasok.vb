@@ -10,6 +10,7 @@ Namespace Modellek
         Public Property Hangero As Integer = 127
         Public Property Ter As Integer = 0
         Public Property Vibrato As Integer = 0
+        Public Property Chorus As Integer = 0   ' ÚJ - csatornánkénti Chorus (MIDI CC93, 0-127)
 
         ''' <summary>
         ''' Aktív-e ez a csatorna. Alapértelmezett FALSE - a 16-csatornás

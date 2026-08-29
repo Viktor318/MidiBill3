@@ -171,11 +171,39 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 
 8. Végigtesztelési checklist még nincs összeállítva
 
-9. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
-   elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
-   fizikai MIDI billentyűzet a Windows gépnél marad
+9. **Többnyelvű GUI (magyar + angol, később bővíthető)** - ELHALASZTVA,
+   jelenleg nem sürgős, mivel egyelőre csak a felhasználó saját maga
+   használja a programot, neki tökéletesen megfelel a magyar felület.
+   A fejlesztés (kódkommentek, változónevek) továbbra is magyarul
+   folytatódik, csak a MEGJELENÍTETT felület lenne választhatóan
+   angol is. Végiggondolt megközelítés, ha eljön az ideje:
+   - Kulcs-alapú szöveges fájlok (`lang_hu.txt`, `lang_en.txt`,
+     `kulcs=szöveg` formátumban) - ugyanaz a minta, mint a
+     `HangszerLista` fájlbetöltése, NEM a WinForms beépített
+     resx/satellite assembly-alapú lokalizációja (utóbbi nehezebben
+     illeszkedne a projekt stílusához és a dinamikusan összerakott
+     szövegekhez, pl. `CsatornaFelirat()`)
+   - Egy `Nyelv` modul (`Szoveg("kulcs")` lekérő függvénnyel) +
+     egy "Beállítások" menü alatti "Nyelv" almenü Magyar/Angol
+     választással, AZONNALI váltással (nincs szükség újraindításra)
+   - A tényleges munka dandárja a meglévő, szó szerint bedrótozott
+     magyar szövegek kulcsosítása lenne: `MainForm.Designer.vb`
+     menü/gomb/checkbox feliratai, a `HangszerPanel` feliratai, a
+     dinamikus sablonszövegek (`CsatornaFelirat()`,
+     `CimSorUjrarajzolas()`), és becsülhetően 30-40 MsgBox-üzenet -
+     összesen kb. 100-200 különálló szöveg, mechanikus, alacsony
+     kockázatú, de munkaigényes refaktor
+   - A kiválasztott nyelvet NEM a `Beallitasok` (JSON preset) tárolná,
+     hasonló logikával, mint a MIDI In/Out kiválasztás: ez
+     eszköz/környezet-szintű beállítás, nem preset-tartalom, ezért
+     külön kellene tárolni (pl. saját kis fájl vagy `My.Settings`),
+     hogy se preset-váltás, se "Alaphelyzetbe állítás" ne érintse
 
-10. **Elméleti téma, lezárva**: Claude Desktop Cowork mód - a
+10. **Elméleti téma, lezárva**: iOS/iPadOS-portolás - távoli asztali
+    elérés (RDP/Chrome Remote Desktop) a gyakorlati megoldás, ha a
+    fizikai MIDI billentyűzet a Windows gépnél marad
+
+11. **Elméleti téma, lezárva**: Claude Desktop Cowork mód - a
     felhasználó megpróbálta, de az adott beszélgetésben nem volt
     elérhető a váltás, ezért a hagyományos (fájl-beillesztős)
     munkamódszernél maradtunk

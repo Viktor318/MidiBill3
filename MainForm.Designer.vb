@@ -35,6 +35,8 @@ Partial Class MainForm
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
         mnuKilepesMentesNelkul = New ToolStripMenuItem()
+        mnuBeallitasok = New ToolStripMenuItem()
+        mnuAlaphelyzetbeAllitas = New ToolStripMenuItem()
         mnuSegedprogramok = New ToolStripMenuItem()
         mnuPresetFajlokFrissitese = New ToolStripMenuItem()
         mnuMb3FajlokKonvertalasa = New ToolStripMenuItem()
@@ -75,8 +77,6 @@ Partial Class MainForm
         dlgSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
-        mnuBeallitasok = New ToolStripMenuItem()
-        mnuAlaphelyzetbeAllitas = New ToolStripMenuItem()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -163,6 +163,19 @@ Partial Class MainForm
         mnuKilepesMentesNelkul.Size = New Size(296, 26)
         mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
         ' 
+        ' mnuBeallitasok
+        ' 
+        mnuBeallitasok.DropDownItems.AddRange(New ToolStripItem() {mnuAlaphelyzetbeAllitas})
+        mnuBeallitasok.Name = "mnuBeallitasok"
+        mnuBeallitasok.Size = New Size(95, 26)
+        mnuBeallitasok.Text = "&Beállítások"
+        ' 
+        ' mnuAlaphelyzetbeAllitas
+        ' 
+        mnuAlaphelyzetbeAllitas.Name = "mnuAlaphelyzetbeAllitas"
+        mnuAlaphelyzetbeAllitas.Size = New Size(230, 26)
+        mnuAlaphelyzetbeAllitas.Text = "&Alaphelyzetbe állítás"
+        ' 
         ' mnuSegedprogramok
         ' 
         mnuSegedprogramok.DropDownItems.AddRange(New ToolStripItem() {mnuPresetFajlokFrissitese, mnuMb3FajlokKonvertalasa})
@@ -197,7 +210,7 @@ Partial Class MainForm
         ' 
         ' chkPedal
         ' 
-        chkPedal.Location = New Point(640, 804)
+        chkPedal.Location = New Point(640, 912)
         chkPedal.Name = "chkPedal"
         chkPedal.Size = New Size(220, 25)
         chkPedal.TabIndex = 1
@@ -212,7 +225,7 @@ Partial Class MainForm
         grpVolume.Size = New Size(277, 85)
         grpVolume.TabIndex = 2
         grpVolume.TabStop = False
-        grpVolume.Text = "Alap hangerő beállítása: 70"
+        grpVolume.Text = "Alap hangerő: 70%"
         ' 
         ' trkAlapHangero
         ' 
@@ -228,7 +241,7 @@ Partial Class MainForm
         ' grpMidiIn
         ' 
         grpMidiIn.Controls.Add(cmbMidiIn)
-        grpMidiIn.Location = New Point(640, 143)
+        grpMidiIn.Location = New Point(640, 233)
         grpMidiIn.Name = "grpMidiIn"
         grpMidiIn.Size = New Size(277, 85)
         grpMidiIn.TabIndex = 3
@@ -246,7 +259,7 @@ Partial Class MainForm
         ' grpMidiOut
         ' 
         grpMidiOut.Controls.Add(cmbMidiOut)
-        grpMidiOut.Location = New Point(640, 233)
+        grpMidiOut.Location = New Point(640, 323)
         grpMidiOut.Name = "grpMidiOut"
         grpMidiOut.Size = New Size(277, 85)
         grpMidiOut.TabIndex = 4
@@ -264,7 +277,7 @@ Partial Class MainForm
         ' btnReset
         ' 
         btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
-        btnReset.Location = New Point(640, 709)
+        btnReset.Location = New Point(640, 817)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
         btnReset.TabIndex = 5
@@ -274,7 +287,7 @@ Partial Class MainForm
         ' btnKilepes
         ' 
         btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
-        btnKilepes.Location = New Point(785, 709)
+        btnKilepes.Location = New Point(785, 817)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
         btnKilepes.TabIndex = 6
@@ -284,7 +297,7 @@ Partial Class MainForm
         ' lblMidiUzenet
         ' 
         lblMidiUzenet.Font = New Font("Segoe UI", 9F)
-        lblMidiUzenet.Location = New Point(331, 803)
+        lblMidiUzenet.Location = New Point(331, 912)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(280, 25)
         lblMidiUzenet.TabIndex = 7
@@ -308,7 +321,7 @@ Partial Class MainForm
         grpSplit.Controls.Add(btnSplitTanulas)
         grpSplit.Controls.Add(cmbSplitPont)
         grpSplit.Controls.Add(lblSplitCim)
-        grpSplit.Location = New Point(640, 385)
+        grpSplit.Location = New Point(640, 469)
         grpSplit.Name = "grpSplit"
         grpSplit.Size = New Size(277, 110)
         grpSplit.TabIndex = 8
@@ -355,7 +368,7 @@ Partial Class MainForm
         grpTranspose.Controls.Add(btnOktavFel)
         grpTranspose.Controls.Add(btnFelhangLe)
         grpTranspose.Controls.Add(btnFelhangFel)
-        grpTranspose.Location = New Point(640, 500)
+        grpTranspose.Location = New Point(640, 584)
         grpTranspose.Name = "grpTranspose"
         grpTranspose.Size = New Size(277, 112)
         grpTranspose.TabIndex = 9
@@ -424,7 +437,7 @@ Partial Class MainForm
         grpCsatornaValaszto.Controls.Add(radCsoport3)
         grpCsatornaValaszto.Controls.Add(radCsoport1)
         grpCsatornaValaszto.Controls.Add(radCsoport2)
-        grpCsatornaValaszto.Location = New Point(25, 777)
+        grpCsatornaValaszto.Location = New Point(25, 885)
         grpCsatornaValaszto.Name = "grpCsatornaValaszto"
         grpCsatornaValaszto.Size = New Size(300, 64)
         grpCsatornaValaszto.TabIndex = 13
@@ -451,7 +464,7 @@ Partial Class MainForm
         ' 
         ' btnMidiFrissites
         ' 
-        btnMidiFrissites.Location = New Point(640, 325)
+        btnMidiFrissites.Location = New Point(640, 411)
         btnMidiFrissites.Name = "btnMidiFrissites"
         btnMidiFrissites.Size = New Size(277, 50)
         btnMidiFrissites.TabIndex = 14
@@ -461,12 +474,12 @@ Partial Class MainForm
         ' grpReverb
         ' 
         grpReverb.Controls.Add(trkReverb)
-        grpReverb.Location = New Point(640, 617)
+        grpReverb.Location = New Point(640, 143)
         grpReverb.Name = "grpReverb"
         grpReverb.Size = New Size(277, 85)
         grpReverb.TabIndex = 15
         grpReverb.TabStop = False
-        grpReverb.Text = "Reverb: 0%"
+        grpReverb.Text = "Visszhang: 0%"
         ' 
         ' trkReverb
         ' 
@@ -496,24 +509,11 @@ Partial Class MainForm
         dlgMb3Konvertalas.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
         dlgMb3Konvertalas.Multiselect = True
         ' 
-        ' mnuBeallitasok
-        ' 
-        mnuBeallitasok.DropDownItems.AddRange(New ToolStripItem() {mnuAlaphelyzetbeAllitas})
-        mnuBeallitasok.Name = "mnuBeallitasok"
-        mnuBeallitasok.Size = New Size(95, 26)
-        mnuBeallitasok.Text = "&Beállítások"
-        ' 
-        ' mnuAlaphelyzetbeAllitas
-        ' 
-        mnuAlaphelyzetbeAllitas.Name = "mnuAlaphelyzetbeAllitas"
-        mnuAlaphelyzetbeAllitas.Size = New Size(230, 26)
-        mnuAlaphelyzetbeAllitas.Text = "&Alaphelyzetbe állítás"
-        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
-        ClientSize = New Size(942, 866)
+        ClientSize = New Size(942, 974)
         Controls.Add(grpReverb)
         Controls.Add(btnMidiFrissites)
         Controls.Add(grpCsatornaValaszto)
