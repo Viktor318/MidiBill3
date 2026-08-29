@@ -618,7 +618,47 @@ Public Class MainForm
             Return
         End If
 
+        If chkMidiBeallitoUzenetek.Checked AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
+            AktivCsatornakAllapotanakKuldese()
+            chkMidiBeallitoUzenetek.Checked = False
+            lblExtraMidiAllapot.Text = "MIDI üzenetek kiküldve."
+        End If
+
         midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
+    End Sub
+
+    Private Sub chkMidiBeallitoUzenetek_CheckedChanged(sender As Object, e As EventArgs) Handles chkMidiBeallitoUzenetek.CheckedChanged
+        If chkMidiBeallitoUzenetek.Checked Then
+            lblExtraMidiAllapot.Text = "Várakozás billentyűre..."
+        Else
+            lblExtraMidiAllapot.Text = "Ha bekapcsolt, az aktív csatorna beállítások kiküldésre kerülnek"
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Az AKTÍV csatornák teljes MIDI-állapotát (hangszín, hangerő, tér,
+    ''' vibrato, chorus, reverb) újraküldi - a "MIDI beállító üzenetek
+    ''' küldése" checkbox bepipálása után, a következő valódi Note On
+    ''' előtt fut le, EGYETLEN egyszer (utána a checkbox automatikusan
+    ''' visszakapcsol). Célja, hogy egy külső MIDI-felvevő program is
+    ''' megkapja a teljes csatorna-beállítást (pl. hangszín), nem csak a
+    ''' ténylegesen lejátszott hangokat. Az inaktív csatornákra
+    ''' szándékosan nem küld semmit.
+    ''' </summary>
+    Private Sub AktivCsatornakAllapotanakKuldese()
+        Dim reverbErtek As Integer = trkReverb.Value * 127 \ 100
+        For i As Integer = 0 To 15
+            Dim adat As CsatornaBeallitas = csatornaAllapotok(i)
+            If Not adat.Aktiv Then Continue For
+
+            Dim csatornaSzam As Integer = i + 1
+            midiMotor.ProgramValtas(csatornaSzam, adat.Hangszer)
+            CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
+            midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
+            midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
+            midiMotor.ControllerValtas(csatornaSzam, CHORUS, adat.Chorus)
+            midiMotor.ControllerValtas(csatornaSzam, REVERB, reverbErtek)
+        Next
     End Sub
 
     ''' <summary>
@@ -1257,6 +1297,7 @@ Public Class MainForm
         trkReverb.Value = 0
 
         chkPedal.Checked = False
+        chkMidiBeallitoUzenetek.Checked = False
 
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()

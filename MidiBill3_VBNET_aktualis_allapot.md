@@ -10,6 +10,8 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ## Alapadatok
 
 - **Verzió**: 1.9.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (az "Extra MIDI üzenetek a játék kezdetén" funkció még nem kiadott
+  verzióban van, lásd `CHANGELOG.md` - [Nem kiadott])
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -105,7 +107,8 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
     egyedi/SoundFont-listát)
   - Csatornák → beépített alapérték (csak az 1. csatorna aktív)
   - Split pont → `60` (C4), Transzponálás → `0`, Reverb → `0%`, Pedál
-    → nem invertált
+    → nem invertált, "MIDI beállító üzenetek küldése" checkbox →
+    kikapcsolva
 - **A MIDI In/Out kiválasztás SZÁNDÉKOSAN változatlan marad** (ez
   eszközkapcsolat, nem "beállítás" a felhasználó szemszögéből - külön,
   tudatos döntés volt)
@@ -118,7 +121,7 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   `OsszesCsatornaUjrakuldese`, `CimsorFrissitese`) - nincs új, önálló
   logika, `AlaphelyzetbeAllitas()` metódus csak összefűzi ezeket
 
-**Csatornánkénti Chorus (ÚJ, v1.9.0)**
+**Csatornánkénti Chorus (v1.9.0)**
 - Új csúszka a `HangszerPanel`-en (0-127, MIDI **CC93**) - pontosan az
   Oktáv-csúszka bevált mintáját követve: `CsatornaBeallitas.Chorus`
   mező, `HangszerPanel.Chorus` property + `ChorusValtozott` esemény,
@@ -129,9 +132,10 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   miatt nőtt); teljes form-elrendezés konzisztensen igazítva
 - **Design-frissítés**: a jobb oldali sáv átrendezve - a Reverb doboz
   feljebb került, közvetlenül az Alap hangerő mellé; a Transzponálás
-  doboz és a Csend legyen!/Kilépés gombok között **szándékosan** nagy
-  (~120 px) üres hely maradt - ez **tudatos, előkészített hely egy
-  jövőbeli funkcióhoz**, NEM hiba, ne kelljen legközelebb "kijavítani"
+  doboz és a Csend legyen!/Kilépés gombok között akkor még
+  szándékosan üresen hagyott hely ekkor még egy jövőbeli funkciónak
+  volt fenntartva - ezt azóta betöltötte az "Extra MIDI üzenetek a
+  játék kezdetén" funkció (lásd lentebb)
 - **Ablakszélesség-igazítás**: a második hangszerpanel és a jobb oldali
   vezérlő-oszlop jobbra tolva (a bal margó változatlan maradt), a form
   szélessége 942-ről 958 pixelre nőtt - közel négyzetes (958 x 974)
@@ -144,6 +148,31 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   beállításnál jelent meg a `lblSplitInfo` címkén - mostantól a
   `cmbSplitPont` legördülőből történő közvetlen kiválasztás is
   ugyanezt az üzenetet írja ki
+
+**Extra MIDI üzenetek a játék kezdetén (ÚJ, még nem kiadott verzióban)**
+- Új `grpExtraMidi` GroupBox a jobb oszlopban ("Extra MIDI üzenetek a
+  játék kezdetén"), pontosan azon a helyen, amit a Chorus-funkció
+  (v1.9.0) idején szándékosan szabadon hagytunk - most felhasználva
+- Két gyermek-vezérlő: `chkMidiBeallitoUzenetek` checkbox ("MIDI
+  beállító üzenetek küldése") és `lblExtraMidiAllapot` állapotjelző
+  felirat (kezdetben üres)
+- Működés: bepipálás → felirat "Várakozás billentyűre..."; az első
+  ténylegesen lejátszott hangnál (Note On) a `MidiUzenetFeldolgozasa`
+  meghívja az új `AktivCsatornakAllapotanakKuldese()` metódust, ami
+  végigmegy a 16 csatornán, és csak az AKTÍV csatornákra újraküldi a
+  Program Change, Volume, Pan, Vibrato, Chorus és Reverb üzeneteket;
+  ezután a checkbox kódból kikapcsol, a felirat pedig "MIDI üzenetek
+  kiküldve."-re vált - mindez EGYETLEN alkalommal fut le bepipálásonként
+  (nincs folyamatos újraküldés játék közben)
+- Ha a checkbox-ot a felhasználó manuálisan kapcsolja ki (mielőtt
+  billentyűt ütne), a felirat visszaáll üresre
+  (`chkMidiBeallitoUzenetek_CheckedChanged` eseménykezelő)
+- Célja: egy külső programmal megvalósított MIDI-felvételhez (lásd
+  "Következő lépések" 4. pont) szükséges, hogy a rögzített fájl
+  tartalmazza a teljes csatorna-beállítást (pl. hangszíneket), ne csak
+  a ténylegesen lejátszott hangokat
+- Az "Alaphelyzetbe állítás" is kikapcsolt állapotba állítja ezt a
+  checkbox-ot
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -165,8 +194,10 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   találkozunk
 - "Alaphelyzetbe állítás" a MIDI In/Out kiválasztást SZÁNDÉKOSAN nem
   érinti
-- A jobb oldali sáv Transzponálás és a gombok közti üres helye
-  SZÁNDÉKOS, egy jövőbeli funkciónak fenntartva
+- Az "Extra MIDI üzenetek a játék kezdetén" funkció csak az AKTÍV
+  csatornákra küld üzenetet, és csak EGYETLEN alkalommal, bepipálásonként
+  - ez tudatos döntés volt, hogy ne terhelje feleslegesen a MIDI
+  kimenetet folyamatos játék közben
 
 ## Globális hibanaplózás
 
@@ -186,11 +217,17 @@ Az `ApplicationEvents.vb` elkap minden kezeletlen kivételt, `HibaNaplo.txt`-be
 3. **Metronóm-funkció** - a 10. csatorna feloldásának egyik indoka volt;
    konkrét ütős hangok (pl. Claves, Side Stick - fix GM percussion
    billentyű-kiosztás) Note On üzenetként való kiküldése, FÜGGETLENÜL a
-   dobkészlet-választástól. MÉG NINCS megtervezve/megvalósítva
+   dobkészlet-választástól. MÉG NINCS megtervezve/megvalósítva - a
+   felhasználóval már átbeszéltük az alapkövetelményeket (Start/Stop,
+   BPM, ütem 3/4-4/4 stb.), konkrét megvalósítási ötletekre vár
 
 4. **MIDI felvétel/visszajátszás** - elvi terv, eldöntött kulcskérdéssel:
    a NYERS BEMENETET vesszük fel, visszajátszáskor újra végigmegy a
-   `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve
+   `MidiEngine.UzenetKuldes()`-en. Még nincs elkezdve. A felhasználó
+   egyelőre egy KÜLSŐ programmal valósítja meg a MIDI-felvételt - ehhez
+   készült az "Extra MIDI üzenetek a játék kezdetén" funkció (lásd
+   "Elkészült funkciók"), hogy a külső felvevő megkapja a teljes
+   csatorna-állapotot
 
 5. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve
 

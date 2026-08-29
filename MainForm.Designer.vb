@@ -73,6 +73,9 @@ Partial Class MainForm
         btnMidiFrissites = New Button()
         grpReverb = New GroupBox()
         trkReverb = New TrackBar()
+        grpExtraMidi = New GroupBox()
+        chkMidiBeallitoUzenetek = New CheckBox()
+        lblExtraMidiAllapot = New Label()
         dlgHangszerlista = New OpenFileDialog()
         dlgSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
@@ -87,6 +90,7 @@ Partial Class MainForm
         grpCsatornaValaszto.SuspendLayout()
         grpReverb.SuspendLayout()
         CType(trkReverb, ComponentModel.ISupportInitialize).BeginInit()
+        grpExtraMidi.SuspendLayout()
         SuspendLayout()
         ' 
         ' menuStrip1
@@ -276,7 +280,7 @@ Partial Class MainForm
         ' 
         ' btnReset
         ' 
-        btnReset.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold Or FontStyle.Italic)
+        btnReset.Font = New Font("Segoe UI", 9F, FontStyle.Bold Or FontStyle.Italic)
         btnReset.Location = New Point(656, 817)
         btnReset.Name = "btnReset"
         btnReset.Size = New Size(132, 60)
@@ -286,7 +290,7 @@ Partial Class MainForm
         ' 
         ' btnKilepes
         ' 
-        btnKilepes.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+        btnKilepes.Font = New Font("Segoe UI", 9F, FontStyle.Bold)
         btnKilepes.Location = New Point(801, 817)
         btnKilepes.Name = "btnKilepes"
         btnKilepes.Size = New Size(132, 60)
@@ -296,7 +300,7 @@ Partial Class MainForm
         ' 
         ' lblMidiUzenet
         ' 
-        lblMidiUzenet.Font = New Font("Segoe UI", 9.0F)
+        lblMidiUzenet.Font = New Font("Segoe UI", 9F)
         lblMidiUzenet.Location = New Point(337, 912)
         lblMidiUzenet.Name = "lblMidiUzenet"
         lblMidiUzenet.Size = New Size(280, 25)
@@ -491,6 +495,34 @@ Partial Class MainForm
         trkReverb.TabIndex = 0
         trkReverb.TickFrequency = 10
         ' 
+        ' grpExtraMidi
+        ' 
+        grpExtraMidi.Controls.Add(chkMidiBeallitoUzenetek)
+        grpExtraMidi.Controls.Add(lblExtraMidiAllapot)
+        grpExtraMidi.Location = New Point(656, 701)
+        grpExtraMidi.Name = "grpExtraMidi"
+        grpExtraMidi.Size = New Size(277, 110)
+        grpExtraMidi.TabIndex = 16
+        grpExtraMidi.TabStop = False
+        grpExtraMidi.Text = "Extra MIDI üzenetek a játék kezdetén"
+        ' 
+        ' chkMidiBeallitoUzenetek
+        ' 
+        chkMidiBeallitoUzenetek.Location = New Point(12, 26)
+        chkMidiBeallitoUzenetek.Name = "chkMidiBeallitoUzenetek"
+        chkMidiBeallitoUzenetek.Size = New Size(253, 25)
+        chkMidiBeallitoUzenetek.TabIndex = 0
+        chkMidiBeallitoUzenetek.Text = "MIDI beállító üzenetek küldése"
+        chkMidiBeallitoUzenetek.UseVisualStyleBackColor = True
+        ' 
+        ' lblExtraMidiAllapot
+        ' 
+        lblExtraMidiAllapot.Location = New Point(12, 58)
+        lblExtraMidiAllapot.Name = "lblExtraMidiAllapot"
+        lblExtraMidiAllapot.Size = New Size(253, 40)
+        lblExtraMidiAllapot.TabIndex = 1
+        lblExtraMidiAllapot.Text = "Ha bekapcsolt, az aktív csatorna beállítások kiküldésre kerülnek"
+        ' 
         ' dlgHangszerlista
         ' 
         dlgHangszerlista.Filter = "Hangszerlista fájlok (*.lst)|*.lst"
@@ -515,6 +547,7 @@ Partial Class MainForm
         AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(958, 974)
         Controls.Add(grpReverb)
+        Controls.Add(grpExtraMidi)
         Controls.Add(btnMidiFrissites)
         Controls.Add(grpCsatornaValaszto)
         Controls.Add(grpTranspose)
@@ -545,6 +578,7 @@ Partial Class MainForm
         grpCsatornaValaszto.ResumeLayout(False)
         grpReverb.ResumeLayout(False)
         CType(trkReverb, ComponentModel.ISupportInitialize).EndInit()
+        grpExtraMidi.ResumeLayout(False)
         ResumeLayout(False)
         PerformLayout()
     End Sub
@@ -603,5 +637,8 @@ Partial Class MainForm
     Friend WithEvents dlgMb3Konvertalas As OpenFileDialog
     Friend WithEvents mnuBeallitasok As ToolStripMenuItem
     Friend WithEvents mnuAlaphelyzetbeAllitas As ToolStripMenuItem
+    Friend WithEvents grpExtraMidi As GroupBox
+    Friend WithEvents chkMidiBeallitoUzenetek As CheckBox
+    Friend WithEvents lblExtraMidiAllapot As Label
 
 End Class

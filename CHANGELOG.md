@@ -12,7 +12,22 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ## [Nem kiadott]
 
-_(még nincs bejegyzés - ide kerülnek majd a következő verzió változásai)_
+### Hozzáadva
+- **Extra MIDI üzenetek a játék kezdetén**: új GroupBox a jobb oszlop
+  korábban szándékosan szabadon hagyott helyén (a Transzponálás doboz
+  és a Csend legyen!/Kilépés gombok között), benne a "MIDI beállító
+  üzenetek küldése" checkbox-szal és egy állapot-kijelző felirattal.
+  Bepipálás után az első ténylegesen lejátszott hangnál (Note On) a
+  program EGYETLEN egyszer kiküldi az AKTÍV csatornák teljes állapotát
+  (Program Change, Volume, Pan, Vibrato, Chorus, Reverb) - új
+  `AktivCsatornakAllapotanakKuldese()` metódus a `MainForm`-ban -, majd
+  a checkbox automatikusan visszakapcsol. A folyamatot a felirat jelzi:
+  "Várakozás billentyűre..." → "MIDI üzenetek kiküldve." (manuális
+  kikapcsolásnál a felirat üresre vált). Célja, hogy egy külső
+  MIDI-felvevő program is megkapja a teljes csatorna-beállítást (pl. a
+  hangszíneket), nem csak a ténylegesen lejátszott hangokat.
+- Az "Alaphelyzetbe állítás" is visszaállítja ezt a checkbox-ot
+  kikapcsolt állapotba.
 
 ---
 
