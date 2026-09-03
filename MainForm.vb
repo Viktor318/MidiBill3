@@ -38,13 +38,39 @@ Public Class MainForm
     Private Const TRANSZPONALAS_MAX As Integer = 24
 
     ' A MIDI üzenetek kijelzésének korlátozása: a lblMidiUzenet ténylegesen
-    ' csak a midiKijelzoIdozito ütemében (max. 10x/mp) frissül, függetlenül
+    ' csak a midiKijelzoIdozito ütemében (max. 5x/mp, lásd Interval lent)
+    ' frissül, függetlenül
     ' attól, milyen sűrűn érkeznek a bejövő MIDI-üzenetek - ez elkerüli a
     ' felesleges, követhetetlenül gyors UI-frissítést nagyon sűrű
-    ' billentyűjáték (pl. gyors arpeggio) esetén.
-    Private legutobbiMidiSzoveg As String = ""
+    ' billentyűjáték (pl. gyors arpeggio) esetén. A tényleges szöveggé
+    ' alakítást (MidiUzenetSzoveg - string-összefűzés + Hangnevek/
+    ' HangszerLista-keresés) SZÁNDÉKOSAN csak a Tick-ben végezzük el, nem
+    ' minden beérkező üzenetnél: csak a legutóbbi üzenet 3 nyers Integerét
+    ' tároljuk el itt, ami lényegesen olcsóbb.
+    Private utolsoMidiUzenetStatusz As Integer = 0
+    Private utolsoMidiAdat1 As Integer = 0
+    Private utolsoMidiAdat2 As Integer = 0
     Private midiSzovegValtozott As Boolean = False
-    Private WithEvents midiKijelzoIdozito As New Timer With {.Interval = 100}
+    ' 200 ms (5 Hz): kényelmesen olvasható tempó egy rövid szöveges
+    ' feliratnál, mégis élőnek hat - 100 ms-nál (10 Hz) a szöveg
+    ' gyakorlatilag csak villog, nem olvasható el.
+    Private WithEvents midiKijelzoIdozito As New Timer With {.Interval = 200}
+
+    ' Az Alap hangerő és a Reverb csúszka MIDI-küldésének korlátozása:
+    ' a TrackBar ValueChanged eseménye NEM csak a húzás VÉGÉN tüzel,
+    ' hanem minden egyes pixelnyi elmozdulásnál - enélkül egyetlen
+    ' egérhúzás is másodpercenként több tucatszor küldene ki 16-16 MIDI
+    ' Controller Change üzenetet (mind a 16 csatornára). A felirat
+    ' (grpVolume.Text/grpReverb.Text) frissítése olcsó, ezért AZONNAL
+    ' megtörténik minden változásnál - csak a tényleges MIDI-küldést
+    ' korlátozza ez az időzítő, ugyanazt a mintát követve, mint a
+    ' midiKijelzoIdozito a kijelzésnél. 50 ms (20 Hz): nincs technikai
+    ' korlát, ami lassabb ütemre kényszerítene (16 üzenet kiküldése egy
+    ' valódi MIDI porton is csak kb. 15-16 ms), és így a leggyorsabb
+    ' csúszkahúzás is simának, élőnek érződik.
+    Private WithEvents csuszkaMidiIdozito As New Timer With {.Interval = 50}
+    Private alapHangeroKuldendo As Boolean = False
+    Private reverbKuldendo As Boolean = False
 
     ' A Kezdet.json a FELHASZNÁLÓI mappában (%AppData%\MidiBill3) van, nem a
     ' program mappájában - lásd a Modellek\Utvonalak.vb részletes magyarázatát.
@@ -78,6 +104,7 @@ Public Class MainForm
         KezdetBeallitasokBetoltese()
 
         midiKijelzoIdozito.Start()
+        csuszkaMidiIdozito.Start()
     End Sub
 
     ''' <summary>
@@ -97,6 +124,7 @@ Public Class MainForm
         zarasFolyamatban = True
         midiMotor.BemenetBezaras()
         midiKijelzoIdozito.Stop()
+        csuszkaMidiIdozito.Stop()
 
         For c As Integer = 1 To 16
             midiMotor.HangokKikapcsolasa(c, True)
@@ -557,17 +585,35 @@ Public Class MainForm
         If Not inicializalasKesz Then Return
 
         grpVolume.Text = "Alap hangerő: " & trkAlapHangero.Value & "%"
-
-        For i As Integer = 0 To 15
-            CsatornaHangeroKuldes(i + 1, csatornaAllapotok(i).Hangero)
-        Next
+        alapHangeroKuldendo = True
     End Sub
 
     Private Sub trkReverb_ValueChanged(sender As Object, e As EventArgs) Handles trkReverb.ValueChanged
         If Not inicializalasKesz Then Return
 
         grpReverb.Text = "Visszhang: " & trkReverb.Value & "%"
-        ReverbKuldes(trkReverb.Value)
+        reverbKuldendo = True
+    End Sub
+
+    ''' <summary>
+    ''' Az Alap hangerő és a Reverb csúszka húzása közben jelzett, még
+    ''' el nem küldött MIDI-állapotot küldi ki ténylegesen - max. 20x/mp
+    ''' (lásd csuszkaMidiIdozito.Interval), a csúszka aktuális értékét
+    ''' olvasva ki minden alkalommal (nem a jelzés pillanatában rögzített
+    ''' értéket), így mindig a legfrissebb állapot megy ki.
+    ''' </summary>
+    Private Sub csuszkaMidiIdozito_Tick(sender As Object, e As EventArgs) Handles csuszkaMidiIdozito.Tick
+        If alapHangeroKuldendo Then
+            alapHangeroKuldendo = False
+            For i As Integer = 0 To 15
+                CsatornaHangeroKuldes(i + 1, csatornaAllapotok(i).Hangero)
+            Next
+        End If
+
+        If reverbKuldendo Then
+            reverbKuldendo = False
+            ReverbKuldes(trkReverb.Value)
+        End If
     End Sub
 
     ''' <summary>
@@ -655,15 +701,26 @@ Public Class MainForm
     ''' bemenet lezárására vár, miközben a callback-szál a UI szálra várna.
     ''' A BeginInvoke sorrendtartó (a Windows üzenetsor FIFO), tehát a hangok
     ''' sorrendje továbbra is garantált.
+    '''
+    ''' Az idobelyegMs paramétert (a jövőbeli MIDI-felvétel funkció
+    ''' ELŐKÉSZÍTÉSE) a MidiEngine már a callback-szálon, az UI-ra való
+    ''' átadás ELŐTT rögzítette (lásd MidiEngine.Bemenet_UzenetErkezett) - itt
+    ''' SZÁNDÉKOSAN a BeginInvoke lambda ÁLTAL ELCSÍPETT (captured) helyi
+    ''' paraméterként adjuk tovább, NEM egy megosztott (shared) mezőn
+    ''' keresztül: mivel a callback-szál a UI szál feldolgozásától
+    ''' függetlenül, gyorsabban is küldhet újabb üzeneteket, egy megosztott
+    ''' mező tartalmát egy KÉSŐBBI üzenet felülírhatná, mire a KORÁBBAN
+    ''' sorba állított BeginInvoke lambda lefutna a UI szálon - ez hibás
+    ''' (a valóságosnál későbbi) időbélyeget eredményezne.
     ''' </summary>
-    Private Sub midiMotor_MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer) Handles midiMotor.MidiUzenetErkezett
+    Private Sub midiMotor_MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer, idobelyegMs As Long) Handles midiMotor.MidiUzenetErkezett
         If zarasFolyamatban Then Return
 
         Try
             If InvokeRequired Then
-                BeginInvoke(Sub() MidiUzenetFeldolgozasa(uzenet, adat1, adat2))
+                BeginInvoke(Sub() MidiUzenetFeldolgozasa(uzenet, adat1, adat2, idobelyegMs))
             Else
-                MidiUzenetFeldolgozasa(uzenet, adat1, adat2)
+                MidiUzenetFeldolgozasa(uzenet, adat1, adat2, idobelyegMs)
             End If
         Catch ex As Exception
             ' Az ablak épp bezáródik (megszűnt ablak-leíró) - ilyenkor a még
@@ -674,8 +731,12 @@ Public Class MainForm
     ''' <summary>
     ''' A bejövő MIDI üzenet feldolgozása (pedál-inverzió, split pont tanulás,
     ''' "Extra MIDI üzenetek"), majd továbbadása a MidiEngine-nek.
+    ''' Az idobelyegMs paraméter egyelőre NEM kerül felhasználásra - a
+    ''' jövőbeli MIDI-felvétel funkció előkészítéseként kapja meg a metódus,
+    ''' hogy majd onnan (a felvétel-logika hozzáadásakor) egyszerűen elérhető
+    ''' legyen, callback-szál-pontos időbélyegként.
     ''' </summary>
-    Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer)
+    Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer, idobelyegMs As Long)
         Dim vegsoAdat2 As Integer = adat2
 
         ' FONTOS: az üzenet TÍPUSÁT mindig a státuszbájt FELSŐ négy bitjéből
@@ -690,7 +751,9 @@ Public Class MainForm
             vegsoAdat2 = 127 - adat2
         End If
 
-        legutobbiMidiSzoveg = MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
+        utolsoMidiUzenetStatusz = uzenet
+        utolsoMidiAdat1 = adat1
+        utolsoMidiAdat2 = vegsoAdat2
         midiSzovegValtozott = True
 
         If splitTanulasAktiv AndAlso uzenetTipus = NOTE_ON AndAlso vegsoAdat2 > 0 Then
@@ -748,7 +811,7 @@ Public Class MainForm
     ''' </summary>
     Private Sub midiKijelzoIdozito_Tick(sender As Object, e As EventArgs) Handles midiKijelzoIdozito.Tick
         If midiSzovegValtozott Then
-            lblMidiUzenet.Text = "MIDI üzenetek: " & legutobbiMidiSzoveg
+            lblMidiUzenet.Text = "MIDI üzenetek: " & MidiUzenetSzoveg(utolsoMidiUzenetStatusz, utolsoMidiAdat1, utolsoMidiAdat2)
             midiSzovegValtozott = False
         End If
     End Sub
@@ -901,7 +964,7 @@ Public Class MainForm
 
         Dim ujTranszponalas As Integer = Korlatoz(b.Transzponalas, TRANSZPONALAS_MIN, TRANSZPONALAS_MAX)
         If ujTranszponalas <> b.Transzponalas Then ertekKorrigalva = True
-        TranszponalasFrissites(b.Transzponalas)
+        TranszponalasFrissites(ujTranszponalas)
 
         Dim ujReverb As Integer = Korlatoz(b.Reverb, 0, 100)
         If ujReverb <> b.Reverb Then ertekKorrigalva = True

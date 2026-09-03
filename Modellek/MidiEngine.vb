@@ -1,4 +1,5 @@
 ﻿Imports NAudio.Midi
+Imports System.Diagnostics
 
 Namespace Modellek
 
@@ -65,7 +66,20 @@ Namespace Modellek
         Public Property SplitPont As Integer = 60
         Public Property Transpozicio As Integer = 0
 
-        Public Event MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer)
+        ''' <summary>
+        ''' A jövőbeli MIDI-felvétel funkció ELŐKÉSZÍTÉSE: a program indulásakor
+        ''' elindított, folyamatosan futó stopperóra, ami a bejövő MIDI üzenetek
+        ''' időbélyegzésére szolgál majd. SZÁNDÉKOSAN a callback-szálon (lásd
+        ''' Bemenet_UzenetErkezett) olvassuk ki, MÉG a UI-szálra való átadás
+        ''' (BeginInvoke) előtt - így az időbélyeg a UI szál esetleges
+        ''' terheltségétől (jitter) függetlenül, a tényleges beérkezés
+        ''' pillanatában rögzül. Maga a Stopwatch szálbiztos csak olvasásra
+        ''' (ElapsedMilliseconds), ami itt elég is, mert csak ez a callback-szál
+        ''' olvassa.
+        ''' </summary>
+        Private ReadOnly idozito As New Stopwatch()
+
+        Public Event MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer, idobelyegMs As Long)
         Public Event KimenetiHiba(hibaUzenet As String)
 
         Public Sub New()
@@ -75,6 +89,7 @@ Namespace Modellek
                 csatornaFelulTomb(c) = False
                 csatornaOktavTomb(c) = 0
             Next
+            idozito.Start()
         End Sub
 
         Public Shared Function BemenetiEszkozok() As List(Of String)
@@ -157,12 +172,16 @@ Namespace Modellek
         End Sub
 
         Private Sub Bemenet_UzenetErkezett(sender As Object, e As MidiInMessageEventArgs)
+            ' Az időbélyeget MINDEN egyéb feldolgozás ELŐTT, elsőként olvassuk
+            ' ki - lásd az idozito mező dokumentációját.
+            Dim idobelyegMs As Long = idozito.ElapsedMilliseconds
+
             Dim raw As Integer = e.RawMessage
             Dim statuszBajt As Integer = raw And &HFF
             Dim adat1 As Integer = (raw >> 8) And &HFF
             Dim adat2 As Integer = (raw >> 16) And &HFF
 
-            RaiseEvent MidiUzenetErkezett(statuszBajt, adat1, adat2)
+            RaiseEvent MidiUzenetErkezett(statuszBajt, adat1, adat2, idobelyegMs)
         End Sub
 
         Private Sub Bemenet_HibaErkezett(sender As Object, e As MidiInMessageEventArgs)
@@ -263,15 +282,27 @@ Namespace Modellek
             End Try
         End Sub
 
+        ''' <summary>
+        ''' Egy csatorna hangjainak leállítása. teljesSepres:=True esetén
+        ''' (pánikgomb, illetve kilépéskor MIND a 16 csatornára) az All
+        ''' Sound Off (CC120) + All Notes Off (CC123) párost küldi - ez a
+        ''' MIDI-szabvány szerint azonnal elnémít minden szóló hangot az
+        ''' adott csatornán, csatornánként mindössze 2 üzenettel. KORÁBBAN
+        ''' 128 explicit Note Off üzenetet küldött csatornánként (16
+        ''' csatornára összesen 2048-at), ami egy valódi hardveres MIDI
+        ''' porton (31250 baud) kb. 2 másodperces BLOKKOLÓ küldést
+        ''' jelentett - ez fut le a pánikgombnál ÉS minden kilépéskor is
+        ''' (lásd MainForm.btnReset_Click / MainForm_FormClosing), tehát
+        ''' mindkettőt feleslegesen lassította.
+        ''' </summary>
         Public Sub HangokKikapcsolasa(csatornaSzam As Integer, Optional teljesSepres As Boolean = False)
             Dim csatornaIndex As Integer = csatornaSzam - 1
 
             KuldesEgyCsatornara(&HB0 + csatornaIndex, 64, 0)
 
             If teljesSepres Then
-                For n As Integer = 0 To 127
-                    KuldesEgyCsatornara(NOTE_ON_STATUS + csatornaIndex, n, 0)
-                Next
+                KuldesEgyCsatornara(&HB0 + csatornaIndex, 120, 0) ' All Sound Off
+                KuldesEgyCsatornara(&HB0 + csatornaIndex, 123, 0) ' All Notes Off
                 For n As Integer = 0 To 127
                     noteOn(csatornaIndex, n) = False
                 Next

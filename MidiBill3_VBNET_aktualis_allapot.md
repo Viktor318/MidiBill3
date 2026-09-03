@@ -84,7 +84,7 @@ Split Point, Globális Transzponálás, csatornánkénti oktáv-transzponálás
 (±2, azonnali/retroaktív hatással), globális Reverb (CC91), pedál-inverzió
 (passzív "mód"-kapcsoló), "Csend legyen!" pánikgomb, "Kilépés"/"Kilépés
 mentés nélkül", MIDI eszközlista frissítés+validálás, olvasható MIDI
-üzenet-kijelzés (max. 10x/mp), hibatűrő MIDI-küldés, robusztus JSON
+üzenet-kijelzés (max. 5x/mp), hibatűrő MIDI-küldés, robusztus JSON
 hibakezelés. (Részletek: forráskód vagy korábbi fejlesztési történet.)
 
 **Fájlkezelés**: JSON mentés/betöltés, eszköznév-alapú MIDI be-/kimenet
@@ -394,42 +394,91 @@ munkalista is a további javításokhoz.
    Off (CC123) üzenetet, MIELŐTT a `MidiOut` `Dispose()`-olódik. Ez
    eszközváltásnál (`KimenetMegnyitas()` is meghívja) ÉS
    programbezáráskor is lefut.
-6. **`BeallitasokAlkalmazasa`**: a `TranszponalasFrissites(b.Transzponalas)`
+6. ~~**`BeallitasokAlkalmazasa`**: a `TranszponalasFrissites(b.Transzponalas)`
    a nyers értéket kapja a kiszámolt `ujTranszponalas` helyett. Működik
-   (a metódus maga is korlátoz), de kilóg a körülötte lévő mintából.
-7. **`Beallitasok.Betoltes`**: ha a JSON tartalma literálisan `null`, a
+   (a metódus maga is korlátoz), de kilóg a körülötte lévő mintából.~~ -
+   **JAVÍTVA**: a hívás mostantól a már kiszámolt, korlátozott
+   `ujTranszponalas`-t adja át, ugyanazt a mintát követve, mint a
+   metódus összes többi beállítása (hangszer, hangerő, tér, vibrato,
+   chorus, oktáv, split pont, alap hangerő, reverb).
+7. ~~**`Beallitasok.Betoltes`**: ha a JSON tartalma literálisan `null`, a
    `Deserialize` `Nothing`-ot ad vissza, és a `Kiegeszit16Csatornara`
    NullReference-t dob - a felhasználó értelmetlen angol üzenetet lát a
-   szép magyar hibaüzenet helyett.
+   szép magyar hibaüzenet helyett.~~ - **JAVÍTVA**: a `Deserialize` után
+   közvetlenül ellenőrzi, hogy az eredmény nem `Nothing`, és ha az, egy
+   értelmes, magyar `InvalidDataException`-t dob helyette, amit a hívó
+   oldal (`mnuBetolt_Click`) már eddig is szépen megjelenített.
 8. ~~`midiKijelzoIdozito` nincs leállítva a `FormClosing`-ban~~ -
    **JAVÍTVA** a 3. ponttal együtt (ugyanabba a lezárási sorrendbe
    tartozik).
 
 ### MÉG NYITOTT - optimalizálás
 
-9. **Fölösleges string-építés minden MIDI üzenetnél**: a
+9. ~~**Fölösleges string-építés minden MIDI üzenetnél**: a
    `MidiUzenetFeldolgozasa` MINDEN beérkező üzenetnél meghívja a
    `MidiUzenetSzoveg()`-et (string-összefűzés + dictionary-keresés),
    pedig a kijelzés amúgy is csak 10x/mp frissül. Jobb: a 3 nyers
    `Integer` eltárolása, és a szöveg előállítása csak a `Tick`-ben - így
-   teljesül igazán a throttling eredeti szándéka.
-10. **Csúszkák MIDI-elárasztása**: a `trkReverb_ValueChanged` és a
+   teljesül igazán a throttling eredeti szándéka.~~ - **JAVÍTVA**: a
+   `legutobbiMidiSzoveg As String` mezőt 3 nyers `Integer` mező váltotta
+   (`utolsoMidiUzenetStatusz`/`utolsoMidiAdat1`/`utolsoMidiAdat2`) - a
+   `MidiUzenetFeldolgozasa` csak ezeket írja be minden üzenetnél, a
+   tényleges `MidiUzenetSzoveg()` hívás (string-összefűzés +
+   `Hangnevek`/`HangszerLista`-keresés) átkerült a
+   `midiKijelzoIdozito_Tick`-be. Emellett a `midiKijelzoIdozito.Interval`
+   is módosult **100 ms (10 Hz) → 200 ms (5 Hz)**-re: a felhasználó
+   jelezte, hogy 10 Hz-en a rövid szöveges felirat gyakorlatilag csak
+   villog, nem olvasható el - egy emberi szem/agy kb. 250-400 ms-ra van
+   szüksége egy ilyen rövid felirat tényleges elolvasásához, 200 ms a jó
+   egyensúly az olvashatóság és az "élő" hatás között.
+10. ~~**Csúszkák MIDI-elárasztása**: a `trkReverb_ValueChanged` és a
     `trkAlapHangero_ValueChanged` húzás közben MINDEN tick-nél 16
     üzenetet küld. Ugyanaz a throttling-minta alkalmazható, mint a
-    kijelzésnél (vagy csak a húzás végén küldeni).
-11. **A pánik-söprés 2048 üzenet**: a `HangokKikapcsolasa(c, True)` mind
+    kijelzésnél (vagy csak a húzás végén küldeni).~~ - **JAVÍTVA**: új
+    `csuszkaMidiIdozito` (`Interval = 50`, 20 Hz) a `midiKijelzoIdozito`
+    mintáját követve - a `ValueChanged` csak a feliratot (`grpVolume.Text`/
+    `grpReverb.Text`, olcsó) frissíti azonnal, és egy `alapHangeroKuldendo`/
+    `reverbKuldendo` jelzőt állít be; a tényleges MIDI-küldés (mind a 16
+    csatornára) a `csuszkaMidiIdozito_Tick`-ben történik, mindig a csúszka
+    AKTUÁLIS értékét kiolvasva. 50 ms mellett döntöttünk 100 ms helyett,
+    mert itt (ellentétben a szöveges kijelzéssel) nincs olvashatósági
+    korlát - egy MIDI-porton 16 üzenet kiküldése is csak ~15-16 ms, tehát
+    technikai akadály sincs a gyorsabb, simábban élő érzetű ütem előtt.
+11. ~~**A pánik-söprés 2048 üzenet**: a `HangokKikapcsolasa(c, True)` mind
     a 16 csatornára 128 Note Off-ot küld. Valódi hardveres MIDI porton
     (31250 baud) ez ~2 másodperc blokkolás, és ez fut a `FormClosing`-ban
     is, tehát a kilépést is lassítja. Alternatíva: először CC120 (All
     Sound Off) + CC123 (All Notes Off) csatornánként (32 üzenet), és a
-    teljes söprés csak tartalékként.
+    teljes söprés csak tartalékként.~~ - **JAVÍTVA**: a `teljesSepres`
+    ág mostantól csatornánként csak a CC120 (All Sound Off) + CC123
+    (All Notes Off) párost küldi (128 explicit Note Off helyett), 16
+    csatornára összesen ~32 üzenetet a korábbi 2048 helyett - kb.
+    60-szoros csökkenés. Ez érinti mind a pánikgombot (`btnReset_Click`),
+    mind a `MainForm_FormClosing`-ot, tehát mindkettő gyakorlatilag
+    azonnalivá vált. Tartalék teljes söprést szándékosan NEM tartottunk
+    meg - ugyanezt a CC120/CC123 mintát már megbízhatónak fogadtuk el az
+    5. pontnál (`MidiEngine.OsszesHangElnemitasa`) is.
 12. **A FELVÉTEL SZEMPONTJÁBÓL FONTOS**: mivel a bejövő MIDI a UI
     üzenetsoron megy át, a felvétel időbélyegei annyi jittert
     örökölnek, amennyit a UI szál terheltsége okoz. A "Következő
     lépések" 6. pontja (MIDI-küldés leválasztása a UI-szálról) eddig nem
     volt sürgős - a felvétel funkcióval viszont felértékelődik.
     Minimum: az időbélyeget már a callback-szálon rögzíteni
-    (`Stopwatch`), és csak a feldolgozást marshalolni.
+    (`Stopwatch`), és csak a feldolgozást marshalolni. - **ALAP
+    INFRASTRUKTÚRA ELKÉSZÜLT (2026-09-03)**, a tényleges felvétel
+    funkció (`MidiFelvevoForm`) még NEM. A `MidiEngine`-ben egy a
+    konstruktorban elindított `Stopwatch` (`idozito`) mostantól MÉG a
+    callback-szálon, a `BeginInvoke`-os UI-átadás ELŐTT rögzíti az
+    üzenet beérkezésének pillanatát. A `MidiUzenetErkezett` esemény (és
+    a `MainForm.midiMotor_MidiUzenetErkezett`/`MidiUzenetFeldolgozasa`)
+    új `idobelyegMs As Long` paramétert kapott, amit a `BeginInvoke`
+    lambdája SZÁNDÉKOSAN elcsípett (captured) helyi paraméterként ad
+    tovább - NEM egy megosztott mezőn keresztül, nehogy egy gyorsabban
+    beérkező későbbi üzenet felülírja egy korábban sorba állított üzenet
+    időbélyegét, mielőtt annak feldolgozása lefutna a UI szálon. A
+    paramétert `MidiUzenetFeldolgozasa` egyelőre csak átveszi, nem
+    használja fel - ez a tényleges felvétel-logika hozzáadásakor válik
+    aktuálissá.
 
 ### MÉG NYITOTT - kód-higiénia
 

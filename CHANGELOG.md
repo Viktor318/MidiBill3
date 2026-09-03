@@ -10,6 +10,77 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.12.0] - 2026-09-03
+
+### Javítva
+- **`BeallitasokAlkalmazasa`**: a `TranszponalasFrissites()` hívása
+  mostantól a már kiszámolt, korlátozott `ujTranszponalas` értéket kapja
+  a nyers `b.Transzponalas` helyett - ugyanazt a mintát követve, mint a
+  metódus összes többi beállítása. Viselkedésbeli hatása nem volt (a
+  `TranszponalasFrissites()` maga is korlátoz), tisztán kód-konzisztencia
+  javítás.
+- **`Beallitasok.Betoltes`**: egy szó szerint `null` tartalmú (vagy csak
+  whitespace-eket/kommenteket tartalmazó) JSON fájl betöltésekor eddig
+  kezeletlen `NullReferenceException` szállt el, és a felhasználó egy
+  angol, értelmezhetetlen hibaüzenetet látott a szép magyar helyett.
+  Mostantól a `Deserialize` után közvetlenül ellenőrzi, hogy az eredmény
+  nem `Nothing`, és ha az, egy értelmes, magyar `InvalidDataException`-t
+  dob helyette.
+
+### Változtatva (teljesítmény)
+- **A MIDI-üzenet szöveggé alakítása** (`MidiUzenetSzoveg()` - string-
+  összefűzés + `Hangnevek`/`HangszerLista`-keresés) eddig MINDEN
+  beérkező MIDI-üzenetnél lefutott a `MidiUzenetFeldolgozasa`-ban, pedig
+  a kijelzés (`lblMidiUzenet`) amúgy is csak a `midiKijelzoIdozito`
+  ütemében, max. 10x/mp frissül. Mostantól minden üzenetnél csak a 3
+  nyers `Integer` értéket tároljuk el (`utolsoMidiUzenetStatusz`/
+  `utolsoMidiAdat1`/`utolsoMidiAdat2`), a tényleges szöveggé alakítás
+  átkerült a `midiKijelzoIdozito_Tick`-be - így a throttling eredeti
+  szándéka (a kijelzés-frissítés korlátozása) most már a string-építésre
+  is kiterjed, nem csak a UI-frissítésre.
+- **`midiKijelzoIdozito.Interval`: 100 ms (10 Hz) → 200 ms (5 Hz).** A
+  felhasználó jelezte, hogy 10 Hz-en a rövid szöveges MIDI-üzenet
+  felirat gyakorlatilag csak villog, nem olvasható el - egy emberi
+  szem/agy kb. 250-400 ms-ra van szüksége egy ilyen rövid felirat
+  tényleges elolvasásához. 200 ms kényelmesen olvasható, mégis élőnek
+  hat.
+- **Az Alap hangerő és a Reverb csúszka MIDI-elárasztása megszűnt.** A
+  `trkAlapHangero_ValueChanged`/`trkReverb_ValueChanged` eddig a `TrackBar`
+  `ValueChanged` eseményének MINDEN tüzelésénél (nemcsak a húzás végén,
+  hanem gyakorlatilag minden pixelnyi elmozdulásnál) kiküldött 16-16 MIDI
+  Controller Change üzenetet. Új `csuszkaMidiIdozito` (`Interval = 50`,
+  20 Hz) a `midiKijelzoIdozito` mintáját követve: a felirat
+  (`grpVolume.Text`/`grpReverb.Text`) továbbra is azonnal frissül, de a
+  tényleges MIDI-küldés a `csuszkaMidiIdozito_Tick`-ben, legfeljebb
+  20x/mp történik, mindig a csúszka legfrissebb értékét kiküldve.
+- **A pánik-söprés ("Csend legyen!" gomb és minden kilépés) ~60-szor
+  gyorsabb lett.** A `MidiEngine.HangokKikapcsolasa(c, True)` eddig
+  csatornánként 128 explicit Note Off üzenetet küldött (16 csatornára
+  összesen 2048-at), ami egy valódi hardveres MIDI porton (31250 baud)
+  kb. 2 másodperces BLOKKOLÓ küldést jelentett - ez fut le a
+  pánikgombnál ÉS minden kilépéskor is (`MainForm_FormClosing`), tehát
+  mindkettőt feleslegesen lassította. Mostantól csatornánként csak az
+  All Sound Off (CC120) + All Notes Off (CC123) párost küldi (2
+  üzenet/csatorna, összesen ~32), ami a MIDI-szabvány szerint azonnal
+  elnémít minden szóló hangot - ugyanaz a minta, amit a kimenetváltási
+  hangelnémításnál (`OsszesHangElnemitasa`, lásd fentebb) is használunk.
+
+### Hozzáadva (előkészítés)
+- **Callback-szál-pontos MIDI időbélyeg-infrastruktúra** a jövőbeli
+  MIDI-felvétel funkcióhoz (`MidiFelvevoForm`). A `MidiEngine` mostantól
+  a konstruktorban elindított `Stopwatch`-csal (`idozito`) MÉG a
+  callback-szálon, a UI-ra való `BeginInvoke`-átadás ELŐTT rögzíti az
+  üzenet beérkezésének pillanatát - így az időbélyeg független a UI szál
+  esetleges terheltségétől (jitter). A `MidiUzenetErkezett` eseménynek
+  (és a `MainForm.midiMotor_MidiUzenetErkezett` / `MidiUzenetFeldolgozasa`
+  metódusoknak) új `idobelyegMs As Long` paramétere lett - a
+  `BeginInvoke` lambdája ezt SZÁNDÉKOSAN elcsípett (captured) helyi
+  paraméterként adja tovább, nem egy megosztott mezőn keresztül, hogy egy
+  gyorsabban beérkező későbbi üzenet ne írhassa felül egy korábban sorba
+  állított üzenet időbélyegét. Ez önmagában még NEM felvétel funkció -
+  a paramétert egyelőre semmi nem használja fel -, csupán a talaj-
+  előkészítés, amit a kódátnézés 12. pontja jelzett szükségesnek.
+
 ## [1.11.0] - 2026-09-03
 
 ### Hozzáadva

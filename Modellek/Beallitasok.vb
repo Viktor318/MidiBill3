@@ -94,6 +94,15 @@ Namespace Modellek
             }
 
             Dim eredmeny As Beallitasok = JsonSerializer.Deserialize(Of Beallitasok)(json, opciok)
+            If eredmeny Is Nothing Then
+                ' A Deserialize szabványos viselkedése: egy szó szerint "null" tartalmú
+                ' (vagy csak whitespace-eket/kommenteket tartalmazó) JSON fájlra Nothing-ot
+                ' ad vissza, kivétel dobása nélkül - enélkül az ellenőrzés nélkül a következő
+                ' sor (Kiegeszit16Csatornara) egy kezeletlen NullReferenceException-t dobna,
+                ' és a felhasználó egy angol, értelmezhetetlen hibaüzenetet látna a szép
+                ' magyar helyett.
+                Throw New InvalidDataException("A fájl nem tartalmaz érvényes MidiBill beállításokat (üres vagy 'null' JSON).")
+            End If
             Kiegeszit16Csatornara(eredmeny)
 
             Return eredmeny
