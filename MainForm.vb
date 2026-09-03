@@ -21,6 +21,7 @@ Public Class MainForm
     Private utolsoSoundFontMappa As String = ""
     Private utolsoPresetKonvertalasMappa As String = ""
     Private utolsoMb3KonvertalasMappa As String = ""
+    Private utolsoMidiFajlModositasMappa As String = ""
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
@@ -1086,7 +1087,7 @@ Public Class MainForm
                 DialogusAllapotMentese(dlgMegnyitas, dlgMegnyitas.FileName, utolsoBetoltesMappa)
             Catch ex As Exception
                 MsgBox("Nem sikerült betölteni a(z) """ & dlgMegnyitas.FileName & """ fájlt." & vbCrLf &
-                       "Lehet, hogy sérült, vagy nem MidiBill adatfájl." & vbCrLf & vbCrLf &
+                       "Lehet, hogy sérült, vagy nem MidiBill preset fájl." & vbCrLf & vbCrLf &
                        "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
             End Try
         End If
@@ -1391,6 +1392,49 @@ Public Class MainForm
             MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill - Régi .mb3 fájlok konvertálása")
 
             DialogusAllapotMentese(dlgMb3Konvertalas, fajlok(0), utolsoMb3KonvertalasMappa)
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Meglévő .mid fájlok elejére beleírja az AKTÍV csatornák jelenlegi
+    ''' MIDI-állapotát (hangszín, hangerő, tér, vibrato, chorus, reverb) -
+    ''' lásd Modellek/MidiFajlSzerkeszto.vb. A bemeneti fájlokat nem írja
+    ''' felül: a módosított másolatok a KonvertalasKimenetiMappa() szerinti
+    ''' almappába kerülnek. JELENLEG CSAK format 1 MIDI fájlokat támogat -
+    ''' format 0 esetén az adott fájl hibaként jelenik meg az összegzésben,
+    ''' a többi fájl feldolgozása viszont folytatódik.
+    ''' </summary>
+    Private Sub mnuMidiFajlModositasa_Click(sender As Object, e As EventArgs) Handles mnuMidiFajlModositasa.Click
+        DialogusMappaBeallitasa(dlgMidiFajlModositas, utolsoMidiFajlModositasMappa)
+
+        If dlgMidiFajlModositas.ShowDialog() = DialogResult.OK Then
+            Dim fajlok As String() = dlgMidiFajlModositas.FileNames
+            Dim forrasMappa As String = IO.Path.GetDirectoryName(fajlok(0))
+            Dim kimenoMappa As String = KonvertalasKimenetiMappa(forrasMappa)
+
+            Dim sikeres As Integer = 0
+            Dim hibaUzenetek As New List(Of String)
+
+            For Each fajl As String In fajlok
+                Dim nev As String = IO.Path.GetFileName(fajl)
+                Try
+                    Dim kimenetiUtvonal As String = IO.Path.Combine(kimenoMappa, nev)
+                    MidiFajlSzerkeszto.BeallitasokBeszurasa(fajl, kimenetiUtvonal, csatornaAllapotok, trkAlapHangero.Value, trkReverb.Value)
+                    sikeres += 1
+                Catch ex As Exception
+                    hibaUzenetek.Add(nev & ": " & ex.Message)
+                End Try
+            Next
+
+            Dim osszegzes As String = "Kész. Sikeres: " & sikeres & ", hibás: " & hibaUzenetek.Count & "." & vbCrLf &
+                                       "A módosított fájlok itt találhatók:" & vbCrLf & kimenoMappa
+            If hibaUzenetek.Count > 0 Then
+                osszegzes &= vbCrLf & vbCrLf & "Hibák:" & vbCrLf & String.Join(vbCrLf, hibaUzenetek)
+            End If
+
+            MsgBox(osszegzes, MsgBoxStyle.Information, "MidiBill - MIDI fájl módosítása")
+
+            DialogusAllapotMentese(dlgMidiFajlModositas, fajlok(0), utolsoMidiFajlModositasMappa)
         End If
     End Sub
 

@@ -40,6 +40,7 @@ Partial Class MainForm
         mnuSegedprogramok = New ToolStripMenuItem()
         mnuPresetFajlokFrissitese = New ToolStripMenuItem()
         mnuMb3FajlokKonvertalasa = New ToolStripMenuItem()
+        mnuMidiFajlModositasa = New ToolStripMenuItem()
         SúgóToolStripMenuItem = New ToolStripMenuItem()
         mnuNevjegy = New ToolStripMenuItem()
         chkPedal = New CheckBox()
@@ -80,6 +81,7 @@ Partial Class MainForm
         dlgSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
+        dlgMidiFajlModositas = New OpenFileDialog()
         btnMidiFelvetel = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
@@ -115,13 +117,13 @@ Partial Class MainForm
         ' 
         mnuBetolt.Name = "mnuBetolt"
         mnuBetolt.Size = New Size(296, 26)
-        mnuBetolt.Text = "Adatok &betöltése"
+        mnuBetolt.Text = "Presetek &betöltése"
         ' 
         ' mnuMent
         ' 
         mnuMent.Name = "mnuMent"
         mnuMent.Size = New Size(296, 26)
-        mnuMent.Text = "Adatok &mentése"
+        mnuMent.Text = "Presetek &mentése"
         ' 
         ' ToolStripSeparator3
         ' 
@@ -183,7 +185,7 @@ Partial Class MainForm
         ' 
         ' mnuSegedprogramok
         ' 
-        mnuSegedprogramok.DropDownItems.AddRange(New ToolStripItem() {mnuPresetFajlokFrissitese, mnuMb3FajlokKonvertalasa})
+        mnuSegedprogramok.DropDownItems.AddRange(New ToolStripItem() {mnuPresetFajlokFrissitese, mnuMb3FajlokKonvertalasa, mnuMidiFajlModositasa})
         mnuSegedprogramok.Name = "mnuSegedprogramok"
         mnuSegedprogramok.Size = New Size(139, 26)
         mnuSegedprogramok.Text = "&Segédprogramok"
@@ -191,14 +193,20 @@ Partial Class MainForm
         ' mnuPresetFajlokFrissitese
         ' 
         mnuPresetFajlokFrissitese.Name = "mnuPresetFajlokFrissitese"
-        mnuPresetFajlokFrissitese.Size = New Size(287, 26)
+        mnuPresetFajlokFrissitese.Size = New Size(414, 26)
         mnuPresetFajlokFrissitese.Text = "&Preset fájlok frissítése"
         ' 
         ' mnuMb3FajlokKonvertalasa
         ' 
         mnuMb3FajlokKonvertalasa.Name = "mnuMb3FajlokKonvertalasa"
-        mnuMb3FajlokKonvertalasa.Size = New Size(287, 26)
+        mnuMb3FajlokKonvertalasa.Size = New Size(414, 26)
         mnuMb3FajlokKonvertalasa.Text = "&Régi .mb3 fájlok konvertálása"
+        ' 
+        ' mnuMidiFajlModositasa
+        ' 
+        mnuMidiFajlModositasa.Name = "mnuMidiFajlModositasa"
+        mnuMidiFajlModositasa.Size = New Size(414, 26)
+        mnuMidiFajlModositasa.Text = "&MIDI fájlok módosítása az aktuális beállításokkal"
         ' 
         ' SúgóToolStripMenuItem
         ' 
@@ -310,15 +318,18 @@ Partial Class MainForm
         ' 
         ' dlgMegnyitas
         ' 
-        dlgMegnyitas.Filter = "MidiBill adatok (*.json)|*.json"
-        ' 
+        dlgMegnyitas.Filter = "MidiBill preset fájlok (*.json)|*.json"
+        dlgMegnyitas.Title = "Presetek betöltése"
+        '
         ' dlgMentes
-        ' 
-        dlgMentes.Filter = "MidiBill adatok (*.json)|*.json"
-        ' 
+        '
+        dlgMentes.Filter = "MidiBill preset fájlok (*.json)|*.json"
+        dlgMentes.Title = "Presetek mentése"
+        '
         ' dlgImportMb3
-        ' 
+        '
         dlgImportMb3.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
+        dlgImportMb3.Title = "Régi .mb3 preset importálása"
         ' 
         ' grpSplit
         ' 
@@ -527,20 +538,30 @@ Partial Class MainForm
         ' dlgHangszerlista
         ' 
         dlgHangszerlista.Filter = "Hangszerlista fájlok (*.lst)|*.lst"
-        ' 
+        dlgHangszerlista.Title = "Hangszerlista betöltése"
+        '
         ' dlgSoundFont
-        ' 
+        '
         dlgSoundFont.Filter = "SoundFont fájlok (*.sf2)|*.sf2"
-        ' 
+        dlgSoundFont.Title = "SoundFont adatok importálása"
+        '
         ' dlgPresetKonvertalas
-        ' 
+        '
         dlgPresetKonvertalas.Filter = "MidiBill preset fájlok (*.json)|*.json"
         dlgPresetKonvertalas.Multiselect = True
-        ' 
+        dlgPresetKonvertalas.Title = "Preset fájlok frissítése"
+        '
         ' dlgMb3Konvertalas
-        ' 
+        '
         dlgMb3Konvertalas.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
         dlgMb3Konvertalas.Multiselect = True
+        dlgMb3Konvertalas.Title = "Régi .mb3 fájlok konvertálása"
+        '
+        ' dlgMidiFajlModositas
+        '
+        dlgMidiFajlModositas.Filter = "MIDI fájlok (*.mid;*.midi)|*.mid;*.midi"
+        dlgMidiFajlModositas.Multiselect = True
+        dlgMidiFajlModositas.Title = "MIDI fájlok módosítása az aktuális beállításokkal"
         ' 
         ' btnMidiFelvetel
         ' 
@@ -646,6 +667,8 @@ Partial Class MainForm
     Friend WithEvents mnuMb3FajlokKonvertalasa As ToolStripMenuItem
     Friend WithEvents dlgPresetKonvertalas As OpenFileDialog
     Friend WithEvents dlgMb3Konvertalas As OpenFileDialog
+    Friend WithEvents mnuMidiFajlModositasa As ToolStripMenuItem
+    Friend WithEvents dlgMidiFajlModositas As OpenFileDialog
     Friend WithEvents mnuBeallitasok As ToolStripMenuItem
     Friend WithEvents mnuAlaphelyzetbeAllitas As ToolStripMenuItem
     Friend WithEvents grpExtraMidi As GroupBox

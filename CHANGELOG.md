@@ -10,7 +10,34 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
-## [Nem kiadott]
+## [1.11.0] - 2026-09-03
+
+### Hozzáadva
+- **"MIDI fájlok módosítása az aktuális beállításokkal"** - új menüpont a
+  Segédprogramok alatt (`Modellek/MidiFajlSzerkeszto.vb`). Tetszőleges,
+  akár máshonnan (DAW, más program) származó **format 1** Standard MIDI
+  File (`.mid`) fájl(ok) elejére beszúrja az AKTÍV csatornák teljes MIDI-
+  állapotát (hangszín, hangerő, tér, vibrato, chorus, reverb) - ugyanazt
+  a logikát használva, mint a "MIDI beállító üzenetek küldése" funkció
+  élőben. A beszúrás egy ÚJ, önálló trackként történik, közvetlenül a 0.
+  (conductor) track után - a meglévő trackek bájtjaihoz nem nyúl hozzá
+  (nincs running status újraszámolás, nincs delta-time lánc bontása). A
+  bemeneti fájlokat nem írja felül: a módosított másolatok a meglévő
+  konvertáló segédprogramokéhoz hasonlóan egy "Konvertalva" almappába
+  kerülnek, egyszerre több fájl is kijelölhető (`Multiselect`).
+  **Védelem**: egy aktív csatorna is csak akkor kap beállítást, ha a
+  fájl valamelyik MEGLÉVŐ trackje ténylegesen tartalmaz is arra a
+  csatornára vonatkozó adatot (Note On/Off, Control Change stb.) - ha a
+  fájl egyáltalán nem használ egy csatornát, arra nem kerül beállítás
+  (a "használt" itt bármilyen csatorna-üzenetet jelent, a Control
+  Change-eket is beleértve, nem csak a Note On/Off-ot - ez szándékos
+  döntés). Ha egy fájlnál egyik aktív csatornához sincs adat, a program
+  nem szúr be felesleges üres tracket, a kimenet a bemenet változatlan
+  másolata, ezt az összegzésben külön jelzi. **JELENLEG CSAK format 1
+  fájlokat támogat** - format 0 esetén az adott fájl hibaként jelenik
+  meg az összegzésben, a többi fájl feldolgozása folytatódik (a format 0
+  támogatása egy későbbi fejlesztés, lásd az állapot-dokumentum
+  "Következő lépések" 12. pontját).
 
 ### Javítva
 - **MIDI kimenet váltásakor beragadhattak a hangok.** A `MidiEngine.KimenetBezaras()`
@@ -20,6 +47,20 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
   program bezárásakor, az a korábbi eszközön tovább szólhatott. Új
   `OsszesHangElnemitasa()` metódus a `Dispose()` ELŐTT minden csatornára
   kiküldi az All Sound Off (CC120) és All Notes Off (CC123) üzenetet.
+
+### Módosítva
+- **A fájl-dialógusok fejléce (`Title`) mostantól a hívó menüpont
+  szövegével egyezik meg** (pl. "Régi .mb3 fájlok konvertálása"), az
+  általános "Megnyitás"/"Mentés" felirat helyett - így egyértelmű, melyik
+  menüpontot indította el a felhasználó. Mind a 8 fájl-dialógus érintett.
+- **"Adatok betöltése"/"Adatok mentése" → "Presetek betöltése"/"Presetek
+  mentése"** - a menüpontok, a hozzájuk tartozó dialógus-fejlécek, a
+  fájlszűrők ("MidiBill preset fájlok") és a betöltési hibaüzenet szövege
+  is a "Presetek" elnevezésre változott, összhangban azzal, hogy a
+  korábbi mappaszerkezet-átalakítás (lásd 1.10.0) óta ezek a fájlok a
+  felhasználói mappa `Presetek` almappájában laknak, nem egy "Adatok"
+  mappában. Az "SF adatok" mappanév (hangszerlisták/SoundFont-importok)
+  szándékosan változatlan maradt, az egy másik fogalom.
 
 ## [1.10.0] - 2026-09-03
 

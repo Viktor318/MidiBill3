@@ -9,10 +9,12 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.10.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.11.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
   (a 2026-09-03-i kiadás: "Extra MIDI üzenetek" funkció, a kódátnézés
-  három hibajavítása, az `Option Strict On`, valamint a gyári/felhasználói
-  tartalom szétválasztása - lásd `CHANGELOG.md`)
+  három hibajavítása, az `Option Strict On`, a gyári/felhasználói
+  tartalom szétválasztása, a MIDI kimenet-váltási hangelnémítás, a
+  "MIDI fájlok módosítása" segédprogram, valamint a fájl-dialógusok
+  és a "Presetek" elnevezés véglegesítése - lásd `CHANGELOG.md`)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -202,6 +204,42 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   Note Off küldése a beállító csomag előtt) NEM hozott javulást,
   eltávolításra került - a végleges válasz a fenti "bemelegítő hang"
   munkafolyamat
+
+**"MIDI fájlok módosítása az aktuális beállításokkal"** (2026-09-03,
+`Modellek/MidiFajlSzerkeszto.vb`, új menüpont a Segédprogramok alatt) -
+lásd a részletes tervet korábban a "Következő lépések" 12. pontjában,
+ez a pont MOSTANTÓL MEGVALÓSULT (a format 1 ág):
+
+- Tetszőleges, akár máshonnan (DAW, más program) származó **format 1**
+  `.mid` fájl(ok) elejére beszúrja az AKTÍV csatornák teljes MIDI-
+  állapotát, egy ÚJ, önálló trackként, a 0. (conductor) track után - a
+  meglévő trackek bájtjaihoz nem nyúl hozzá
+- **Védelem** (a felhasználó kérésére, 2026-09-03 hozzáadva): egy aktív
+  csatorna is csak akkor kap beállítást, ha a fájl valamelyik MEGLÉVŐ
+  trackje ténylegesen tartalmaz is arra a csatornára vonatkozó adatot -
+  ez BÁRMILYEN csatorna-üzenetet jelent (Note On/Off ÉS Control Change
+  is számít, pl. egy Sustain pedál CC64, amit egy külső felvevő program
+  esetleg több csatornára is "szór", akkor is, ha ténylegesen csak egy
+  csatornán szólalt meg hang) - ez SZÁNDÉKOS, tudatos döntés, a
+  felhasználóval egyeztetve (egy konkrét teszt-MIDI-fájllal
+  ellenőrizve, ahol emiatt 3 csatornára került adat 1 helyett - ez NEM
+  hiba, hanem a tágabb definíció helyes működése)
+- Ha egy fájlnál egyik aktív csatornához sincs adat, nem szúr be
+  felesleges üres tracket - a kimenet a bemenet változatlan másolata
+- format 0 (egy közös track) MÉG NEM támogatott - lásd "Következő
+  lépések" 12. pont, ez KÉSŐBBI fejlesztés marad
+
+**Fájl-dialógusok és "Adatok" → "Presetek" elnevezés** (2026-09-03):
+
+- Mind a 8 fájl-dialógus (`OpenFileDialog`/`SaveFileDialog`) `Title`
+  propertye mostantól a hívó menüpont szövegével egyezik meg, az
+  általános "Megnyitás"/"Mentés" felirat helyett
+- A "Adatok betöltése"/"Adatok mentése" menüpontok, dialógus-fejlécek,
+  fájlszűrők és a betöltési hibaüzenet "Presetek betöltése"/"Presetek
+  mentése"-re változtak - összhangban azzal, hogy ezek a fájlok a
+  `Presetek` almappában laknak (lásd a mappaszerkezet-átalakítást
+  fentebb), nem egy "Adatok" mappában. Az "SF adatok" mappanév
+  szándékosan változatlan maradt (más fogalom)
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -864,4 +902,52 @@ munkalista is a további javításokhoz.
     felhasználó megpróbálta, de az adott beszélgetésben nem volt
     elérhető a váltás, ezért a hagyományos (fájl-beillesztős)
     munkamódszernél maradtunk
+
+12. **MIDI-fájl "patchelő" segédprogram** - ötletfelvetés (2026-09-03).
+    **A format 1 ág MEGVALÓSULT** (2026-09-03, lásd "Elkészült
+    funkciók") - CSAK a format 0 (egyetlen közös track) támogatása van
+    még hátra, az továbbra is KÉSŐBBI fejlesztés. Cél: egy meglévő MIDI
+    fájl elejére beleírni az aktuális csatorna-beállításokat (hangszín,
+    hangerő, pan, vibrato, reverb stb.), CSAK az aktív csatornákra
+    vonatkozóan - hogy egy külső lejátszó/DAW is helyesen szólaltassa
+    meg a fájlt a program aktuális beállításaival. Tisztázott
+    keretek (a felhasználóval egyeztetve):
+    - **Adatforrás**: a program AKTUÁLIS, élő csatorna-állapota (nem
+      egy kiválasztott preset fájl) - ugyanaz a logika, amit a
+      meglévő `AktivCsatornakAllapotanakKuldese()` (`MainForm.vb`,
+      lásd "Extra MIDI üzenetek" funkció) már előállít élő küldéshez;
+      ezt kell újrahasznosítani, csak fájlba írás céljából
+    - **Fájl-kompatibilitás**: TETSZŐLEGES, külső forrásból (DAW, más
+      program) származó Standard MIDI File-t is kezelnie kell, format
+      0 ÉS format 1 esetén is - nem korlátozódhat a program saját
+      exportjaira. **Ütemezés**: ELŐSZÖR csak a format 1 támogatás
+      készül el, a format 0 kezelése KÉSŐBBRE marad (a felhasználóval
+      egyeztetve, 2026-09-03)
+    - **Belépési pont**: új menüpont a Segédprogramok alatt, a meglévő
+      preset-frissítő és `.mb3`-konvertáló funkciók mellé, fájlválasztó
+      dialógussal
+    - **Ütközéskezelés**: ha a célfájl 0. időpillanatában már vannak
+      MIDI események, az ÚJ csatorna-állapot üzenetek kerülnek eléjük
+      (delta-time=0-val beszúrva), a meglévő eseményeket a program
+      MEGTARTJA, nem törli
+    - **Format 1 beszúrási stratégia (lezárva, 2026-09-03)**: NEM a
+      meglévő trackek egyikébe írunk bele (se a conductor/track 0-ba,
+      se a csatorna-specifikus trackekbe), hanem egy ÚJ, önálló `MTrk`
+      chunk-ot hozunk létre a csatorna-állapot üzenetekkel (mind
+      delta-time=0-val, végén kötelező `FF 2F 00` End of Track), és ezt
+      szúrjuk be track 1-ként (közvetlenül a conductor track után, ha
+      van ilyen) - az `MThd` `ntrks` mezőjét eggyel megnöveljük. Ez azért
+      biztonságosabb és egyszerűbb, mint a meglévő trackekbe írás, mert
+      format 1-ben minden track a közös tick-időzítést használja és
+      párhuzamosan játszódik le, a csatornát maga az üzenet
+      státuszbájtja határozza meg (nem a track), így egyáltalán nem kell
+      hozzányúlni a meglévő trackek bájtjaihoz (nincs running status
+      újraszámolás, nincs delta-time lánc bontása, nem kell kitalálni
+      csatorna-track megfeleltetést)
+    - **Technikai megjegyzés**: SMF bájt szintű kezelést igényel
+      (chunk-ok, variable-length quantity delta-time-ok, running
+      status kezelése beszúrásnál) - nem szükséges hozzá külső
+      könyvtár, kézzel megírható, hasonlóan a `MidiEngine` és
+      `HangszerLista`/`SoundFontOlvaso` meglévő, kézzel írt bájt-szintű
+      kódjához
 </content>
