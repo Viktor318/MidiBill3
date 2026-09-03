@@ -10,7 +10,7 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
-## [Nem kiadott]
+## [1.13.0] - 2026-09-03
 
 ### Javítva (kód-higiénia)
 - **`AppInfo.vb` elavult komment**: a `Directory.Build.props`-ra és a
@@ -36,6 +36,26 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
   változatlan maradt - elfogadott, tudatos tervezési döntés, nem
   hiba (lásd az állapot-dokumentum "Ismert, tudatosan meghozott
   döntések" szakaszát).
+- Ismételt, teljes kódátnézés (a felvétel-fejlesztés megkezdése előtt):
+  funkcionális hibát nem talált, csak két elavult/duplikált doc-kommentet
+  javított (`MainForm.midiKijelzoIdozito_Tick` still 10 Hz/Interval=100-at
+  írt a tényleges 5 Hz/200 ms helyett; `HangszerPanel.vb`-ben egy
+  duplikált `<summary>` XML-doc tag volt).
+
+### Javítva (Publish)
+- **`GM.lst`/`GM.drm` hiányzott a Publish (self-contained, single-file)
+  kimenetéből.** Self-contained, single-file publish módnál (pl. Folder
+  profil, win-x64 RID-del, "Produce single file" bekapcsolva) a .NET SDK
+  minden managed assembly-t egyetlen `.exe`-be olvaszt össze, és a
+  TÉNYLEGES publish-kimenet (`bin\...\publish\<RID>\`) ilyenkor a
+  szokásos `CopyToOutputDirectory`/`CopyToPublishDirectory` metaadat
+  ellenére sem tartalmazta a laza (nem-assembly) `GM.lst`/`GM.drm`
+  fájlokat - ez egy ismert SDK-sajátosság. Megoldás: új
+  `GyariAdatokMasolasaPublishUtan` MSBuild `Target`
+  (`AfterTargets="Publish"`) a `.vbproj`-ban, ami a publish célfeladat
+  után feltétel nélkül, közvetlenül a `$(PublishDir)`-be másolja mindkét
+  fájlt - így Folder, self-contained és single-file publish esetén is
+  megbízhatóan megjelennek az `.exe` mellett.
 
 ## [1.12.0] - 2026-09-03
 

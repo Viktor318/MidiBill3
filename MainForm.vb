@@ -805,8 +805,8 @@ Public Class MainForm
     End Sub
 
     ''' <summary>
-    ''' A MIDI-üzenet kijelzés tényleges frissítése, max. 10x/mp ütemben
-    ''' (a midiKijelzoIdozito Interval=100 beállítása szerint) - csak akkor
+    ''' A MIDI-üzenet kijelzés tényleges frissítése, max. 5x/mp ütemben
+    ''' (a midiKijelzoIdozito Interval=200 beállítása szerint) - csak akkor
     ''' ír, ha ténylegesen érkezett új üzenet az utolsó tikk óta.
     ''' </summary>
     Private Sub midiKijelzoIdozito_Tick(sender As Object, e As EventArgs) Handles midiKijelzoIdozito.Tick

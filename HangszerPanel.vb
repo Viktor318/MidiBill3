@@ -61,7 +61,6 @@ Public Class HangszerPanel
     End Property
 
     ''' <summary>
-    ''' <summary>
     ''' Újratölti a hangszer legördülőt az AKTUÁLIS hangszerforrás alapján
     ''' (lásd AktivHangszerLista) - akkor hívjuk, amikor menet közben
     ''' (induláskor vagy preset betöltésekor) megváltozik az aktív hangszerlista. 
