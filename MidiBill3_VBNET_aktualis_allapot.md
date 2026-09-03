@@ -9,9 +9,10 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.9.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
-  (az "Extra MIDI üzenetek" funkció még nem kiadott verzióban van,
-  lásd `CHANGELOG.md` - [Nem kiadott])
+- **Verzió**: 1.10.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a 2026-09-03-i kiadás: "Extra MIDI üzenetek" funkció, a kódátnézés
+  három hibajavítása, az `Option Strict On`, valamint a gyári/felhasználói
+  tartalom szétválasztása - lásd `CHANGELOG.md`)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -162,7 +163,7 @@ automatikusan párosodik. A 10. csatorna teljesen szerkeszthető.
   `cmbSplitPont` legördülőből történő közvetlen kiválasztás is
   ugyanezt az üzenetet írja ki
 
-**Extra MIDI üzenetek (ÚJ, még nem kiadott verzióban)**
+**Extra MIDI üzenetek (v1.10.0)**
 - Új `grpExtraMidi` GroupBox a jobb oszlopban ("Extra MIDI üzenetek"),
   pontosan azon a helyen, amit a Chorus-funkció (v1.9.0) idején
   szándékosan szabadon hagytunk - most felhasználva

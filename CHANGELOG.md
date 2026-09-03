@@ -10,7 +10,7 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
-## [Nem kiadott]
+## [1.10.0] - 2026-09-03
 
 ### Hozzáadva
 - **Extra MIDI üzenetek a játék kezdetén**: új GroupBox a jobb oszlop
