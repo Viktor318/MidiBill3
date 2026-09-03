@@ -24,6 +24,10 @@ Public Class MainForm
     Private aktualisSplitPont As Integer = 60
     Private splitTanulasAktiv As Boolean = False
     Private mentesKihagyasa As Boolean = False
+    ' True-ra vált a FormClosing legelején: ettől kezdve a MIDI callback-szálról
+    ' érkező üzeneteket eldobjuk, hogy a lezárás alatt már ne próbáljunk a UI
+    ' szálhoz nyúlni (lásd midiMotor_MidiUzenetErkezett és MainForm_FormClosing).
+    Private zarasFolyamatban As Boolean = False
     ' A jelenleg aktív hangszerlista fájlneve (az Adatok mappán belül).
     Private aktualisHangszerListaFajl As String = "GM.lst"
     Private aktualisTranszponalas As Integer = 0
@@ -65,7 +69,24 @@ Public Class MainForm
         midiKijelzoIdozito.Start()
     End Sub
 
+    ''' <summary>
+    ''' Kilépéskori takarítás. FONTOS a sorrend: ELŐSZÖR a zarasFolyamatban
+    ''' jelzőt állítjuk be és zárjuk le a MIDI BEMENETET, és csak utána jön a
+    ''' hangok leállítása / mentés / Dispose - így a MIDI callback-szál már
+    ''' nem próbál üzenetet átadni a UI szálnak, amíg az a lezárással
+    ''' foglalkozik (lásd a midiMotor_MidiUzenetErkezett megjegyzését).
+    '''
+    ''' FIGYELEM a jövőbeli fejlesztéshez: ha ide később bekerül a kilépés
+    ''' MEGSZAKÍTÁSA (pl. a tervezett MIDI felvevő ablak "van aktív felvétel,
+    ''' leállítsuk?" kérdése e.Cancel = True esetén), akkor annak az
+    ''' ellenőrzésnek az EGÉSZ alábbi takarítás ELÉ kell kerülnie - különben a
+    ''' megszakított kilépés után a MIDI bemenet lezárva maradna.
+    ''' </summary>
     Private Sub MainForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+        zarasFolyamatban = True
+        midiMotor.BemenetBezaras()
+        midiKijelzoIdozito.Stop()
+
         For c As Integer = 1 To 16
             midiMotor.HangokKikapcsolasa(c, True)
         Next
@@ -229,17 +250,35 @@ Public Class MainForm
         MsgBox("MIDI In/Out eszközlista sikeresen frissítve.", MsgBoxStyle.Information, "MidiBill")
     End Sub
 
+    ''' <summary>
+    ''' A Kezdet.json beolvasása induláskor. FONTOS: ha a fájl NEM létezik
+    ''' (első indítás friss telepítés/build után), vagy a beolvasása hibára
+    ''' fut, akkor is ki KELL küldeni az induló állapotot az
+    ''' OsszesCsatornaUjrakuldese()-vel - e nélkül a MidiEngine belső
+    ''' csatorna-állapotai (Aktiv/Alul/Felul/Oktav) végig az alapértelmezett
+    ''' False/0 értéken maradnának, mivel a csatornaAllapotok tömböt és a
+    ''' panelek property-jeit sem az inicializálás, sem a
+    ''' CsatornaPanelekFrissitese() nem szinkronizálja a motorba (a panel
+    ''' property-k szándékosan nem tüzelnek eseményt betöltéskor). Ilyenkor a
+    ''' MidiEngine MINDEN csatornát inaktívnak látna, és a program némán
+    ''' eldobná a lejátszott hangokat.
+    ''' </summary>
     Private Sub KezdetBeallitasokBetoltese()
         If Not IO.File.Exists(kezdetFile) Then
+            OsszesCsatornaUjrakuldese()
             CimsorFrissitese(kezdetFile)
             Return
         End If
 
         Try
             Dim b As Beallitasok = Beallitasok.Betoltes(kezdetFile)
-            BeallitasokAlkalmazasa(b, True)
+            BeallitasokAlkalmazasa(b, True)   ' ez a végén maga is újraküld mindent
             CimsorFrissitese(kezdetFile)
         Catch ex As Exception
+            ' A betöltés félbeszakadt - a beállítások részben alkalmazódhattak,
+            ' ezért itt is kiküldjük a jelenlegi (rész-)állapotot, hogy a
+            ' MidiEngine és a szintetizátor biztosan szinkronban legyen a UI-jal.
+            OsszesCsatornaUjrakuldese()
             MsgBox("Nem sikerült betölteni a korábban elmentett beállításokat." & vbCrLf &
                    "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
         End Try
@@ -595,30 +634,60 @@ Public Class MainForm
     ' Bejövő MIDI üzenetek fogadása (NAudio háttérszáláról!)
     ' ============================================================
 
+    ''' <summary>
+    ''' A NAudio callback-száláról érkező MIDI üzenet átadása a UI szálnak.
+    ''' SZÁNDÉKOSAN BeginInvoke (aszinkron), NEM Invoke: az Invoke blokkolná a
+    ''' MIDI callback-szálat addig, amíg a UI szál fel nem dolgozza az üzenetet.
+    ''' Ez két bajt okozna: (1) minden egyes leütés a UI szál terheltségének
+    ''' megfelelő késleltetést kapna, (2) kilépéskor kölcsönös várakozás
+    ''' (deadlock) alakulhatna ki, mert a UI szál a FormClosing-ban a MIDI
+    ''' bemenet lezárására vár, miközben a callback-szál a UI szálra várna.
+    ''' A BeginInvoke sorrendtartó (a Windows üzenetsor FIFO), tehát a hangok
+    ''' sorrendje továbbra is garantált.
+    ''' </summary>
     Private Sub midiMotor_MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer) Handles midiMotor.MidiUzenetErkezett
-        If InvokeRequired Then
-            Invoke(Sub() MidiUzenetFeldolgozasa(uzenet, adat1, adat2))
-        Else
-            MidiUzenetFeldolgozasa(uzenet, adat1, adat2)
-        End If
+        If zarasFolyamatban Then Return
+
+        Try
+            If InvokeRequired Then
+                BeginInvoke(Sub() MidiUzenetFeldolgozasa(uzenet, adat1, adat2))
+            Else
+                MidiUzenetFeldolgozasa(uzenet, adat1, adat2)
+            End If
+        Catch ex As Exception
+            ' Az ablak épp bezáródik (megszűnt ablak-leíró) - ilyenkor a még
+            ' "úton lévő" MIDI üzeneteket egyszerűen eldobjuk, ez nem hiba.
+        End Try
     End Sub
 
+    ''' <summary>
+    ''' A bejövő MIDI üzenet feldolgozása (pedál-inverzió, split pont tanulás,
+    ''' "Extra MIDI üzenetek"), majd továbbadása a MidiEngine-nek.
+    ''' </summary>
     Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer)
         Dim vegsoAdat2 As Integer = adat2
 
-        If uzenet = CONTROLLER_CHANGE And adat1 = DAMPER_PEDAL And chkPedal.Checked Then
+        ' FONTOS: az üzenet TÍPUSÁT mindig a státuszbájt FELSŐ négy bitjéből
+        ' kell meghatározni - az alsó négy bit a KÜLDŐ MIDI csatorna sorszáma.
+        ' Enélkül az alábbi vizsgálatok csak akkor teljesülnének, ha a
+        ' billentyűzet történetesen az 1. csatornán ad (&H90 / &HB0); egy 2.
+        ' csatornára állított hangszernél (&H91 / &HB1) a pedál-inverzió, a
+        ' split pont tanulás és az Extra MIDI üzenetek is némán kimaradna.
+        Dim uzenetTipus As Integer = uzenet And &HF0
+
+        If uzenetTipus = CONTROLLER_CHANGE AndAlso adat1 = DAMPER_PEDAL AndAlso chkPedal.Checked Then
             vegsoAdat2 = 127 - adat2
         End If
 
         legutobbiMidiSzoveg = MidiUzenetSzoveg(uzenet, adat1, vegsoAdat2)
         midiSzovegValtozott = True
 
-        If splitTanulasAktiv AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
+        If splitTanulasAktiv AndAlso uzenetTipus = NOTE_ON AndAlso vegsoAdat2 > 0 Then
             SplitPontBeallitasaTanulassal(adat1)
             Return
         End If
 
-        If chkMidiBeallitoUzenetek.Checked AndAlso uzenet = NOTE_ON AndAlso vegsoAdat2 > 0 Then
+        If chkMidiBeallitoUzenetek.Checked AndAlso uzenetTipus = NOTE_ON AndAlso vegsoAdat2 > 0 Then
             AktivCsatornakAllapotanakKuldese()
             chkMidiBeallitoUzenetek.Checked = False
             lblExtraMidiAllapot.Text = "MIDI üzenetek kiküldve."

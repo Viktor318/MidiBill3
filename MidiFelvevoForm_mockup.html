@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<title>MidiFelvevoForm - terv</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px;
+    background: #e9ecef;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .caption {
+    color: #555;
+    font-size: 13px;
+    max-width: 520px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .window {
+    width: 480px;
+    background: #f0f0f0;
+    border: 1px solid #999;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .titlebar {
+    background: linear-gradient(#3a6ea5, #2c5488);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .titlebar .btns { display: flex; gap: 4px; }
+  .titlebar .btns span {
+    width: 18px; height: 16px;
+    background: #5583b8;
+    border: 1px solid #274a75;
+    display: inline-block;
+    text-align: center;
+    font-size: 11px;
+    line-height: 15px;
+    border-radius: 2px;
+  }
+  .content { padding: 14px; font-size: 12.5px; color: #1a1a1a; }
+
+  fieldset {
+    border: 1px solid #adadad;
+    border-radius: 2px;
+    margin: 0 0 12px 0;
+    padding: 10px 12px 12px 12px;
+    background: #f0f0f0;
+  }
+  legend { padding: 0 4px; font-weight: 600; color: #222; }
+
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { min-width: 0; }
+
+  button {
+    font-family: inherit;
+    font-size: 12.5px;
+    border: 1px solid #8f8f8f;
+    border-radius: 3px;
+    background: linear-gradient(#fdfdfd, #e8e8e8);
+    padding: 7px 14px;
+    cursor: default;
+  }
+  button:active { background: linear-gradient(#e0e0e0, #d0d0d0); }
+
+  .btn-start { border-color: #4a8f4a; }
+  .btn-stop { border-color: #b04a4a; }
+  .btn-stop.aktiv {
+    background: #d9463b;
+    color: white;
+    border-color: #8a2a22;
+    font-weight: 700;
+  }
+  .btn-stop.felfegyverzett {
+    background: #f0ad4e;
+    color: #402a00;
+    border-color: #a97417;
+    font-weight: 600;
+  }
+  .btn-play.aktiv {
+    background: #4a9d4a;
+    color: white;
+    border-color: #2e6e2e;
+    font-weight: 700;
+  }
+
+  .seekrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .seekbar {
+    flex: 1;
+    position: relative;
+    height: 16px;
+    display: flex;
+    align-items: center;
+  }
+  .seekbar .track {
+    width: 100%;
+    height: 4px;
+    background: #cfcfcf;
+    border-radius: 2px;
+    position: relative;
+  }
+  .seekbar .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 38%;
+    background: #4a8f4a;
+    border-radius: 2px;
+  }
+  .seekbar .thumb {
+    position: absolute;
+    left: 38%;
+    top: 50%;
+    width: 12px; height: 12px;
+    background: white;
+    border: 2px solid #4a8f4a;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .timelabel {
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+    color: #444;
+    white-space: nowrap;
+  }
+
+  input[type=checkbox] { width: 14px; height: 14px; }
+
+  .spinner {
+    display: inline-flex;
+    border: 1px solid #8f8f8f;
+    border-radius: 2px;
+    overflow: hidden;
+    background: white;
+  }
+  .spinner input {
+    width: 34px;
+    border: none;
+    text-align: right;
+    padding: 3px 4px;
+    font-size: 12.5px;
+  }
+  .spinner .updown { display: flex; flex-direction: column; border-left: 1px solid #ccc; }
+  .spinner .updown span {
+    font-size: 8px; line-height: 8px; padding: 2px 4px;
+    background: #eee; border-bottom: 1px solid #ccc; cursor: default;
+  }
+  .spinner .updown span:last-child { border-bottom: none; }
+
+  .statuslabel {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+  .statuslabel.nyugalmi { background: transparent; color: #444; font-weight: 400; }
+  .statuslabel.felfegyverzett { background: #fdf0d5; color: #7a4a00; border: 1px solid #f0ad4e; }
+  .statuslabel.aktiv { background: #fdeceb; color: #a1281f; border: 1px solid #d9463b; }
+
+  .filepath {
+    font-size: 11.5px;
+    color: #666;
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  .textbox {
+    font-family: inherit;
+    font-size: 12.5px;
+    border: 1px solid #8f8f8f;
+    border-radius: 2px;
+    padding: 4px 6px;
+    background: white;
+  }
+  .preview {
+    font-size: 11px;
+    color: #666;
+    font-family: Consolas, monospace;
+    margin-top: 6px;
+    padding: 4px 6px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+  }
+
+  .divider { border-top: 1px dashed #c6c6c6; margin: 10px 0; }
+
+  .tag {
+    font-size: 10.5px;
+    color: #888;
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .metro-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .metro-icon {
+    width: 46px;
+    height: 46px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .metro-icon svg { width: 100%; height: 100%; }
+  .metro-needle {
+    transform-origin: 23px 40px;
+    animation: metroswing 1s steps(1) infinite;
+  }
+  @keyframes metroswing {
+    0%   { transform: rotate(-22deg); }
+    50%  { transform: rotate(22deg); }
+    100% { transform: rotate(-22deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <span>MIDI felvétel / visszajátszás</span>
+    <div class="btns"><span>_</span><span>✕</span></div>
+  </div>
+  <div class="content">
+
+    <!-- Felvétel vezérlés -->
+    <fieldset>
+      <legend>Felvétel</legend>
+      <div class="row">
+        <button class="btn-start">Start</button>
+        <button class="btn-stop felfegyverzett">Stop</button>
+        <span class="statuslabel felfegyverzett">Várakozás billentyűre...</span>
+      </div>
+      <div class="row" style="margin-top:2px; margin-bottom:10px;">
+        <span class="tag">(állapot-visszajelzés: nyugalmi → sárga "felfegyverezve" → piros "● FELVÉTEL")</span>
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="margin-top:10px;">
+        <input type="checkbox" checked>
+        <label>Automatikus felvétel</label>
+      </div>
+      <div class="row">
+        <label>Játékidő-küszöb (mp):</label>
+        <span class="spinner">
+          <input value="5">
+          <span class="updown"><span>▲</span><span>▼</span></span>
+        </span>
+        <label style="margin-left:14px;">Szünet-küszöb (mp):</label>
+        <span class="spinner">
+          <input value="5">
+          <span class="updown"><span>▲</span><span>▼</span></span>
+        </span>
+      </div>
+    </fieldset>
+
+    <!-- Fájlnév / mentés -->
+    <fieldset>
+      <legend>Mentés</legend>
+      <div class="row">
+        <label style="width:130px;">Mentett fájl neve:</label>
+        <input class="textbox" value="Felvetel" style="width:180px;">
+      </div>
+      <div class="row">
+        <input type="checkbox" checked>
+        <label>Almappák dátum szerint</label>
+      </div>
+      <div class="preview">Felvetelek\2026-08-30\Felvetel_143025.mid<br>
+      <span style="color:#aaa;">(ha "Almappák dátum szerint" ki van kapcsolva: Felvetelek\Felvetel_2026-08-30_143025.mid)</span></div>
+      <div class="row" style="margin-top:10px;">
+        <input type="checkbox" checked>
+        <label>Mentett fájl automatikus lejátszása (kézzel kell elindítani)</label>
+      </div>
+      <div class="row">
+        <span class="tag">(csak a fájlnevet tölti be a Lejátszás mezőbe minden mentés után - a Lejátszás gombot még mindig kézzel kell megnyomni)</span>
+      </div>
+    </fieldset>
+
+    <!-- Lejátszás -->
+    <fieldset>
+      <legend>Lejátszás: <span style="font-weight:400; color:#444;">Felvetel_143025.mid</span></legend>
+      <div class="row">
+        <button>Fájl megnyitása...</button>
+        <button class="btn-play aktiv">Lejátszás</button>
+        <button>Stop</button>
+      </div>
+      <div class="row">
+        <input type="checkbox">
+        <label>A lejátszott hangok rögzítése (overdub)</label>
+      </div>
+      <div class="seekrow">
+        <div class="seekbar">
+          <div class="track">
+            <div class="fill"></div>
+            <div class="thumb"></div>
+          </div>
+        </div>
+        <span class="timelabel">1:22 / 3:41</span>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <span class="tag">(a csúszka fogható és húzható = tekerés a fájlon belül; tekerés után automatikus "Csend legyen!"-szerű All Notes Off, hogy ne ragadjanak be hangok)</span>
+      </div>
+    </fieldset>
+
+    <!-- Metronóm -->
+    <fieldset>
+      <legend>Metronóm</legend>
+      <div class="metro-row">
+        <div class="metro-icon">
+          <svg viewBox="0 0 46 46">
+            <polygon points="10,42 36,42 23,8" fill="none" stroke="#888" stroke-width="2"/>
+            <line class="metro-needle" x1="23" y1="40" x2="23" y2="12" stroke="#2c5488" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="23" cy="40" r="2.5" fill="#2c5488"/>
+          </svg>
+        </div>
+        <div>
+          <div class="row">
+            <button class="btn-start">Start</button>
+            <button class="btn-stop">Stop</button>
+          </div>
+          <div class="row" style="margin-top:6px;">
+            <input type="checkbox" checked>
+            <label>Metronóm indítása felvételnél</label>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="margin-top:10px;">
+        <label style="width:80px;">Tempó (BPM):</label>
+        <span class="spinner">
+          <input value="120">
+          <span class="updown"><span>▲</span><span>▼</span></span>
+        </span>
+        <label style="width:44px; margin-left:14px;">Ütem:</label>
+        <span class="spinner"><input value="4" style="width:28px;"><span class="updown"><span>▲</span><span>▼</span></span></span>
+        <span style="font-weight:600;">/</span>
+        <select style="font-size:12.5px; padding:3px;"><option>2</option><option selected>4</option><option>8</option><option>16</option></select>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <label style="width:110px;">Első ütés hangja:</label>
+        <select style="font-size:12.5px; padding:3px; width:140px;"><option>Claves</option></select>
+        <span class="tag" style="margin-left:8px;">hangerő:</span>
+        <span class="spinner"><input value="90%" style="width:38px;"></span>
+      </div>
+      <div class="row">
+        <label style="width:110px;">Többi ütés hangja:</label>
+        <select style="font-size:12.5px; padding:3px; width:140px;"><option>Side Stick</option></select>
+        <span class="tag" style="margin-left:8px;">hangerő:</span>
+        <span class="spinner"><input value="65%" style="width:38px;"></span>
+      </div>
+    </fieldset>
+
+  </div>
+</div>
+
+<div class="caption">
+  Ez egy gyors, kattintható jellegű vázlat a megbeszélt elemekről (Start/Stop
+  felfegyverzés, Automatikus felvétel + 2 küszöbérték, Lejátszás + overdub
+  checkbox, állapot-visszajelzés). A Tempó/metronóm rész HALVÁNYÍTVA/szaggatott
+  kerettel jelzi, hogy az egy KÉSŐBBI, még meg nem tervezett kiegészítés – csak
+  helykitöltőként szerepel itt, hogy lásd, hova kerülhetne majd. A pontos
+  pixel-koordináták, méretek és a végleges elrendezés a kódolás közben, a te
+  visszajelzéseid alapján fog kialakulni – ahogy eddig is.
+</div>
+
+</body>
+</html>

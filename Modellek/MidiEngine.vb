@@ -150,13 +150,26 @@ Namespace Modellek
         ''' A bejövő MIDI-üzenetet szétosztja a 16 aktív kimeneti csatornára.
         ''' A kiküldött hangmagasságra a GLOBÁLIS (félhangos) transzponálás
         ''' ÉS a CSATORNÁNKÉNTI (oktávos) eltolás is hat, összeadódva.
+        ''' Az üzenet típusát mindig a státuszbájt felső négy bitjéből
+        ''' állapítjuk meg, mert az alsó négy bit a küldő MIDI csatorna
+        ''' sorszáma (lásd a metóduson belüli részletes megjegyzést).
         ''' </summary>
         Public Sub UzenetKuldes(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
 
             If statuszBajt >= &H80 And statuszBajt < &HF0 Then
 
-                Dim tenylegesNoteOn As Boolean = (statuszBajt = NOTE_ON_STATUS And adat2 > 0)
-                Dim tenylegesNoteOff As Boolean = (statuszBajt = NOTE_ON_STATUS And adat2 = 0) OrElse statuszBajt = NOTE_OFF_STATUS
+                ' Az üzenet TÍPUSA a státuszbájt felső négy bitje; az alsó négy
+                ' bit a KÜLDŐ MIDI csatorna sorszáma. Enélkül csak az 1.
+                ' csatornán adó billentyűzetet kezelnénk helyesen
+                ' (&H90 / &H80 / &HA0): egy 2. csatornára állított hangszernél
+                ' (&H91 ...) a hang-üzenetek nem ismerődnének fel, így a split
+                ' zóna, a globális transzponálás és a csatornánkénti
+                ' oktáv-eltolás némán kimaradna, a hangok pedig nem kerülnének
+                ' be a noteOn nyilvántartásba (ami beragadó hangokhoz vezet).
+                Dim uzenetTipus As Integer = statuszBajt And &HF0
+
+                Dim tenylegesNoteOn As Boolean = (uzenetTipus = NOTE_ON_STATUS AndAlso adat2 > 0)
+                Dim tenylegesNoteOff As Boolean = (uzenetTipus = NOTE_ON_STATUS AndAlso adat2 = 0) OrElse uzenetTipus = NOTE_OFF_STATUS
 
                 If tenylegesNoteOn Then
                     heldNotes(adat1) = adat2
@@ -164,7 +177,7 @@ Namespace Modellek
                     heldNotes(adat1) = 0
                 End If
 
-                Dim hangUzenet As Boolean = HangUzenetE(statuszBajt)
+                Dim hangUzenet As Boolean = HangUzenetE(uzenetTipus)
                 Dim felsoZona As Boolean = adat1 >= SplitPont
 
                 For c As Integer = 0 To 15
@@ -201,8 +214,14 @@ Namespace Modellek
             KuldesEgyCsatornara((statuszBajtAlap And &HF0) + csatornaIndex, adat1, adat2)
         End Sub
 
+        ''' <summary>
+        ''' Hangmagassághoz kötött üzenet-e (Note On / Note Off / Poly Pressure).
+        ''' A csatorna-nibble-t itt is kimaszkoljuk, hogy a függvény nyers
+        ''' státuszbájttal és már maszkolt üzenettípussal is helyesen működjön.
+        ''' </summary>
         Private Function HangUzenetE(statuszBajt As Integer) As Boolean
-            Return statuszBajt = NOTE_ON_STATUS OrElse statuszBajt = NOTE_OFF_STATUS OrElse statuszBajt = POLY_PRESSURE_STATUS
+            Dim uzenetTipus As Integer = statuszBajt And &HF0
+            Return uzenetTipus = NOTE_ON_STATUS OrElse uzenetTipus = NOTE_OFF_STATUS OrElse uzenetTipus = POLY_PRESSURE_STATUS
         End Function
 
         Private Function ErvenyesHangE(hang As Integer) As Boolean

@@ -80,6 +80,7 @@ Partial Class MainForm
         dlgSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
+        btnMidiFelvetel = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
         CType(trkAlapHangero, ComponentModel.ISupportInitialize).BeginInit()
@@ -470,7 +471,7 @@ Partial Class MainForm
         ' 
         btnMidiFrissites.Location = New Point(656, 411)
         btnMidiFrissites.Name = "btnMidiFrissites"
-        btnMidiFrissites.Size = New Size(277, 50)
+        btnMidiFrissites.Size = New Size(134, 50)
         btnMidiFrissites.TabIndex = 14
         btnMidiFrissites.Text = "MIDI eszközök frissítése"
         btnMidiFrissites.UseVisualStyleBackColor = True
@@ -504,7 +505,7 @@ Partial Class MainForm
         grpExtraMidi.Size = New Size(277, 110)
         grpExtraMidi.TabIndex = 16
         grpExtraMidi.TabStop = False
-        grpExtraMidi.Text = "Extra MIDI üzenetek a játék kezdetén"
+        grpExtraMidi.Text = "Extra MIDI üzenetek"
         ' 
         ' chkMidiBeallitoUzenetek
         ' 
@@ -541,11 +542,21 @@ Partial Class MainForm
         dlgMb3Konvertalas.Filter = "Régi MidiBill adatok (*.mb3)|*.mb3"
         dlgMb3Konvertalas.Multiselect = True
         ' 
+        ' btnMidiFelvetel
+        ' 
+        btnMidiFelvetel.Location = New Point(799, 411)
+        btnMidiFelvetel.Name = "btnMidiFelvetel"
+        btnMidiFelvetel.Size = New Size(134, 50)
+        btnMidiFelvetel.TabIndex = 17
+        btnMidiFelvetel.Text = "MIDI felvétel indítása"
+        btnMidiFelvetel.UseVisualStyleBackColor = True
+        ' 
         ' MainForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
         ClientSize = New Size(958, 974)
+        Controls.Add(btnMidiFelvetel)
         Controls.Add(grpReverb)
         Controls.Add(grpExtraMidi)
         Controls.Add(btnMidiFrissites)
@@ -640,5 +651,7 @@ Partial Class MainForm
     Friend WithEvents grpExtraMidi As GroupBox
     Friend WithEvents chkMidiBeallitoUzenetek As CheckBox
     Friend WithEvents lblExtraMidiAllapot As Label
+    Friend WithEvents Button1 As Button
+    Friend WithEvents btnMidiFelvetel As Button
 
 End Class

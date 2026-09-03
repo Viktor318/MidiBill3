@@ -29,6 +29,44 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 - Az "Alaphelyzetbe állítás" is visszaállítja ezt a checkbox-ot
   kikapcsolt állapotba.
 
+### Javítva
+
+Egy teljes kódátnézés során feltárt három valódi hiba javítása (a
+részletes megállapítás-listát lásd a `MidiBill3_VBNET_aktualis_allapot.md`
+"Kódátnézés" fejezetében):
+
+- **Friss indításkor nem szólalt meg semmi, ha nem létezett még
+  `Kezdet.json`** (pl. friss telepítés vagy build után). A
+  `csatornaAllapotok` tömböt és a `HangszerPanel` property-ket egyik
+  inicializáló lépés sem szinkronizálta a `MidiEngine`-be (a panel
+  property-k szándékosan nem tüzelnek eseményt betöltéskor), az egyetlen
+  szinkronizáló hívás - `OsszesCsatornaUjrakuldese()` - pedig ilyenkor
+  soha nem futott le. Emiatt a `MidiEngine` MIND a 16 csatornát
+  inaktívnak látta, és némán eldobta a lejátszott hangokat. Mostantól a
+  `KezdetBeallitasokBetoltese()` a "nincs fájl" ágban ÉS a hibaágban is
+  kiküldi az induló állapotot.
+- **Minden üzenet-vizsgálat csak az 1. MIDI csatornán működött.** A
+  státuszbájt alsó négy bitje a küldő csatorna sorszáma, de a
+  `MainForm.MidiUzenetFeldolgozasa` és a `MidiEngine.UzenetKuldes` is
+  pontos egyenlőséggel hasonlított (`&H90`, `&HB0`). Egy 2. csatornára
+  állított billentyűzetnél (`&H91`, `&HB1`) emiatt kimaradt a
+  pedál-inverzió, a split pont tanulás és az "Extra MIDI üzenetek",
+  a `MidiEngine`-ben pedig a split zóna, a globális transzponálás és a
+  csatornánkénti oktáv-eltolás is - ráadásul a hangok nem kerültek be a
+  `noteOn` nyilvántartásba, ami beragadó hangokhoz vezethetett. Mindkét
+  helyen bevezetésre került az `uzenetTipus = statuszBajt And &HF0`
+  maszkolás, és a `HangUzenetE()` is maszkol már magában.
+- **Kilépéskori befagyás (deadlock) kockázata.** A MIDI callback-szál
+  szinkron `Invoke`-kal adta át az üzeneteket a UI szálnak; kilépéskor a
+  UI szál a `FormClosing`-ban a MIDI bemenet lezárására várt, miközben a
+  callback-szál a UI szálra várt. A megoldás: `BeginInvoke` (aszinkron,
+  de sorrendtartó - egyúttal a leütésenkénti késleltetést is megszünteti),
+  új `zarasFolyamatban` jelző a `FormClosing` legelején, és a lezárási
+  sorrend átrendezése (jelző → MIDI bemenet lezárása → hangok leállítása
+  → mentés → `Dispose`).
+- A kijelzés-frissítő időzítő (`midiKijelzoIdozito`) is leáll a
+  `FormClosing`-ban - korábban nem volt leállítva.
+
 ---
 
 ## [1.9.0] - 2026-08-29
