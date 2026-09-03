@@ -87,12 +87,29 @@ MidiBill3/                    - single project
 │   │                             instrument switching
 │   ├── HangszerLista.vb        - Loadable instrument lists (instruments +
 │   │                             dedicated drum kit list)
-│   └── SoundFontOlvaso.vb      - Reads .sf2 files to generate .lst/.drm
-│   └── Hangnevek.vb            - MIDI note number -> note name conversion
-└── Adatok/                     ("Data") - Preset files + instrument list
-                                  files (GM.lst, GM.drm, custom .lst/.drm
-                                  pairs, etc.)
+│   ├── SoundFontOlvaso.vb      - Reads .sf2 files to generate .lst/.drm
+│   ├── Hangnevek.vb            - MIDI note number -> note name conversion
+│   └── Utvonalak.vb            ("Paths") - All file paths in one place
+│                                 (built-in vs. user content separation)
+├── GM.lst                      - BUILT-IN instrument list (shipped)
+└── GM.drm                      - BUILT-IN drum kit list (shipped)
 ```
+
+### Where is data stored?
+
+The program **never writes to its own folder**, so it works when installed
+under `C:\Program Files`, where a standard user cannot write. The two
+locations are kept separate:
+
+| Location | Contents |
+|---|---|
+| Program folder (read-only) | `GM.lst`, `GM.drm` - the built-in General MIDI lists |
+| `%AppData%\MidiBill3\` | `Kezdet.json` (startup settings), `HibaNaplo.txt` (error log) |
+| `%AppData%\MidiBill3\Presetek\` | Saved preset files (`.json`) |
+| `%AppData%\MidiBill3\SF adatok\` | Imported instrument lists (`.lst` / `.drm`) |
+
+`GM.lst` and `GM.drm` are protected: the built-in copies are always loaded,
+and the program refuses to create user files under those names.
 
 ## History
 

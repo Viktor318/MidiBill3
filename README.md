@@ -82,11 +82,29 @@ MidiBill3/                    - egyetlen projekt
 │   │                             transzponálás, Bank Select-alapú hangszerváltás
 │   ├── HangszerLista.vb        - Betölthető hangszerlisták (hangszerek +
 │   │                             dedikált dobkészlet-lista)
-│   └── SoundFontOlvaso.vb      - .sf2 fájlok beolvasása .lst/.drm generáláshoz
-│   └── Hangnevek.vb            - MIDI hangszám -> hangnév konverzió
-└── Adatok/                     - Preset fájlok + hangszerlista fájlok
-                                  (GM.lst, GM.drm, egyedi .lst/.drm párok stb.)
+│   ├── SoundFontOlvaso.vb      - .sf2 fájlok beolvasása .lst/.drm generáláshoz
+│   ├── Hangnevek.vb            - MIDI hangszám -> hangnév konverzió
+│   └── Utvonalak.vb            - Minden fájl-útvonal egy helyen (gyári vs.
+│                                 felhasználói tartalom szétválasztása)
+├── GM.lst                      - GYÁRI hangszerlista (a telepítő szállítja)
+└── GM.drm                      - GYÁRI dobkészlet-lista (a telepítő szállítja)
 ```
+
+### Hol tárolja az adatokat?
+
+A program **soha nem ír a saját mappájába** - így telepítve (pl. a
+`C:\Program Files` alá) is működik, ahol egy normál jogosultságú
+felhasználó nem tud írni. A két hely szétválik:
+
+| Hely | Tartalom |
+|---|---|
+| A program mappája (csak olvasható) | `GM.lst`, `GM.drm` - a gyári General MIDI listák |
+| `%AppData%\MidiBill3\` | `Kezdet.json` (induló beállítások), `HibaNaplo.txt` |
+| `%AppData%\MidiBill3\Presetek\` | A mentett preset fájlok (`.json`) |
+| `%AppData%\MidiBill3\SF adatok\` | Az importált hangszerlisták (`.lst` / `.drm`) |
+
+A `GM.lst` és `GM.drm` védett: mindig a gyári változat töltődik be, és a
+program nem is enged ilyen néven felhasználói fájlt létrehozni.
 
 ## Előzmény
 

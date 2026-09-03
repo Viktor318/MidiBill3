@@ -9,6 +9,17 @@
     <UseWindowsForms>true</UseWindowsForms>
     <MyType>WindowsForms</MyType>
 	<ApplicationIcon>MidiBill3.ico</ApplicationIcon>
+    <!-- VB fordítási szigorúság. Az Option Strict On megtiltja a csendes,
+         szűkítő konverziókat és a késői kötést: a típushibák így fordítási
+         időben derülnek ki, nem a felhasználó gépén (és a késői kötés
+         futásidejű keresése sem terheli a MIDI-útvonalat). Az Option Infer
+         SZÁNDÉKOSAN van kiírva, nem csak az alapértelmezettre hagyva: a kód
+         több helyen támaszkodik a lambda-paraméterek típuskövetkeztetésére
+         (pl. OrderBy(Function(k) k)), ami Infer=Off mellett Object-té, azaz
+         Option Strict On mellett fordítási hibává válna. -->
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+    <OptionExplicit>On</OptionExplicit>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,11 +48,19 @@
   </ItemGroup>
   
   <ItemGroup>
-  <!-- Az Adatok mappa (régi preset fájlok) automatikus másolása a build és publish kimeneti mappájába is -->
-  <None Include="Adatok\**\*.*">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
+    <!-- GYÁRI TARTALOM: csak a beépített General MIDI hangszer- és
+         dobkészlet-lista kerül a program mappájába (a kimenet gyökerébe),
+         és ezt szállítja majd a telepítő is. A program SOHA nem ír ide.
+         Minden más - a felhasználó preset fájljai (.json) és a
+         SoundFont-ból importált listái (.lst/.drm) - a felhasználói
+         mappában (%AppData%\MidiBill3) lakik; lásd Modellek\Utvonalak.vb. -->
+    <None Include="GM.lst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="GM.drm">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 <ItemGroup>
   <Content Include="MidiBill3.ico" />

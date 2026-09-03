@@ -52,13 +52,26 @@ MidiBill3/                        - EGYETLEN projekt
 │   ├── SoundFontOlvaso.vb       - .sf2 "phdr" beolvasása: hangszerek (Nevek) ÉS
 │   │                               dobkészlet-presetek (Dobok, ISMERT DOBKÉSZLET-
 │   │                               BANKOK: 120, 127, 128) külön
-│   └── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
-├── Adatok/                      - Preset fájlok + hangszerlista fájlok:
-│                                   GM.lst (hangszerek) + GM.drm (dobkészletek,
-│                                   PÁROSÍTVA az alapnév alapján), Teszt.lst,
-│                                   TesztGS.lst, JJazzLab-SoundFont.lst/.drm stb.
+│   ├── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
+│   └── Utvonalak.vb             - MINDEN fájl-útvonal egy helyen: gyári
+│                                   (csak olvasható) vs. felhasználói
+│                                   (írható) szétválasztás + egyszeri
+│                                   átköltöztetés a régi szerkezetből
+├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
+├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
 ├── README.md                    - Magyar README (alapértelmezett)
 └── README.en.md                 - Angol README
+```
+
+**A futásidejű felhasználói mappa** (nem a forrásfa része, a program hozza
+létre) - ide megy MINDEN írás:
+
+```
+%AppData%\MidiBill3\
+├── Kezdet.json                  - induló/kilépéskori beállítások
+├── HibaNaplo.txt                - globális hibanapló
+├── Presetek\                    - mentett preset fájlok (.json)
+└── SF adatok\                   - importált hangszerlisták (.lst / .drm)
 ```
 
 ## Elkészült funkciók
@@ -273,15 +286,67 @@ munkalista is a további javításokhoz.
 
 ### MÉG NYITOTT - érdemes javítani
 
-4. **Írható-e a program mappája?** - a `Kezdet.json`, a `HibaNaplo.txt`,
-   a beimportált `.lst`/`.drm` fájlok és a SoundFont-import kimenete
-   MIND az `Application.StartupPath`-ba kerül. Amint a tervezett Inno
-   Setup telepítő `C:\Program Files\...` alá telepít, ezek normál
-   felhasználóként CSENDBEN elhasalnak (a hibanaplózás `Catch`-e még az
-   üzenetet is elnyeli). **A telepítő elkészítése ELŐTT eldöntendő**,
-   hogy a felhasználói adatok `%AppData%\MidiBill3` (vagy
-   `%LocalAppData%`) alá kerüljenek; a szállított `Adatok` mappa
-   maradhat csak olvasható a program mellett.
+4. ~~Írható-e a program mappája?~~ - **JAVÍTVA (2026-09-03)**. Korábban
+   MINDEN felhasználói adat (`Kezdet.json`, `HibaNaplo.txt`, a preset
+   fájlok és a hangszerlisták) a program mappájába, azon belül egy közös
+   `Adatok` mappába került. A tervezett Inno Setup telepítő után
+   (`C:\Program Files\...`) ezek normál felhasználóként CSENDBEN
+   elhasaltak volna. Megoldás - lásd az ÚJ `Modellek\Utvonalak.vb`
+   modult, ami minden útvonalat egyetlen helyen tart. Az új, tiszta
+   szétválasztás:
+
+   **GYÁRI tartalom** (a program mappájában, CSAK OLVASHATÓ - ezt
+   szállítja a telepítő, ide a program soha nem ír):
+   - `GM.lst`, `GM.drm` - a beépített General MIDI hangszer- és
+     dobkészlet-lista, **közvetlenül a program mappájában**. NINCS többé
+     `Adatok` almappa sem a forrásfában, sem a kimenetben.
+
+   **FELHASZNÁLÓI tartalom** (`%AppData%\MidiBill3`, ÍRHATÓ - minden
+   írás ide megy):
+   - `Kezdet.json` - az induló/kilépéskori beállítások
+   - `HibaNaplo.txt` - a globális hibanapló
+   - `Presetek\` - a mentett preset fájlok (`.json`)
+   - `SF adatok\` - a SoundFont-ból importált vagy kézzel betöltött
+     hangszerlisták (`.lst` / `.drm`)
+
+   **A GM.lst / GM.drm védett**: mindig a gyári mappából olvasódnak
+   (`Utvonalak.HangszerListaOlvasasra`), akkor is, ha a felhasználói
+   mappában lenne ilyen nevű fájl - ÉS a program meg is akadályozza,
+   hogy ilyen néven jöjjön létre felhasználói fájl (új
+   `MainForm.GyariNevUtkozes()`, ami a hangszerlista-betöltésnél és a
+   SoundFont-importnál is fut, pl. egy "GM.sf2" nevű SoundFont esetén).
+   Így nem keletkezhet olyan árva fájl, amit a program sosem használna.
+
+   **Egyszeri, automatikus átköltöztetés** (`Utvonalak.Elokeszites`, a
+   `MainForm_Load` LEGELSŐ hívása) - mindkettő csak akkor, ha az új
+   helyen még nincs meg a fájl, tehát ismételt indításnál már nem
+   csinál semmit és sosem ír felül újabb felhasználói adatot:
+   - a program mappájában maradt `Kezdet.json`,
+   - a régi, közös `Adatok` mappa tartalma szétosztva: `.json` a
+     `Presetek`, `.lst`/`.drm` az `SF adatok` mappába (a gyári
+     `GM.lst`/`GM.drm`, illetve minden más kiterjesztés - pl. a
+     fejlesztéshez használt `.sf2` tesztfájl - kihagyásával).
+   A régi `Adatok` mappát SZÁNDÉKOSAN nem törli, maradjon biztonsági
+   másolatnak.
+
+   További részletek:
+   - A fájlválasztó dialógusok alapmappája a tartalom szerint igazodik:
+     a preset-műveleteknél a `Presetek`, a hangszerlista- és
+     SoundFont-importnál az `SF adatok` mappa.
+   - A konvertáló segédprogramok (`Konvertalva` almappa a forrásfájlok
+     mellett) sem szakadnak meg többé kezeletlen hibával írásvédett
+     forrásmappánál: az új `KonvertalasKimenetiMappa()` ilyenkor a
+     felhasználói mappába esik vissza.
+   - A `HibaNaplo.txt` írása előtt a napló maga is létrehozza a
+     felhasználói mappát, mert az `ApplicationEvents` kód lefuthat a
+     `MainForm_Load` ELŐTT is.
+   - A `.vbproj` már csak a `GM.lst`-et és a `GM.drm`-et másolja a
+     kimeneti mappába (korábban az `Adatok\**\*.*` mintával MINDENT,
+     így egy telepítő a felhasználó személyes presetjeit is szállította
+     volna).
+   - Mellékhaszon fejlesztés közben: a `Kezdet.json` és a presetek
+     kikerültek a `bin\Debug` mappából, tehát **túlélik a
+     Clean/Rebuild műveleteket**.
 5. **MIDI kimenet váltásakor beragadhatnak a hangok** - a
    `MidiEngine.KimenetBezaras()` a `Dispose` előtt nem küld
    hangkikapcsolást, így ami a régi eszközön szólt, ott is marad.
@@ -324,11 +389,34 @@ munkalista is a további javításokhoz.
 
 ### MÉG NYITOTT - kód-higiénia
 
-13. **`Option Strict` nincs bekapcsolva** (a `.vbproj`-ban nem szerepel
-    → alapból `Off`). Egy ekkora, éles projektnél érdemes `On`-ra
-    állítani: fordítási időben kifogná a rejtett szűkítő konverziókat és
-    a késői kötést. A kód alapján ez valószínűleg csak néhány sornyi
-    javítást igényel.
+13. ~~`Option Strict` nincs bekapcsolva~~ - **JAVÍTVA (2026-09-03)**.
+    A bekapcsolás előtt teljes statikus átvizsgálás készült a tipikus
+    szabálysértés-kategóriákra, és **egyetlen biztos szabálysértés sem
+    volt** a kódban - vagyis a projekt már eddig is "Option Strict On
+    stílusban" íródott:
+    - szűkítő konverziók: mindenhol egész osztás (`\`) szerepel, az
+      egyetlen lebegőpontos osztásnál pedig már ki volt írva a `CInt`
+    - késői kötés: nulla eset; a `sender As Object` paramétereken
+      mindenhol `TryCast`/`CType` előzi meg a tagelérést, a
+      `.ToString()` hívások pedig az `Object`-en deklarált tagra
+      mennek (korai kötés)
+    - string-összefűzés: végig `&` operátorral (ez `Option Strict On`
+      mellett is megengedi a vegyes típusú operandusokat), soha nem `+`
+    - vegyes előjeles/előjel nélküli aritmetika (`SoundFontOlvaso`):
+      minden konverzió BŐVÍTŐ (`Integer + UInteger → Long`,
+      `UShort → Integer`), a szűkítőnél már ki volt írva a `CInt`
+    A `.vbproj` `PropertyGroup`-jába bekerült az `OptionStrict`,
+    `OptionInfer` és `OptionExplicit` = `On`. Az **`OptionInfer` azért
+    van kiírva külön** (nem az alapértelmezettre hagyva), mert a kód
+    több helyen a lambda-paraméterek típuskövetkeztetésére támaszkodik
+    (pl. `OrderBy(Function(k) k)` a `MainForm`-ban, a `HangszerLista`-ban
+    és a `HangszerPanel`-ben) - `Infer = Off` mellett ezek `Object`-té
+    válnának, ami `Option Strict On` mellett fordítási hiba lenne.
+    A haszon tehát nem a meglévő kód megjavítása volt, hanem hogy
+    **innentől a fordító tartja is ezt a szintet** - különösen a most
+    következő MIDI felvétel/visszajátszás kódjánál, ahol a NAudio
+    `MidiEvent`-hierarchiájában (`NoteOnEvent`, `ControlChangeEvent`,
+    `TempoEvent` stb.) sok lesz a típuskonverzió.
 14. **`AppInfo.vb` kommentje elavult** - `Directory.Build.props`-ra és a
     már nem létező `PresetKonvertalo`/`Mb3Konvertalo` projektekre
     hivatkozik, holott a verzió most közvetlenül a `.vbproj`-ban van, és
@@ -713,10 +801,11 @@ munkalista is a további javításokhoz.
    végén)
 
 5. **Telepítő (Inno Setup)** - eldöntött irány, még nincs elkezdve.
-   **ELŐFELTÉTEL**: előbb meg kell oldani, hogy a felhasználói adatok ne
-   a program mappájába íródjanak (lásd "Kódátnézés" 4. pont) - Program
-   Files alá telepítve a `Kezdet.json`, a `HibaNaplo.txt` és az
-   `Adatok` mappába írás is csendben elhasalna
+   Az előfeltétele (felhasználói adatok kikerülése a program mappájából)
+   2026-09-03-án **elkészült**, lásd "Kódátnézés" 4. pont: minden írás a
+   `%AppData%\MidiBill3` mappába megy, a program melletti `Adatok` mappa
+   csak olvasható. A telepítőnek így elég a programfájlokat és a gyári
+   `Adatok` mappát kitennie; felhasználói adatot nem kell kezelnie
 
 6. **Performancia - MIDI-küldés leválasztása a UI-szálról** - elvi téma,
    átbeszélve, eddig nem volt probléma, nem sürgős. **A MIDI felvétel

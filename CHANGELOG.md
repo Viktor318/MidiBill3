@@ -67,6 +67,53 @@ részletes megállapítás-listát lásd a `MidiBill3_VBNET_aktualis_allapot.md`
 - A kijelzés-frissítő időzítő (`midiKijelzoIdozito`) is leáll a
   `FormClosing`-ban - korábban nem volt leállítva.
 
+### Módosítva
+- **Új mappaszerkezet: gyári és felhasználói tartalom szétválasztása.**
+  Korábban MINDEN adat (`Kezdet.json`, `HibaNaplo.txt`, a preset fájlok és a
+  hangszerlisták) a program mappájába, azon belül egy közös `Adatok`
+  mappába került - ez a tervezett telepítő után (`C:\Program Files\...`)
+  csendben elhasalt volna. Új `Modellek\Utvonalak.vb` modul tartja egy
+  helyen az összes útvonalat:
+  - **GYÁRI tartalom** (a program mappájában, csak olvasható, ezt szállítja
+    a telepítő): `GM.lst` és `GM.drm`, közvetlenül a program mappájában -
+    **az `Adatok` mappa megszűnt**.
+  - **FELHASZNÁLÓI tartalom** (`%AppData%\MidiBill3`, minden írás ide megy):
+    `Kezdet.json`, `HibaNaplo.txt`, `Presetek\` (a `.json` presetek) és
+    `SF adatok\` (az importált `.lst`/`.drm` listák).
+  - A `GM.lst`/`GM.drm` **védett**: mindig a gyári mappából olvasódnak, és a
+    program meg is akadályozza, hogy ilyen néven jöjjön létre felhasználói
+    fájl (hangszerlista-betöltésnél és SoundFont-importnál is, pl. egy
+    "GM.sf2" nevű SoundFont esetén) - így nem keletkezhet olyan árva fájl,
+    amit a program sosem használna fel.
+  - **Egyszeri, automatikus átköltöztetés** induláskor: a program
+    mappájában maradt `Kezdet.json`, illetve a régi `Adatok` mappa
+    tartalma szétosztva (`.json` → `Presetek`, `.lst`/`.drm` → `SF adatok`).
+    A régi mappát nem törli, marad biztonsági másolatnak.
+  - A fájlválasztó dialógusok alapmappája a tartalom szerint igazodik
+    (presetek → `Presetek`, hangszerlisták/SoundFont → `SF adatok`).
+  - A konvertáló segédprogramok írásvédett forrásmappa esetén sem
+    szakadnak meg kezeletlen hibával, hanem a felhasználói mappába írnak
+    (új `KonvertalasKimenetiMappa()`).
+  - A `.vbproj` már csak a `GM.lst`-et és a `GM.drm`-et másolja a kimeneti
+    mappába (korábban az `Adatok\**\*.*` mintával mindent, így egy telepítő
+    a felhasználó személyes presetjeit is szállította volna).
+
+  Mellékhaszon fejlesztés közben: a `Kezdet.json` és a presetek kikerültek
+  a `bin\Debug` mappából, tehát túlélik a Clean/Rebuild műveleteket.
+- **`Option Strict On` bekapcsolva** (a `MidiBill3.vbproj`-ban, az
+  `Option Infer` és `Option Explicit` explicit `On` értékével együtt).
+  A bekapcsolás előtti teljes statikus átvizsgálás egyetlen
+  szabálysértést sem talált - a projekt már eddig is "Option Strict On
+  stílusban" íródott -, tehát a meglévő kód egyetlen sorát sem kellett
+  módosítani. A cél az, hogy a fordító INNENTŐL is tartsa ezt a szintet:
+  a csendes, szűkítő konverziók és a késői kötés mostantól fordítási
+  hibát adnak, nem futásidejű meglepetést. Ez különösen a következő
+  fejlesztésnél (MIDI felvétel/visszajátszás) számít, ahol a NAudio
+  `MidiEvent`-hierarchiájában sok lesz a típuskonverzió. Az `Option
+  Infer` szándékosan van kiírva, mert a kód több helyen a
+  lambda-paraméterek típuskövetkeztetésére támaszkodik
+  (`OrderBy(Function(k) k)`).
+
 ---
 
 ## [1.9.0] - 2026-08-29

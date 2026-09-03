@@ -17,7 +17,14 @@
 
         Private Sub HibaNaplozasa(ex As Exception, forras As String)
             Try
-                Dim naploFajl As String = IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "HibaNaplo.txt")
+                ' A napló a FELHASZNÁLÓI mappába (%AppData%\MidiBill3) kerül, nem a
+                ' program mappájába: telepítés (Program Files) után oda nem lehetne
+                ' írni, és ez a Catch ág még a hibaüzenetet is elnyelné - vagyis a
+                ' hibanaplózás pont akkor mondana csődöt, amikor a legnagyobb
+                ' szükség lenne rá. A mappát azért is hozzuk létre itt, mert ez a
+                ' kód lefuthat a MainForm_Load (Utvonalak.Elokeszites) ELŐTT is.
+                IO.Directory.CreateDirectory(Modellek.Utvonalak.FelhasznaloiMappa)
+                Dim naploFajl As String = Modellek.Utvonalak.HibaNaploFajl
                 Dim sorok As String =
                     "==================================================" & vbCrLf &
                     "Időpont: " & DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss") & vbCrLf &

@@ -28,7 +28,9 @@ Public Class MainForm
     ' érkező üzeneteket eldobjuk, hogy a lezárás alatt már ne próbáljunk a UI
     ' szálhoz nyúlni (lásd midiMotor_MidiUzenetErkezett és MainForm_FormClosing).
     Private zarasFolyamatban As Boolean = False
-    ' A jelenleg aktív hangszerlista fájlneve (az Adatok mappán belül).
+    ' A jelenleg aktív hangszerlista fájlneve (a gyári GM.lst, vagy egy
+
+    ' fájlnév az "SF adatok" mappából - lásd Modellek\Utvonalak.vb).
     Private aktualisHangszerListaFajl As String = "GM.lst"
     Private aktualisTranszponalas As Integer = 0
     Private Const TRANSZPONALAS_MIN As Integer = -24
@@ -43,7 +45,9 @@ Public Class MainForm
     Private midiSzovegValtozott As Boolean = False
     Private WithEvents midiKijelzoIdozito As New Timer With {.Interval = 100}
 
-    Private ReadOnly kezdetFile As String = IO.Path.Combine(Application.StartupPath, "Kezdet.json")
+    ' A Kezdet.json a FELHASZNÁLÓI mappában (%AppData%\MidiBill3) van, nem a
+    ' program mappájában - lásd a Modellek\Utvonalak.vb részletes magyarázatát.
+    Private ReadOnly kezdetFile As String = Utvonalak.KezdetFajl
 
     Private Const CONTROLLER_CHANGE As Integer = &HB0
     Private Const DAMPER_PEDAL As Integer = 64
@@ -55,6 +59,12 @@ Public Class MainForm
     Private Const NOTE_ON As Integer = &H90
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        ' MINDEN más előtt: a felhasználói mappa (%AppData%\MidiBill3)
+        ' létrehozása, és a régi helyen maradt Kezdet.json egyszeri
+        ' átköltöztetése - e nélkül a HangszerListaBetoltese() már egy
+        ' nem létező mappában keresne.
+        Utvonalak.Elokeszites()
+
         HangszerListaBetoltese()
         HangszerPanelekLetrehozasa()
         CsatornaAllapotokInicializalasa()
@@ -151,14 +161,14 @@ Public Class MainForm
     End Sub
 
     ''' <summary>
-    ''' A hangszerlista betöltése a Adatok\GM.lst fájlból induláskor - ennek
+    ''' A GYÁRI hangszerlista (GM.lst/GM.drm) betöltése induláskor - ennek
     ''' A HangszerPanelekLetrehozasa ELŐTT kell lefutnia, mert a HangszerPanel
     ''' konstruktora azonnal a HangszerLista.Nevek alapján tölti fel a saját
     ''' cmbHangszer legördülőjét.
     ''' </summary>
     Private Sub HangszerListaBetoltese()
         Dim lstFajlNev As String = "GM.lst"
-        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", lstFajlNev)
+        Dim utvonal As String = Utvonalak.HangszerListaOlvasasra(lstFajlNev)
         If Not HangszerLista.Betolt(utvonal) Then
             MsgBox("Nem sikerült betölteni a hangszerlistát innen:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
                    "A beépített General MIDI lista kerül alkalmazásra.",
@@ -166,7 +176,7 @@ Public Class MainForm
         End If
 
         Dim dobFajlNev As String = IO.Path.GetFileNameWithoutExtension(lstFajlNev) & ".drm"
-        Dim dobUtvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", dobFajlNev)
+        Dim dobUtvonal As String = Utvonalak.HangszerListaOlvasasra(dobFajlNev)
         If Not HangszerLista.BetoltDobKeszletet(dobUtvonal) Then
             MsgBox("Nem sikerült betölteni a dobkészlet-listát innen:" & vbCrLf & dobUtvonal & vbCrLf & vbCrLf &
                    "A beépített alapértelmezett dobkészlet-lista kerül alkalmazásra.",
@@ -973,13 +983,15 @@ Public Class MainForm
     End Function
 
     ''' <summary>
-    ''' Megpróbálja betölteni a megadott hangszerlista fájlt az Adatok
-    ''' mappából, és sikeres esetben minden fizikai HangszerPanel legördülőjét
-    ''' frissíti. Sikertelenség esetén figyelmeztet, de a JELENLEG AKTÍV
-    ''' lista marad érvényben (nincs "csendes" visszaesés).
+    ''' Megpróbálja betölteni a megadott hangszerlista fájlt, és sikeres
+    ''' esetben minden fizikai HangszerPanel legördülőjét frissíti.
+    ''' Sikertelenség esetén figyelmeztet, de a JELENLEG AKTÍV lista marad
+    ''' érvényben (nincs "csendes" visszaesés). A fájl helyét az
+    ''' Utvonalak.HangszerListaOlvasasra dönti el: a gyári GM.lst/GM.drm a
+    ''' program mappájából, minden más az "SF adatok" mappából jön.
     ''' </summary>
     Private Function HangszerListaAlkalmazasa(fajlNev As String) As Boolean
-        Dim utvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", fajlNev)
+        Dim utvonal As String = Utvonalak.HangszerListaOlvasasra(fajlNev)
 
         If HangszerLista.Betolt(utvonal) Then
             aktualisHangszerListaFajl = fajlNev
@@ -988,7 +1000,7 @@ Public Class MainForm
             ' azt is betöltjük - ha nincs, csendben a jelenlegi dob-lista
             ' marad érvényben (ez NEM hiba, csak egy opcionális párosítás).
             Dim dobFajlNev As String = IO.Path.GetFileNameWithoutExtension(fajlNev) & ".drm"
-            Dim dobUtvonal As String = IO.Path.Combine(Application.StartupPath, "Adatok", dobFajlNev)
+            Dim dobUtvonal As String = Utvonalak.HangszerListaOlvasasra(dobFajlNev)
             HangszerLista.BetoltDobKeszletet(dobUtvonal) ' visszatérési értéke szándékosan figyelmen kívül hagyva
 
             For Each panel As HangszerPanel In hangszerPanelek
@@ -996,7 +1008,8 @@ Public Class MainForm
             Next
             Return True
         Else
-            MsgBox("A(z) """ & fajlNev & """ hangszerlista fájl nem található vagy hibás az Adatok mappában." & vbCrLf &
+            MsgBox("A(z) """ & fajlNev & """ hangszerlista fájl nem található vagy hibás itt:" & vbCrLf &
+                   IO.Path.GetDirectoryName(utvonal) & vbCrLf &
                    "A megadott hangszerlista betöltése nem lehetséges - a jelenleg aktív lista marad érvényben.",
                    MsgBoxStyle.Exclamation, "MidiBill")
             Return False
@@ -1050,7 +1063,10 @@ Public Class MainForm
     End Sub
 
     Private Sub DialogusMappaBeallitasa(dlg As FileDialog, ByRef megjegyzettMappa As String, Optional alapMappa As String = Nothing)
-        Dim tenylegesAlapMappa As String = If(alapMappa, Application.StartupPath)
+        ' Alapértelmezésben a Presetek mappa nyílik meg - ide mentődnek a
+        ' preset (.json) fájlok. NEM a program mappája, ami telepítés után a
+        ' Program Files alatt írásvédett lenne.
+        Dim tenylegesAlapMappa As String = If(alapMappa, Utvonalak.PresetekMappa)
         dlg.InitialDirectory = If(String.IsNullOrEmpty(megjegyzettMappa), tenylegesAlapMappa, megjegyzettMappa)
     End Sub
 
@@ -1114,26 +1130,51 @@ Public Class MainForm
         End If
     End Sub
 
+    ''' <summary>
+    ''' Ellenőrzi, hogy a megadott fájlnév ütközik-e a GYÁRI, védett
+    ''' hangszerlistákkal (GM.lst / GM.drm). Ha igen, figyelmeztet, és True-t
+    ''' ad vissza - a hívónak ilyenkor meg kell szakítania a műveletet.
+    ''' Ezek a fájlok a program mappájában laknak, és mindig onnan olvasódnak;
+    ''' egy azonos nevű felhasználói fájl sosem kerülne felhasználásra, ezért
+    ''' inkább létre sem hagyjuk jönni.
+    ''' </summary>
+    Private Function GyariNevUtkozes(fajlNev As String) As Boolean
+        If Not Utvonalak.GyariListaE(fajlNev) Then Return False
+
+        MsgBox("A(z) """ & IO.Path.GetFileName(fajlNev) & """ a program GYÁRI hangszerlistája," & vbCrLf &
+               "amit nem lehet felülírni vagy saját változattal helyettesíteni." & vbCrLf & vbCrLf &
+               "Nevezd át a fájlt (SoundFont importálásánál magát a .sf2 fájlt), és próbáld újra.",
+               MsgBoxStyle.Exclamation, "MidiBill")
+        Return True
+    End Function
+
     Private Sub mnuHangszerlistaBetoltese_Click(sender As Object, e As EventArgs) Handles mnuHangszerlistaBetoltese.Click
-        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
-        DialogusMappaBeallitasa(dlgHangszerlista, utolsoHangszerlistaMappa, adatokMappa)
+        DialogusMappaBeallitasa(dlgHangszerlista, utolsoHangszerlistaMappa, Utvonalak.SfAdatokMappa)
 
         If dlgHangszerlista.ShowDialog() = DialogResult.OK Then
             Dim forrasUtvonal As String = dlgHangszerlista.FileName
-            Dim forrasMappa As String = IO.Path.GetDirectoryName(forrasUtvonal)
             Dim fajlNev As String = IO.Path.GetFileName(forrasUtvonal)
-            Dim celUtvonal As String = IO.Path.Combine(adatokMappa, fajlNev)
 
-            If Not String.Equals(forrasMappa, adatokMappa, StringComparison.OrdinalIgnoreCase) Then
+            ' Ha a kiválasztott fájl MÁR a végleges helyén van (gyári lista a
+            ' program mappájában, vagy sajátlista az "SF adatok" mappában),
+            ' nincs mit másolni - a HangszerListaAlkalmazasa a fájlNÉV alapján
+            ' úgyis megtalálja. Egyébként az "SF adatok" mappába másoljuk,
+            ' sosem a program mappájába (az telepítés után írásvédett lenne).
+            If Not Utvonalak.MarAHelyenVanE(forrasUtvonal) Then
+                If GyariNevUtkozes(fajlNev) Then Return
+
+                Dim celUtvonal As String = Utvonalak.HangszerListaIrasra(fajlNev)
                 Dim felulirodik As Boolean = IO.File.Exists(celUtvonal)
                 Dim uzenet As String
 
                 If felulirodik Then
-                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül az Adatok mappába." & vbCrLf &
+                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül ide:" & vbCrLf &
+                             Utvonalak.SfAdatokMappa & vbCrLf & vbCrLf &
                              "Ott már létezik egy azonos nevű fájl, ami FELÜLÍRÓDIK." & vbCrLf & vbCrLf &
                              "Folytatod?"
                 Else
-                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül (átmásolódik) az Adatok mappába." & vbCrLf & vbCrLf &
+                    uzenet = "A(z) """ & fajlNev & """ fájl bekerül (átmásolódik) ide:" & vbCrLf &
+                             Utvonalak.SfAdatokMappa & vbCrLf & vbCrLf &
                              "Folytatod?"
                 End If
 
@@ -1143,7 +1184,7 @@ Public Class MainForm
                 Try
                     IO.File.Copy(forrasUtvonal, celUtvonal, True)
                 Catch ex As Exception
-                    MsgBox("Nem sikerült átmásolni a fájlt az Adatok mappába." & vbCrLf & vbCrLf &
+                    MsgBox("Nem sikerült átmásolni a fájlt ide:" & vbCrLf & Utvonalak.SfAdatokMappa & vbCrLf & vbCrLf &
                            "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill")
                     Return
                 End Try
@@ -1173,8 +1214,7 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuSoundFontImportalasa_Click(sender As Object, e As EventArgs) Handles mnuSoundFontImportalasa.Click
-        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
-        DialogusMappaBeallitasa(dlgSoundFont, utolsoSoundFontMappa, adatokMappa)
+        DialogusMappaBeallitasa(dlgSoundFont, utolsoSoundFontMappa, Utvonalak.SfAdatokMappa)
 
         If dlgSoundFont.ShowDialog() = DialogResult.OK Then
             Dim sf2Utvonal As String = dlgSoundFont.FileName
@@ -1182,8 +1222,15 @@ Public Class MainForm
             Dim alapNev As String = IO.Path.GetFileNameWithoutExtension(sf2Utvonal)
             Dim ujLstNev As String = alapNev & ".lst"
             Dim ujDrmNev As String = alapNev & ".drm"
-            Dim lstUtvonal As String = IO.Path.Combine(adatokMappa, ujLstNev)
-            Dim drmUtvonal As String = IO.Path.Combine(adatokMappa, ujDrmNev)
+
+            ' Egy "GM.sf2" nevű SoundFont GM.lst/GM.drm néven generálna listát,
+            ' ami ütközne a gyári, védett listákkal - ezt még a beolvasás előtt
+            ' elkapjuk, hogy ne dolgozzunk feleslegesen.
+            If GyariNevUtkozes(ujLstNev) Then Return
+
+            ' A generált listák MINDIG az "SF adatok" mappába kerülnek
+            Dim lstUtvonal As String = Utvonalak.HangszerListaIrasra(ujLstNev)
+            Dim drmUtvonal As String = Utvonalak.HangszerListaIrasra(ujDrmNev)
 
             Dim eredmeny As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String))
             Try
@@ -1204,7 +1251,8 @@ Public Class MainForm
             Dim drmLetezik As Boolean = eredmeny.Dobok.Count > 0 AndAlso IO.File.Exists(drmUtvonal)
             If lstLetezik OrElse drmLetezik Then
                 Dim uzenet As String = "A(z) """ & ujLstNev & """" & If(drmLetezik, " és """ & ujDrmNev & """", "") &
-                                        " már létezik az Adatok mappában." & vbCrLf &
+                                        " már létezik itt:" & vbCrLf &
+                                        Utvonalak.SfAdatokMappa & vbCrLf & vbCrLf &
                                         "Felülírjuk az újonnan importált SoundFont adataival?"
                 If MsgBox(uzenet, MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill") = MsgBoxResult.No Then Return
             End If
@@ -1241,15 +1289,32 @@ Public Class MainForm
         End If
     End Sub
 
+    ''' <summary>
+    ''' A konvertáló segédprogramok kimeneti mappájának előkészítése:
+    ''' elsődlegesen a forrásfájlok mellé, egy "Konvertalva" almappába. Ha ott
+    ''' nem lehet létrehozni (pl. a forrásfájlok a telepítési mappában vannak,
+    ''' ami a Program Files alatt írásvédett), a felhasználói mappába esik
+    ''' vissza - így a művelet sosem szakad meg kezeletlen hibával.
+    ''' </summary>
+    Private Function KonvertalasKimenetiMappa(forrasMappa As String) As String
+        Dim elsodlegesMappa As String = IO.Path.Combine(forrasMappa, "Konvertalva")
+        Try
+            IO.Directory.CreateDirectory(elsodlegesMappa)
+            Return elsodlegesMappa
+        Catch ex As Exception
+            Dim tartalekMappa As String = IO.Path.Combine(Utvonalak.FelhasznaloiMappa, "Konvertalva")
+            IO.Directory.CreateDirectory(tartalekMappa)
+            Return tartalekMappa
+        End Try
+    End Function
+
     Private Sub mnuPresetFajlokFrissitese_Click(sender As Object, e As EventArgs) Handles mnuPresetFajlokFrissitese.Click
-        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
-        DialogusMappaBeallitasa(dlgPresetKonvertalas, utolsoPresetKonvertalasMappa, adatokMappa)
+        DialogusMappaBeallitasa(dlgPresetKonvertalas, utolsoPresetKonvertalasMappa, Utvonalak.PresetekMappa)
 
         If dlgPresetKonvertalas.ShowDialog() = DialogResult.OK Then
             Dim fajlok As String() = dlgPresetKonvertalas.FileNames
             Dim forrasMappa As String = IO.Path.GetDirectoryName(fajlok(0))
-            Dim kimenoMappa As String = IO.Path.Combine(forrasMappa, "Konvertalva")
-            IO.Directory.CreateDirectory(kimenoMappa)
+            Dim kimenoMappa As String = KonvertalasKimenetiMappa(forrasMappa)
 
             Dim sikeres As Integer = 0
             Dim hibaUzenetek As New List(Of String)
@@ -1279,8 +1344,7 @@ Public Class MainForm
     End Sub
 
     Private Sub mnuMb3FajlokKonvertalasa_Click(sender As Object, e As EventArgs) Handles mnuMb3FajlokKonvertalasa.Click
-        Dim adatokMappa As String = IO.Path.Combine(Application.StartupPath, "Adatok")
-        DialogusMappaBeallitasa(dlgMb3Konvertalas, utolsoMb3KonvertalasMappa, adatokMappa)
+        DialogusMappaBeallitasa(dlgMb3Konvertalas, utolsoMb3KonvertalasMappa, Utvonalak.PresetekMappa)
 
         If dlgMb3Konvertalas.ShowDialog() = DialogResult.OK Then
             Dim fajlok As String() = dlgMb3Konvertalas.FileNames
@@ -1298,8 +1362,7 @@ Public Class MainForm
                 "MidiBill - MIDI kimenet", alapKimenet)
 
             Dim forrasMappa As String = IO.Path.GetDirectoryName(fajlok(0))
-            Dim kimenoMappa As String = IO.Path.Combine(forrasMappa, "Konvertalva")
-            IO.Directory.CreateDirectory(kimenoMappa)
+            Dim kimenoMappa As String = KonvertalasKimenetiMappa(forrasMappa)
 
             Dim sikeres As Integer = 0
             Dim hibaUzenetek As New List(Of String)
