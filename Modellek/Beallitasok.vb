@@ -171,18 +171,36 @@ Namespace Modellek
             End While
         End Sub
 
-        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét a jelenleg aktív listából</summary>
+        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét a jelenleg aktív (dallamhangszer-)listából</summary>
         Private Shared Function HangszerNev(index As Integer) As String
             Return HangszerLista.Nev(index, "Ismeretlen hangszer")
         End Function
 
         Private Shared Function KommentekHozzaadasa(json As String) As String
+            ' A "Hangszer" mező a JSON-ban csatornánként, a Csatornak lista
+            ' SORRENDJÉBEN jelenik meg (a CsatornaBeallitas osztályban ez az
+            ' első property) - ezért a regex-találatok SORSZÁMÁBÓL (1-től
+            ' számolva) tudjuk, melyik csatornáról van szó. A 10. csatorna
+            ' (index 9) DOB-csatorna: a hozzá tartozó "Hangszer" érték nem
+            ' hagyományos hangszer-patchet, hanem dobkészlet-variációt jelöl,
+            ' ezért a kommentnek a dallamhangszer-lista (HangszerNev) helyett
+            ' a dedikált dobkészlet-listából (HangszerLista.DobNev) kell
+            ' neveznie - korábban ez a megkülönböztetés hiányzott, és a 10.
+            ' csatorna Hangszer-értékére is a dallamhangszer-nevet írta ki.
+            Dim csatornaSorszamHangszernel As Integer = 0
             Dim hangszerMinta As New Regex("(""Hangszer"":\s*)(-?\d+)(,?)")
             Dim jsonKommentekkel As String = hangszerMinta.Replace(json,
         Function(m As Match) As String
             Dim idx As Integer = 0
             Integer.TryParse(m.Groups(2).Value, idx)
-            Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & HangszerNev(idx)
+            csatornaSorszamHangszernel += 1
+            Dim nev As String
+            If csatornaSorszamHangszernel = 10 Then
+                nev = HangszerLista.DobNev(idx, "Ismeretlen dobkészlet")
+            Else
+                nev = HangszerNev(idx)
+            End If
+            Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & nev
         End Function)
 
             Dim splitMinta As New Regex("(""SplitPont"":\s*)(-?\d+)(,?)")

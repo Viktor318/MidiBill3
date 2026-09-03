@@ -2,10 +2,9 @@
 
     ''' <summary>
     ''' A futó assembly verziószámát adja vissza "Major.Minor.Build" formában
-    ''' (pl. "1.3.0"). Közös hely, hogy a fő program és a segédprogramok
-    ''' (PresetKonvertalo, Mb3Konvertalo) is ugyanazt a logikát használják.
-    ''' A verziószám forrása a Directory.Build.props (megoldás gyökere) - onnan
-    ''' örökli mindhárom projekt automatikusan, nincs szükség kézi szinkronizálásra.
+    ''' (pl. "1.11.0"). A verziószám forrása a MidiBill3.vbproj &lt;Version&gt;
+    ''' eleme - onnan generálja a .NET SDK build közben automatikusan az
+    ''' assembly-verziót, nincs szükség kézi szinkronizálásra.
     ''' </summary>
     Public Module AppInfo
 

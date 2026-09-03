@@ -510,17 +510,35 @@ munkalista is a további javításokhoz.
     következő MIDI felvétel/visszajátszás kódjánál, ahol a NAudio
     `MidiEvent`-hierarchiájában (`NoteOnEvent`, `ControlChangeEvent`,
     `TempoEvent` stb.) sok lesz a típuskonverzió.
-14. **`AppInfo.vb` kommentje elavult** - `Directory.Build.props`-ra és a
+14. ~~**`AppInfo.vb` kommentje elavult** - `Directory.Build.props`-ra és a
     már nem létező `PresetKonvertalo`/`Mb3Konvertalo` projektekre
     hivatkozik, holott a verzió most közvetlenül a `.vbproj`-ban van, és
-    egyetlen projekt van.
-15. **Apróságok**: a `.vbproj` `System.Data` importja használatlan; a
+    egyetlen projekt van.~~ - **JAVÍTVA**: a komment mostantól a tényleges
+    állapotot írja le - a verziószám forrása a `MidiBill3.vbproj`
+    `<Version>` eleme, nincs `Directory.Build.props` és nincsenek külön
+    konvertáló-projektek.
+15. ~~**Apróságok**: a `.vbproj` `System.Data` importja használatlan; a
     `Hangnevek.HangNev` negatív bemenetre `IndexOutOfRange`-et dobna
     (védekező egysoros); a JSON-kommentelés a 10. csatorna hangszerénél a
     dallamhangszer-listából keresi a nevet (kozmetikai); a
     SoundFont-import a 120-as (GM2) dobbankot a program-számra
     redukálja, így a bank elveszik a Program Change-nél (ez tudatos
-    döntés volt, csak jelezve).
+    döntés volt, csak jelezve).~~ - **JAVÍTVA (3/4)**:
+    - a `.vbproj`-ból eltávolítva a használaton kívüli
+      `<Import Include="System.Data" />` sor
+    - a `Hangnevek.HangNev` mostantól az érvényes MIDI-tartományon
+      (0-127) kívüli bemenetre (pl. egy kézzel szerkesztett, hibás
+      preset JSON negatív `SplitPont` értékére) nem dob kezeletlen
+      `IndexOutOfRangeException`-t, hanem magát a számot adja vissza
+    - a `Beallitasok.KommentekHozzaadasa` mostantól a JSON-találatok
+      SORSZÁMÁBÓL felismeri, hogy a 10. csatorna `Hangszer` mezőjéről
+      van szó, és ahhoz a dedikált dobkészlet-listából (új
+      `HangszerLista.DobNev()`, a meglévő `Nev()` párja) nevez meg
+      hangszert a dallamhangszer-lista helyett
+    - a SoundFont-import GM2 (120-as) dobbank-kezelése SZÁNDÉKOSAN
+      változatlan maradt - ez elfogadott, tudatos tervezési döntés
+      (lásd "Ismert, tudatosan meghozott döntések"), nem hiba, csak
+      jelzésre szánt megjegyzés volt
 
 ## Következő lépések / nyitott témák
 

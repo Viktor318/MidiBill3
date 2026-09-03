@@ -99,6 +99,19 @@ Namespace Modellek
         End Function
 
         ''' <summary>
+        ''' Egy dobkészlet-patch index alapján biztonságosan visszaadja a
+        ''' nevét a JELENLEG AKTÍV dobkészlet-listából (DobNevek) - a Nev()
+        ''' párja, csak a 10. (dob) csatornához.
+        ''' </summary>
+        Public Function DobNev(index As Integer, Optional ismeretlenSzoveg As String = "?") As String
+            Dim ertek As String = Nothing
+            If DobNevek.TryGetValue(index, ertek) Then
+                Return ertek
+            End If
+            Return ismeretlenSzoveg
+        End Function
+
+        ''' <summary>
         ''' Betölti a hangszerlistát egy "index=Hangszernév" formátumú
         ''' szöveges fájlból (pl. Adatok/GM.lst). Két index-formátumot
         ''' ismer fel: sima "program" (bank=0, visszamenőleg kompatibilis a

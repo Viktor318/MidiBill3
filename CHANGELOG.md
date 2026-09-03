@@ -10,6 +10,33 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [Nem kiadott]
+
+### Javítva (kód-higiénia)
+- **`AppInfo.vb` elavult komment**: a `Directory.Build.props`-ra és a
+  már nem létező `PresetKonvertalo`/`Mb3Konvertalo` projektekre
+  hivatkozott. Mostantól a tényleges állapotot írja le: a verziószám
+  forrása a `MidiBill3.vbproj` `<Version>` eleme, a projekt egyetlen
+  darabból áll.
+- **`.vbproj`**: eltávolítva a használaton kívüli
+  `<Import Include="System.Data" />` sor.
+- **`Hangnevek.HangNev`**: az érvényes MIDI-tartományon (0-127) kívüli
+  bemenetre (pl. egy kézzel szerkesztett, hibás preset JSON negatív
+  `SplitPont` értékére) eddig kezeletlen `IndexOutOfRangeException`-t
+  dobott volna - mostantól ilyenkor magát a számot adja vissza
+  hangnév helyett.
+- **`Beallitasok.KommentekHozzaadasa`**: a preset JSON mentésekor
+  generált `// <hangszernév>` komment a 10. (dob) csatorna
+  `Hangszer` mezőjénél eddig a dallamhangszer-listából kereste a
+  nevet, holott ott dobkészlet-variáció szerepel. Mostantól a
+  találatok sorszámából felismeri a 10. csatornát, és a dedikált
+  dobkészlet-listából (új `HangszerLista.DobNev()`, a meglévő
+  `Nev()` párja) nevez meg hangszert.
+- A SoundFont-import GM2 (120-as) dobbank-kezelése SZÁNDÉKOSAN
+  változatlan maradt - elfogadott, tudatos tervezési döntés, nem
+  hiba (lásd az állapot-dokumentum "Ismert, tudatosan meghozott
+  döntések" szakaszát).
+
 ## [1.12.0] - 2026-09-03
 
 ### Javítva
