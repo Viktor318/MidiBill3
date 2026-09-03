@@ -1,4 +1,4 @@
-# MidiBill3 (VB.NET) – Aktuális állapot összefoglalója
+﻿# MidiBill3 (VB.NET) – Aktuális állapot összefoglalója
 
 Ez a dokumentum a **VB6 → VB.NET portolás jelenlegi állapotát** foglalja
 össze, hogy egy új beszélgetés gyorsan fel tudjon zárkózni anélkül, hogy
@@ -348,9 +348,14 @@ munkalista is a további javításokhoz.
    - Mellékhaszon fejlesztés közben: a `Kezdet.json` és a presetek
      kikerültek a `bin\Debug` mappából, tehát **túlélik a
      Clean/Rebuild műveleteket**.
-5. **MIDI kimenet váltásakor beragadhatnak a hangok** - a
+5. ~~**MIDI kimenet váltásakor beragadhatnak a hangok** - a
    `MidiEngine.KimenetBezaras()` a `Dispose` előtt nem küld
-   hangkikapcsolást, így ami a régi eszközön szólt, ott is marad.
+   hangkikapcsolást, így ami a régi eszközön szólt, ott is marad.~~ -
+   **JAVÍTVA**: új `OsszesHangElnemitasa()` metódus a `KimenetBezaras()`
+   elején minden csatornán kiküldi az All Sound Off (CC120) és All Notes
+   Off (CC123) üzenetet, MIELŐTT a `MidiOut` `Dispose()`-olódik. Ez
+   eszközváltásnál (`KimenetMegnyitas()` is meghívja) ÉS
+   programbezáráskor is lefut.
 6. **`BeallitasokAlkalmazasa`**: a `TranszponalasFrissites(b.Transzponalas)`
    a nyers értéket kapja a kiszámolt `ujTranszponalas` helyett. Működik
    (a metódus maga is korlátoz), de kilóg a körülötte lévő mintából.

@@ -127,11 +127,33 @@ Namespace Modellek
         Public Sub KimenetBezaras()
             If midiKimenet IsNot Nothing Then
                 Try
+                    OsszesHangElnemitasa()
+                Catch
+                End Try
+                Try
                     midiKimenet.Dispose()
                 Catch
                 End Try
                 midiKimenet = Nothing
             End If
+        End Sub
+
+        ''' <summary>
+        ''' Minden csatornán elnémítja a hangokat a kimeneti eszköz lezárása
+        ''' (vagy másik eszközre váltása) ELŐTT - enélkül a korábban
+        ''' megszólaltatott hangok "beragadhatnak" (tovább szólnak) a
+        ''' lecserélt/lezárt eszközön, mert a Dispose() nem küld
+        ''' automatikusan Note Off-ot. Az All Sound Off (CC120) AZONNAL
+        ''' elhallgattatja a hangokat (release-fázis nélkül), az All Notes
+        ''' Off (CC123) pedig a szabvány szerint a "lenyomott hang"
+        ''' állapotot törli - a kettőt együtt küldve minden
+        ''' szintetizátor/hangkártya helyesen reagál.
+        ''' </summary>
+        Private Sub OsszesHangElnemitasa()
+            For c As Integer = 0 To 15
+                KuldesEgyCsatornara(&HB0 + c, 120, 0) ' All Sound Off
+                KuldesEgyCsatornara(&HB0 + c, 123, 0) ' All Notes Off
+            Next
         End Sub
 
         Private Sub Bemenet_UzenetErkezett(sender As Object, e As MidiInMessageEventArgs)

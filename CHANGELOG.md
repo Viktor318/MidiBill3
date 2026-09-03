@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Ez a fájl a MidiBill3 (VB.NET) projekt eddigi fejlesztési történetét
 foglalja össze, verziónkénti bontásban. A formátum lazán a
@@ -9,6 +9,17 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 > `git log` előzményekkel, és ha szükséges, pontosítani.
 
 ---
+
+## [Nem kiadott]
+
+### Javítva
+- **MIDI kimenet váltásakor beragadhattak a hangok.** A `MidiEngine.KimenetBezaras()`
+  eddig csak `Dispose()`-olta a `MidiOut` eszközt, Note Off küldése nélkül -
+  ha éppen szólt egy hang (pl. lenyomva tartott billentyű) a kimeneti eszköz
+  váltásakor (`KimenetMegnyitas()` is meghívja `KimenetBezaras()`-t) vagy a
+  program bezárásakor, az a korábbi eszközön tovább szólhatott. Új
+  `OsszesHangElnemitasa()` metódus a `Dispose()` ELŐTT minden csatornára
+  kiküldi az All Sound Off (CC120) és All Notes Off (CC123) üzenetet.
 
 ## [1.10.0] - 2026-09-03
 
