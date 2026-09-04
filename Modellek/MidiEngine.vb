@@ -79,8 +79,49 @@ Namespace Modellek
         ''' </summary>
         Private ReadOnly idozito As New Stopwatch()
 
+        ''' <summary>
+        ''' A fenti stopperóra aktuális állása ezredmásodpercben. A MIDI
+        ''' felvevő automatikus módjának kell: a SZÜNET-küszöböt (mennyi ideje
+        ''' nem érkezett semmi) csak úgy lehet helyesen mérni, ha ugyanarról
+        ''' az óráról olvasunk, amelyikről a rögzített üzenetek időbélyegei is
+        ''' származnak - egy másik időforrás (pl. DateTime.Now) keverése
+        ''' nehezen észrevehető csúszást okozna.
+        ''' </summary>
+        Public ReadOnly Property ElteltIdoMs As Long
+            Get
+                Return idozito.ElapsedMilliseconds
+            End Get
+        End Property
+
         Public Event MidiUzenetErkezett(uzenet As Integer, adat1 As Integer, adat2 As Integer, idobelyegMs As Long)
         Public Event KimenetiHiba(hibaUzenet As String)
+
+        ''' <summary>
+        ''' MINDEN sikeresen kiküldött MIDI üzenet után kiváltódik - ez az
+        ''' EGYETLEN pont, ahonnan a MIDI felvevő "hallgatózik" a kimeneten.
+        ''' Azért a KIMENETRE iratkozunk fel (nem a bemenetre), mert a
+        ''' felvétel a TÉNYLEGES, már feldolgozott hangot rögzíti: a split
+        ''' pont, a globális transzponálás, a csatornánkénti oktáv-eltolás és
+        ''' a 16 csatornás szétosztás (fan-out) UTÁNI állapotot - így a
+        ''' felvett fájl pontosan azt adja vissza, ami ténylegesen szólt.
+        '''
+        ''' - idobelyegMs: az üzenet ideje ezredmásodpercben (lásd az idozito
+        '''   mezőt). Élő játéknál ez a NAudio callback-szálán rögzített,
+        '''   jittermentes időbélyeg, ami a bejövő üzenettől végig át van
+        '''   vezetve idáig; a UI-ból eredő üzeneteknél (csúszkák,
+        '''   hangszerváltás) a küldés pillanatában kiolvasott érték.
+        ''' - lejatszasBol: True, ha az üzenet egy visszajátszott .mid
+        '''   fájlból származik (lásd LejatszottUzenetKuldese). A felvevő
+        '''   ezt csak akkor rögzíti, ha a felhasználó bekapcsolta a
+        '''   "lejátszott hangok rögzítése" (overdub) lehetőséget.
+        ''' - metronomBol: True, ha az üzenet a metronómtól származik. A
+        ''' felvevő ezt MINDIG kihagyja - metronóm-kattogás sosem kerülhet
+        ''' a mentett .mid fájlba. (A metronóm-funkció maga még nem
+        ''' készült el, a paraméter előre bekerült, hogy a szignatúrához
+        ''' ne kelljen kétszer hozzányúlni.)
+        ''' </summary>
+        Public Event UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
+                                    idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean)
 
         Public Sub New()
             For c As Integer = 0 To 15
@@ -194,8 +235,16 @@ Namespace Modellek
         ''' Az üzenet típusát mindig a státuszbájt felső négy bitjéből
         ''' állapítjuk meg, mert az alsó négy bit a küldő MIDI csatorna
         ''' sorszáma (lásd a metóduson belüli részletes megjegyzést).
+        '''
+        ''' Az idobelyegMs a bejövő üzenet beérkezésének (a NAudio
+        ''' callback-szálán rögzített) időpontja, amit VÁLTOZATLANUL adunk
+        ''' tovább mind a 16 csatornára szétosztott üzenetnek: egyetlen
+        ''' leütésből akár 16 kimenő üzenet is születhet, de azok mind
+        ''' UGYANABBAN a pillanatban szólalnak meg, tehát a felvételben is
+        ''' azonos időbélyeget kell kapniuk.
         ''' </summary>
-        Public Sub UzenetKuldes(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+        Public Sub UzenetKuldes(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
+                                Optional idobelyegMs As Long = -1)
 
             If statuszBajt >= &H80 And statuszBajt < &HF0 Then
 
@@ -226,7 +275,7 @@ Namespace Modellek
 
                     If tenylegesNoteOff Then
                         If noteOn(c, adat1) Then
-                            KuldesUzenetCsatornara(c, statuszBajt, kimenoHang(c, adat1), adat2)
+                            KuldesUzenetCsatornara(c, statuszBajt, kimenoHang(c, adat1), adat2, idobelyegMs)
                             noteOn(c, adat1) = False
                         End If
                     ElseIf hangUzenet Then
@@ -234,7 +283,7 @@ Namespace Modellek
                         If zonaIlleszkedik Then
                             Dim kimeno As Integer = adat1 + Transpozicio + (csatornaOktavTomb(c) * 12)
                             If ErvenyesHangE(kimeno) Then
-                                KuldesUzenetCsatornara(c, statuszBajt, kimeno, adat2)
+                                KuldesUzenetCsatornara(c, statuszBajt, kimeno, adat2, idobelyegMs)
                                 If tenylegesNoteOn Then
                                     noteOn(c, adat1) = True
                                     kimenoHang(c, adat1) = kimeno
@@ -242,17 +291,18 @@ Namespace Modellek
                             End If
                         End If
                     Else
-                        KuldesUzenetCsatornara(c, statuszBajt, adat1, adat2)
+                        KuldesUzenetCsatornara(c, statuszBajt, adat1, adat2, idobelyegMs)
                     End If
                 Next
             Else
-                KuldesEgyCsatornara(statuszBajt, adat1, adat2)
+                KuldesEgyCsatornara(statuszBajt, adat1, adat2, idobelyegMs)
             End If
 
         End Sub
 
-        Private Sub KuldesUzenetCsatornara(csatornaIndex As Integer, statuszBajtAlap As Integer, adat1 As Integer, adat2 As Integer)
-            KuldesEgyCsatornara((statuszBajtAlap And &HF0) + csatornaIndex, adat1, adat2)
+        Private Sub KuldesUzenetCsatornara(csatornaIndex As Integer, statuszBajtAlap As Integer, adat1 As Integer, adat2 As Integer,
+                                           Optional idobelyegMs As Long = -1)
+            KuldesEgyCsatornara((statuszBajtAlap And &HF0) + csatornaIndex, adat1, adat2, idobelyegMs)
         End Sub
 
         ''' <summary>
@@ -269,7 +319,23 @@ Namespace Modellek
             Return hang >= 0 AndAlso hang <= 127
         End Function
 
-        Private Sub KuldesEgyCsatornara(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+        ''' <summary>
+        ''' A program EGYETLEN tényleges MIDI-küldési pontja - minden más
+        ''' metódus ide fut be. Sikeres küldés után kiváltja az
+        ''' UzenetKikuldve eseményt, amire a MIDI felvevő iratkozik fel.
+        '''
+        ''' Az idobelyegMs alapértéke -1, ami azt jelenti: "nincs átadott
+        ''' időbélyeg, olvasd ki MOST". Élő játéknál a hívási lánc
+        ''' (UzenetKuldes -> KuldesUzenetCsatornara -> ide) átadja a NAudio
+        ''' callback-szálán rögzített, pontos időbélyeget; a UI-ból eredő
+        ''' üzenetek (csúszkák, hangszerváltás, pánikgomb) viszont az
+        ''' alapértéket használják, mert ott a küldés pillanata a helyes idő,
+        ''' és ezredmásodperces pontosságra sincs szükség.
+        ''' </summary>
+        Private Sub KuldesEgyCsatornara(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
+                                        Optional idobelyegMs As Long = -1,
+                                        Optional lejatszasBol As Boolean = False,
+                                        Optional metronomBol As Boolean = False)
             If midiKimenet Is Nothing Then Return
             Try
                 Dim uzenet As Integer = statuszBajt Or (adat1 << 8) Or (adat2 << 16)
@@ -279,7 +345,13 @@ Namespace Modellek
                     kimenetiHibaJelezve = True
                     RaiseEvent KimenetiHiba("A MIDI kimeneti eszköz nem érhető el (lehet, hogy időközben eltávolították). Válassz újra egy eszközt.")
                 End If
+                ' Sikertelen küldést nem veszünk fel: ami nem szólalt meg, az
+                ' ne is kerüljön bele a felvételbe.
+                Return
             End Try
+
+            Dim vegsoIdobelyeg As Long = If(idobelyegMs >= 0, idobelyegMs, idozito.ElapsedMilliseconds)
+            RaiseEvent UzenetKikuldve(statuszBajt, adat1, adat2, vegsoIdobelyeg, lejatszasBol, metronomBol)
         End Sub
 
         ''' <summary>
@@ -425,6 +497,51 @@ Namespace Modellek
 
         Public Sub ControllerValtas(csatornaSzam As Integer, controllerSzam As Integer, ertek As Integer)
             KuldesEgyCsatornara(&HB0 + (csatornaSzam - 1), controllerSzam, ertek)
+        End Sub
+
+        ''' <summary>
+        ''' Egy KÉSZ, teljesen összeállított csatorna-üzenet kiküldése, a
+        ''' feldolgozó logika (split pont, transzponálás, fan-out) KIKERÜLÉSÉVEL.
+        '''
+        ''' A csatorna-állapot kiküldésére szolgál (lásd
+        ''' Modellek\CsatornaUzenetek.vb és MainForm.AktivCsatornakAllapotanakKuldese):
+        ''' ott a hívó már pontosan tudja, melyik csatornára mit kell küldeni,
+        ''' nincs mit szétosztani vagy transzponálni rajta.
+        '''
+        ''' A felvétel szempontjából ez NORMÁL, élő üzenetnek számít
+        ''' (lejatszasBol = False), tehát rögzül - ez szándékos: ha játék
+        ''' közben hangszert vagy hangerőt váltasz, annak benne kell lennie a
+        ''' felvételben.
+        ''' </summary>
+        Public Sub KozvetlenUzenetKuldese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+            KuldesEgyCsatornara(statuszBajt, adat1, adat2)
+        End Sub
+
+        ''' <summary>
+        ''' Egy VISSZAJÁTSZOTT (.mid fájlból beolvasott) üzenet kiküldése.
+        '''
+        ''' KRITIKUS: az üzenet VÁLTOZATLANUL, egy az egyben megy ki -
+        ''' SZÁNDÉKOSAN kikerüli az UzenetKuldes teljes feldolgozó logikáját
+        ''' (split pont, globális transzponálás, csatornánkénti oktáv-eltolás,
+        ''' 16 csatornás szétosztás). Ez logikus következménye annak, hogy a
+        ''' felvétel is a MÁR FELDOLGOZOTT kimenetet rögzítette: a
+        ''' lejátszásnak ezt az állapotot kell 1:1-ben visszaadnia, a
+        ''' feldolgozó logika ÚJRA-lefuttatása duplán feldolgozott (hibás)
+        ''' eredményt adna.
+        '''
+        ''' UGYANEBBŐL KÖVETKEZIK: a lejátszás NEM veszi figyelembe, hogy a
+        ''' MainForm-on éppen melyik csatorna aktív - az "aktív csatorna"
+        ''' fogalom kizárólag az ÉLŐ bemenet-feldolgozásra vonatkozik. A
+        ''' fájlban szereplő MINDEN üzenet lejátszódik, minden csatornán,
+        ''' akkor is, ha a felhasználó időközben inaktívvá állította azt a
+        ''' csatornát, amin a felvétel készült.
+        '''
+        ''' Az időbélyeg SZÁNDÉKOSAN a küldés pillanatában olvasódik ki (nem
+        ''' a fájlbeli idő), mert az overdub-felvétel szempontjából az a
+        ''' releváns, mikor szólalt meg ténylegesen a hang.
+        ''' </summary>
+        Public Sub LejatszottUzenetKuldese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+            KuldesEgyCsatornara(statuszBajt, adat1, adat2, lejatszasBol:=True)
         End Sub
 
         Public Sub Dispose() Implements IDisposable.Dispose

@@ -76,14 +76,17 @@ Public Class MainForm
     ' program mappájában - lásd a Modellek\Utvonalak.vb részletes magyarázatát.
     Private ReadOnly kezdetFile As String = Utvonalak.KezdetFajl
 
+    ' A BEJÖVŐ üzenetek feldolgozásához kellenek (pedál-inverzió, split pont
+    ' tanulás, "Extra MIDI üzenetek" indítása) - ezek NEM a csatorna-állapot
+    ' részei, ezért maradnak itt.
     Private Const CONTROLLER_CHANGE As Integer = &HB0
     Private Const DAMPER_PEDAL As Integer = 64
-    Private Const MAIN_VOLUME As Integer = 7
-    Private Const PAN As Integer = 10
-    Private Const MOD_WHEEL As Integer = 1
-    Private Const REVERB As Integer = 91
-    Private Const CHORUS As Integer = 93
     Private Const NOTE_ON As Integer = &H90
+
+    ' A csatorna-állapotot leíró CC-számokat (hangerő, tér, vibrato, chorus,
+    ' reverb) SZÁNDÉKOSAN nem itt deklaráljuk: azok a
+    ' Modellek\CsatornaUzenetek modulban vannak, egyetlen közös helyen, és
+    ' innen CsatornaUzenetek.<NÉV> alakban hivatkozunk rájuk.
 
     Private Sub MainForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         ' MINDEN más előtt: a felhasználói mappa (%AppData%\MidiBill3)
@@ -197,6 +200,21 @@ Public Class MainForm
     ''' </summary>
     Private Sub HangszerListaBetoltese()
         Dim lstFajlNev As String = "GM.lst"
+
+        ' FONTOS: a nyilvántartott lista-nevet is át kell állítani, nem csak
+        ' a tényleges listát betölteni. Ezt a metódust ugyanis nem csak
+        ' induláskor hívjuk, hanem az "Alaphelyzetbe állítás" is - enélkül
+        ' ott az aktualisHangszerListaFajl a KORÁBBI (pl. SoundFontból
+        ' importált) lista nevén maradt volna, aminek két következménye lett:
+        ' (1) az ablak fejléce továbbra is a régi lista nevét mutatta,
+        ' (2) ami sokkal komolyabb: kilépéskor ez a régi név mentődött a
+        '     Kezdet.json-ba, így a KÖVETKEZŐ INDULÁSNÁL a program újra a
+        '     régi listát töltötte be - vagyis az alaphelyzetbe állítás nem
+        '     élte túl az újraindítást.
+        ' Induláskor ez az értékadás nincs hatással (a mező amúgy is
+        ' "GM.lst"-tel indul).
+        aktualisHangszerListaFajl = lstFajlNev
+
         Dim utvonal As String = Utvonalak.HangszerListaOlvasasra(lstFajlNev)
         If Not HangszerLista.Betolt(utvonal) Then
             MsgBox("Nem sikerült betölteni a hangszerlistát innen:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
@@ -413,9 +431,9 @@ Public Class MainForm
             midiMotor.CsatornaOktav(i) = adat.Oktav
             midiMotor.ProgramValtas(csatornaSzam, adat.Hangszer)
             CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
-            midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
-            midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
-            midiMotor.ControllerValtas(csatornaSzam, CHORUS, adat.Chorus)
+            midiMotor.ControllerValtas(csatornaSzam, CsatornaUzenetek.PAN, adat.Ter + 64)
+            midiMotor.ControllerValtas(csatornaSzam, CsatornaUzenetek.MOD_WHEEL, adat.Vibrato)
+            midiMotor.ControllerValtas(csatornaSzam, CsatornaUzenetek.CHORUS, adat.Chorus)
         Next
 
         ReverbKuldes(trkReverb.Value)
@@ -511,14 +529,14 @@ Public Class MainForm
         Dim idx As Integer = CsatornaIndexTol(sender)
         If idx < 0 Then Return
         csatornaAllapotok(idx).Ter = ertek
-        midiMotor.ControllerValtas(idx + 1, PAN, ertek + 64)
+        midiMotor.ControllerValtas(idx + 1, CsatornaUzenetek.PAN, ertek + 64)
     End Sub
 
     Private Sub HangszerPanel_VibratoValtozott(sender As Object, ertek As Integer)
         Dim idx As Integer = CsatornaIndexTol(sender)
         If idx < 0 Then Return
         csatornaAllapotok(idx).Vibrato = ertek
-        midiMotor.ControllerValtas(idx + 1, MOD_WHEEL, ertek)
+        midiMotor.ControllerValtas(idx + 1, CsatornaUzenetek.MOD_WHEEL, ertek)
     End Sub
 
     Private Sub HangszerPanel_AktivValtozott(sender As Object, aktiv As Boolean)
@@ -537,10 +555,41 @@ Public Class MainForm
         midiMotor.CsatornaAktiv(idx) = aktiv
 
         If aktiv Then
+            ' A csatorna teljes állapotát (hangszín, hangerő, tér, vibrato,
+            ' chorus, reverb) ÚJRA kiküldjük az aktiválásnál - MIELŐTT a
+            ' lenyomva tartott hangok megszólalnának rajta.
+            '
+            ' ÉLŐBEN ez látszólag felesleges, mert a szintetizátor már
+            ' induláskor megkapta MIND a 16 csatorna beállítását (lásd
+            ' OsszesCsatornaUjrakuldese, ami szándékosan nem szűr
+            ' aktivitásra) - ezért működött eddig is helyesen a hang.
+            ' A MIDI FELVÉTELBEN viszont csak az szerepel, ami a felvétel
+            ' INDULÁSA UTÁN ténylegesen kiment: egy menet közben aktivált
+            ' csatorna hangjai bekerültek a felvételbe, a hangszíne viszont
+            ' nem, így egy külső lejátszóban az a csatorna alapértelmezett
+            ' zongorával szólalt meg. Ez a küldés zárja be ezt a rést -
+            ' és élőben is helyesebb, mert az aktiválás így minden esetben
+            ' érvényesíti a csatorna beállításait.
+            CsatornaAllapotKuldese(idx)
             midiMotor.LenyomottHangokMegszolaltatasa(csatornaSzam)
         Else
             midiMotor.HangokKikapcsolasa(csatornaSzam)
         End If
+    End Sub
+
+    ''' <summary>
+    ''' EGY csatorna teljes MIDI-állapotának kiküldése. Az üzenetsorozatot a
+    ''' közös Modellek\CsatornaUzenetek modul állítja elő - ugyanaz, amit az
+    ''' "Extra MIDI üzenetek" funkció mind az aktív csatornákra kiküld, és
+    ''' amit a felvevő a mentett fájl elejére ír.
+    ''' </summary>
+    Private Sub CsatornaAllapotKuldese(csatornaIndex As Integer)
+        Dim uzenetek As List(Of MidiUzenet) = CsatornaUzenetek.CsatornaAllapotUzenetei(
+            csatornaIndex, csatornaAllapotok(csatornaIndex), trkAlapHangero.Value, trkReverb.Value)
+
+        For Each uzenet As MidiUzenet In uzenetek
+            midiMotor.KozvetlenUzenetKuldese(uzenet.StatuszBajt, uzenet.Adat1, uzenet.Adat2)
+        Next
     End Sub
 
     Private Sub HangszerPanel_AlulValtozott(sender As Object, aktiv As Boolean)
@@ -569,12 +618,12 @@ Public Class MainForm
         Dim idx As Integer = CsatornaIndexTol(sender)
         If idx < 0 Then Return
         csatornaAllapotok(idx).Chorus = ertek
-        midiMotor.ControllerValtas(idx + 1, CHORUS, ertek)
+        midiMotor.ControllerValtas(idx + 1, CsatornaUzenetek.CHORUS, ertek)
     End Sub
 
     Private Sub CsatornaHangeroKuldes(csatornaSzam As Integer, csatornaErtek As Integer)
         Dim vegsoErtek As Integer = CInt(csatornaErtek * (trkAlapHangero.Value / 100.0))
-        midiMotor.ControllerValtas(csatornaSzam, MAIN_VOLUME, vegsoErtek)
+        midiMotor.ControllerValtas(csatornaSzam, CsatornaUzenetek.MAIN_VOLUME, vegsoErtek)
     End Sub
 
     ' ============================================================
@@ -626,7 +675,7 @@ Public Class MainForm
     Private Sub ReverbKuldes(szazalek As Integer)
         Dim midiErtek As Integer = szazalek * 127 \ 100
         For c As Integer = 1 To 16
-            midiMotor.ControllerValtas(c, REVERB, midiErtek)
+            midiMotor.ControllerValtas(c, CsatornaUzenetek.REVERB, midiErtek)
         Next
     End Sub
 
@@ -731,10 +780,12 @@ Public Class MainForm
     ''' <summary>
     ''' A bejövő MIDI üzenet feldolgozása (pedál-inverzió, split pont tanulás,
     ''' "Extra MIDI üzenetek"), majd továbbadása a MidiEngine-nek.
-    ''' Az idobelyegMs paraméter egyelőre NEM kerül felhasználásra - a
-    ''' jövőbeli MIDI-felvétel funkció előkészítéseként kapja meg a metódus,
-    ''' hogy majd onnan (a felvétel-logika hozzáadásakor) egyszerűen elérhető
-    ''' legyen, callback-szál-pontos időbélyegként.
+    '''
+    ''' Az idobelyegMs (a NAudio callback-szálán, MÉG a UI-ra való átadás
+    ''' előtt rögzített, jittermentes időpont) a UzenetKuldes-en keresztül
+    ''' végig át van vezetve a MidiEngine kimeneti pontjáig - így a MIDI
+    ''' felvevő a hangokat a TÉNYLEGES beérkezési idejükkel rögzíti, nem a
+    ''' UI szál terheltségétől függő, késleltetett idővel.
     ''' </summary>
     Private Sub MidiUzenetFeldolgozasa(uzenet As Integer, adat1 As Integer, adat2 As Integer, idobelyegMs As Long)
         Dim vegsoAdat2 As Integer = adat2
@@ -767,7 +818,7 @@ Public Class MainForm
             lblExtraMidiAllapot.Text = "MIDI üzenetek kiküldve."
         End If
 
-        midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2)
+        midiMotor.UzenetKuldes(uzenet, adat1, vegsoAdat2, idobelyegMs)
     End Sub
 
     Private Sub chkMidiBeallitoUzenetek_CheckedChanged(sender As Object, e As EventArgs) Handles chkMidiBeallitoUzenetek.CheckedChanged
@@ -789,20 +840,27 @@ Public Class MainForm
     ''' szándékosan nem küld semmit.
     ''' </summary>
     Private Sub AktivCsatornakAllapotanakKuldese()
-        Dim reverbErtek As Integer = trkReverb.Value * 127 \ 100
-        For i As Integer = 0 To 15
-            Dim adat As CsatornaBeallitas = csatornaAllapotok(i)
-            If Not adat.Aktiv Then Continue For
-
-            Dim csatornaSzam As Integer = i + 1
-            midiMotor.ProgramValtas(csatornaSzam, adat.Hangszer)
-            CsatornaHangeroKuldes(csatornaSzam, adat.Hangero)
-            midiMotor.ControllerValtas(csatornaSzam, PAN, adat.Ter + 64)
-            midiMotor.ControllerValtas(csatornaSzam, MOD_WHEEL, adat.Vibrato)
-            midiMotor.ControllerValtas(csatornaSzam, CHORUS, adat.Chorus)
-            midiMotor.ControllerValtas(csatornaSzam, REVERB, reverbErtek)
+        For Each uzenet As MidiUzenet In AktivCsatornakAllapotUzenetei()
+            midiMotor.KozvetlenUzenetKuldese(uzenet.StatuszBajt, uzenet.Adat1, uzenet.Adat2)
         Next
     End Sub
+
+    ''' <summary>
+    ''' Az AKTÍV csatornák teljes MIDI-állapota kész üzenetsorozatként. Két
+    ''' helyen használjuk: az "Extra MIDI üzenetek" funkció ÉLŐBEN kiküldi
+    ''' (AktivCsatornakAllapotanakKuldese), a MIDI felvevő pedig a felvétel
+    ''' indulásakor pillanatképként elteszi, hogy a mentett .mid fájl elejére
+    ''' írhassa - így a felvétel egy külső lejátszóban is a helyes
+    ''' hangszínekkel, hangerővel és effektekkel szólal meg.
+    '''
+    ''' Az üzenetsorozatot a KÖZÖS Modellek\CsatornaUzenetek modul állítja
+    ''' elő, ugyanaz, amit a "MIDI fájlok módosítása" segédprogram is a
+    ''' fájlokba ír - egyetlen helyen karbantartva.
+    ''' </summary>
+    Private Function AktivCsatornakAllapotUzenetei() As List(Of MidiUzenet)
+        Return CsatornaUzenetek.AktivCsatornakAllapotUzenetei(
+            csatornaAllapotok, trkAlapHangero.Value, trkReverb.Value)
+    End Function
 
     ''' <summary>
     ''' A MIDI-üzenet kijelzés tényleges frissítése, max. 5x/mp ütemben
@@ -1543,5 +1601,105 @@ Public Class MainForm
 
         CimsorFrissitese(kezdetFile)
     End Sub
+
+    ' ================================================================
+    ' ================================================================
+    '  IDEIGLENES TESZT-KÓD - a 3. fázisban TELJES EGÉSZÉBEN TÖRLENDŐ!
+    ' ================================================================
+    '
+    '  Ez a blokk kizárólag azért van itt, hogy a MIDI felvevő motorját
+    '  (Modellek\MidiFelvevo.vb) VALÓDI hardveren, még a felvevő ablak
+    '  megépítése ELŐTT ki lehessen próbálni - így ha az időzítéssel vagy
+    '  a mentett fájllal baj van, az azelőtt kiderül, hogy a teljes
+    '  felületet ráépítenénk.
+    '
+    '  Működés: a btnMidiFelvetel gomb ide-oda kapcsol.
+    '    1. kattintás -> a felvevő FELFEGYVERZŐDIK (még nem rögzít semmit,
+    '       az első ténylegesen kiküldött MIDI üzenetre vár)
+    '    2. kattintás -> lezárás + mentés a Felvetelek mappába, dátum
+    '       szerinti almappába, majd egy összegző üzenetablak
+    '
+    '  A 3. fázisban ennek a gombnak az lesz a dolga, hogy megnyissa a
+    '  MidiFelvevoForm ablakot - AKKOR ez az EGÉSZ blokk (a lenti három
+    '  mezővel és három metódussal együtt) törölhető.
+    ' ================================================================
+
+    Private ReadOnly midiFelvevoTeszt As New MidiFelvevo()
+    Private utolsoJelzettFelvevoAllapot As FelvevoAllapot = FelvevoAllapot.Alap
+    Private ReadOnly felvetelGombEredetiSzovege As String = "MIDI felvétel indítása"
+
+    ''' <summary>IDEIGLENES: a motor kimeneti csapjáról továbbítja az üzeneteket a felvevőnek.</summary>
+    Private Sub midiMotor_UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
+                                         idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean) _
+                                         Handles midiMotor.UzenetKikuldve
+
+        midiFelvevoTeszt.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol)
+
+        ' Csak ÁLLAPOTVÁLTÁSKOR nyúlunk a felülethez (tipikusan egyszer, az
+        ' első leütésnél: Felfegyverezve -> Rogzit), nem minden üzenetnél.
+        If midiFelvevoTeszt.Allapot <> utolsoJelzettFelvevoAllapot Then
+            utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
+            FelvetelGombFrissiteseTeszt()
+        End If
+    End Sub
+
+    ''' <summary>IDEIGLENES: a gomb felirata és színe a felvevő állapota szerint.</summary>
+    Private Sub FelvetelGombFrissiteseTeszt()
+        Select Case midiFelvevoTeszt.Allapot
+            Case FelvevoAllapot.Felfegyverezve
+                btnMidiFelvetel.Text = "Várakozás billentyűre..."
+                btnMidiFelvetel.UseVisualStyleBackColor = False
+                btnMidiFelvetel.BackColor = Color.Gold
+            Case FelvevoAllapot.Rogzit
+                btnMidiFelvetel.Text = "● FELVÉTEL - leállítás"
+                btnMidiFelvetel.UseVisualStyleBackColor = False
+                btnMidiFelvetel.BackColor = Color.IndianRed
+            Case Else
+                btnMidiFelvetel.Text = felvetelGombEredetiSzovege
+                btnMidiFelvetel.UseVisualStyleBackColor = True
+        End Select
+    End Sub
+
+    ''' <summary>IDEIGLENES: felfegyverzés, illetve lezárás + mentés.</summary>
+    Private Sub btnMidiFelvetel_Click(sender As Object, e As EventArgs) Handles btnMidiFelvetel.Click
+        If midiFelvevoTeszt.Allapot = FelvevoAllapot.Alap Then
+            ' A felvevő EZZEL kéri majd le a csatorna-állapotot, pontosan
+            ' a rögzítés indulásának pillanatában (nem most, felfegyverzéskor).
+            midiFelvevoTeszt.Felfegyverzes(AddressOf AktivCsatornakAllapotUzenetei)
+            utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
+            FelvetelGombFrissiteseTeszt()
+            Return
+        End If
+
+        ' A számlálókat a lezárás ELŐTT kell kiolvasni: a LezarasEsMentes a
+        ' végén kiüríti a puffert, utána már 0-t adna vissza.
+        Dim esemenySzam As Integer = midiFelvevoTeszt.EsemenySzam
+        Dim hosszMasodperc As Double = midiFelvevoTeszt.RogzitettHosszMs / 1000.0
+
+        Dim utvonal As String = Utvonalak.UjFelvetelUtvonala(Utvonalak.ALAPERTELMEZETT_FELVETEL_NEV, True)
+
+        Try
+            If midiFelvevoTeszt.LezarasEsMentes(utvonal) Then
+                MsgBox("A felvétel elmentve:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
+                       "Rögzített üzenetek: " & esemenySzam & vbCrLf &
+                       "Hossz: " & hosszMasodperc.ToString("0.0") & " másodperc",
+                       MsgBoxStyle.Information, "MidiBill - teszt felvétel")
+            Else
+                MsgBox("Nem rögzült egyetlen üzenet sem, ezért nem készült fájl." & vbCrLf &
+                       "(A felvétel az első lejátszott hangnál indul el.)",
+                       MsgBoxStyle.Information, "MidiBill - teszt felvétel")
+            End If
+        Catch ex As Exception
+            MsgBox("Nem sikerült elmenteni a felvételt ide:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
+                   "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill - teszt felvétel")
+        End Try
+
+        utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
+        FelvetelGombFrissiteseTeszt()
+    End Sub
+
+    ' ================================================================
+    '  IDEIGLENES TESZT-KÓD VÉGE
+    ' ================================================================
 
 End Class

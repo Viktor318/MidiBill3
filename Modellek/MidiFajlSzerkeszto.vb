@@ -23,14 +23,6 @@
     ''' </summary>
     Public Module MidiFajlSzerkeszto
 
-        Private Const MAIN_VOLUME As Integer = 7
-        Private Const PAN As Integer = 10
-        Private Const MOD_WHEEL As Integer = 1
-        Private Const REVERB As Integer = 91
-        Private Const CHORUS As Integer = 93
-        Private Const BANK_SELECT_MSB As Integer = 0
-        Private Const BANK_SELECT_LSB As Integer = 32
-
         ''' <summary>
         ''' Beolvassa a bemenetiFajl-t, az AKTÍV ÉS a fájlban ténylegesen
         ''' használt csatornák állapotát egy ÚJ, önálló trackként beszúrja
@@ -228,7 +220,6 @@
         Private Function UjTrackAdatEpitese(csatornak As IList(Of CsatornaBeallitas), alapHangero As Integer, reverbSzazalek As Integer,
                                              hasznaltCsatornak As Boolean(), ByRef irtCsatornaSzam As Integer) As Byte()
             Dim esemenyek As New List(Of Byte)
-            Dim reverbErtek As Byte = Adatbajt(reverbSzazalek * 127 \ 100)
             irtCsatornaSzam = 0
 
             Dim csatornaSzam As Integer = Math.Min(16, csatornak.Count)
@@ -237,20 +228,17 @@
                 If Not adat.Aktiv Then Continue For
                 If Not hasznaltCsatornak(c) Then Continue For ' VÉDELEM: nincs adat erre a csatornára a fájlban
 
-                Dim statuszCC As Byte = CByte(&HB0 + c)
-                Dim statuszPC As Byte = CByte(&HC0 + c)
-                Dim bank As Integer = adat.Hangszer \ 128
-                Dim program As Integer = adat.Hangszer Mod 128
-                Dim hangeroVegso As Integer = CInt(adat.Hangero * (alapHangero / 100.0))
-
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(BANK_SELECT_MSB), CByte(0))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(BANK_SELECT_LSB), Adatbajt(bank))
-                EsemenyHozzaadasa(esemenyek, statuszPC, Adatbajt(program))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(MAIN_VOLUME), Adatbajt(hangeroVegso))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(PAN), Adatbajt(adat.Ter + 64))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(MOD_WHEEL), Adatbajt(adat.Vibrato))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(CHORUS), Adatbajt(adat.Chorus))
-                EsemenyHozzaadasa(esemenyek, statuszCC, CByte(REVERB), reverbErtek)
+                ' Az üzenetsorozatot a KÖZÖS CsatornaUzenetek modul állítja elő
+                ' (ugyanazt, amit a MainForm élőben kiküld, és amit a MidiFelvevo
+                ' az új felvételek elejére ír) - így a háromféle felhasználás
+                ' garantáltan ugyanazt az állapotot jelenti.
+                For Each uzenet As MidiUzenet In CsatornaUzenetek.CsatornaAllapotUzenetei(c, adat, alapHangero, reverbSzazalek)
+                    If uzenet.AdatbajtokSzama = 1 Then
+                        EsemenyHozzaadasa(esemenyek, CByte(uzenet.StatuszBajt), CByte(uzenet.Adat1))
+                    Else
+                        EsemenyHozzaadasa(esemenyek, CByte(uzenet.StatuszBajt), CByte(uzenet.Adat1), CByte(uzenet.Adat2))
+                    End If
+                Next
 
                 irtCsatornaSzam += 1
             Next
@@ -276,16 +264,6 @@
             lista.Add(statuszBajt)
             lista.AddRange(adatBajtok)
         End Sub
-
-        ''' <summary>
-        ''' Egy MIDI adatbájt (0-127) tartományra szorítása - a MIDI
-        ''' szabvány szerint az adatbájtok felső bitje mindig 0 kell,
-        ''' hogy legyen, enélkül a CByte konverzió (érvénytelen, pl.
-        ''' negatív vagy 128 fölötti bemenet esetén) kivételt dobna.
-        ''' </summary>
-        Private Function Adatbajt(ertek As Integer) As Byte
-            Return CByte(Math.Max(0, Math.Min(127, ertek)))
-        End Function
 
         Private Function ChunkAzonositoEgyezikE(adat As Byte(), offset As Integer, azonosito As String) As Boolean
             If offset + 4 > adat.Length Then Return False

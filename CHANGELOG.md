@@ -10,6 +10,206 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.14.0] - 2026-09-04
+
+### Hozzáadva (MIDI felvétel - 0. és 1. fázis)
+
+A MIDI felvétel/visszajátszás funkció megvalósításának első két,
+alapozó fázisa. Működésbeli változás EGYELŐRE NINCS - ezek a lépések
+csak a talajt készítik elő a felvevőnek. A teljes fázisterv a Claude
+Project `claude/MIDI_felvetel_fazisterv.md` dokumentumában van.
+
+- **`Utvonalak.vb` - `Felvetelek` mappa és fájlnév-képzés (0. fázis).**
+  Új `FelvetelekMappa` property (`%AppData%\MidiBill3\Felvetelek`,
+  amit az `Elokeszites()` már induláskor létre is hoz), és új
+  `UjFelvetelUtvonala()` függvény, ami a felvevő két beállításából
+  (fájlnév-alap + "Almappák dátum szerint") előállítja a teljes mentési
+  útvonalat: bekapcsolt almappázásnál
+  `Felvetelek\2026-08-30\Felvetel_143025.mid`, kikapcsolva
+  `Felvetelek\Felvetel_2026-08-30_143025.mid`. Az időbélyeg
+  másodperc-pontos (az Automatikus felvétel mód percenként több
+  szegmenst is menthet). A felhasználó által beírt nevet megtisztítja a
+  fájlnévben tiltott karakterektől, és ütközés esetén `_2`, `_3`
+  utótaggal véd a felülírás ellen.
+
+- **`MidiEngine.vb` - a kimenet "csapja" (1. fázis).** Új
+  `UzenetKikuldve` esemény, ami MINDEN sikeresen kiküldött üzenet után
+  kiváltódik - ez lesz az az egyetlen pont, ahonnan a felvevő
+  "hallgatózik". Azért a kimenetre (és nem a bemenetre), mert a felvétel
+  a TÉNYLEGES, már feldolgozott hangot rögzíti (split pont,
+  transzponálás, oktáv-eltolás és a 16 csatornás szétosztás UTÁN). Az
+  esemény `lejatszasBol` és `metronomBol` jelzőt is szállít (a
+  metronóm-funkció maga még nem készült el, a paraméter előre került be,
+  hogy a szignatúrához ne kelljen kétszer hozzányúlni), valamint az
+  üzenet időbélyegét.
+
+- **Az időbélyeg átvezetése a teljes láncon.** A kódátnézés 12.
+  pontjában beépített, a NAudio callback-szálán rögzített időbélyeg
+  eddig csak "készenlétben állt" - mostantól a
+  `MainForm.MidiUzenetFeldolgozasa` -> `MidiEngine.UzenetKuldes` ->
+  `KuldesUzenetCsatornara` -> `KuldesEgyCsatornara` láncon végig át van
+  vezetve, így a felvétel a hangokat a TÉNYLEGES beérkezési idejükkel
+  fogja rögzíteni, nem a UI szál terheltségétől függő, késleltetett
+  idővel. Egy leütésből származó, akár 16 csatornára szétosztott üzenet
+  azonos időbélyeget kap, hiszen egyszerre szólalnak meg. A UI-ból eredő
+  üzenetek (csúszkák, hangszerváltás, pánikgomb) a küldés pillanatában
+  kiolvasott értéket kapják - ott ezredmásodperces pontosságra nincs
+  szükség.
+
+- **`Modellek/MidiFelvevo.vb` - a felvevő motor (2. fázis).** Új osztály,
+  ami időbélyeggel gyűjti a kiküldött MIDI üzeneteket, és szabványos
+  `.mid` fájlba menti őket. SZÁNDÉKOSAN nem tud semmit a felhasználói
+  felületről (a felvevő ablak hívja majd a metódusait), így ablak nélkül
+  is tesztelhető. Állapotgépe a tervezett működést követi:
+  `Alap` -> `Felfegyverezve` (a Start megnyomása után, az ELSŐ üzenetre
+  várva) -> `Rogzit`. Ami NEM kerül a felvételbe: a metronóm hangja
+  (soha), a visszajátszásból származó üzenet (ha az overdub nincs
+  bekapcsolva), és a rendszer-üzenetek (`&HF0` felett) - utóbbi azért,
+  mert sok billentyűzet folyamatosan küld Active Sensing (`&HFE`) vagy
+  MIDI Clock (`&HF8`) üzenetet, ami csak feleslegesen hizlalná a fájlt.
+- **"Lógó" hangok automatikus lezárása.** A felvétel lezárásakor a
+  felvevő minden még lenyomott hangra Note Off-ot generál (az utolsó
+  rögzített üzenet időpontjában) - enélkül egy lenyomva tartott
+  billentyű mellett megnyomott Stop után a mentett fájlban örökké szóló
+  hang maradna.
+- **Saját, bájt-szintű `.mid` írás** (a `MidiFajlSzerkeszto`-ben már
+  bevált megközelítéssel, NAudio helyett): a NAudio
+  `MidiEventCollection.PrepareForExport()` validálja a Note On/Note Off
+  párokat, és a felvétel szélső eseteitől kivételt dobhatna. A mentés
+  **format 1**, két trackkel (0. = conductor/tempó, 1. = a felvett
+  anyag) - SZÁNDÉKOSAN nem format 0, mert a program saját "MIDI fájlok
+  módosítása" segédprogramja jelenleg csak format 1-et kezel, és így a
+  felhasználó a SAJÁT felvételeire is rá tudja engedni azt a funkciót.
+  Időzítés: 120 BPM, 480 tick/negyed - a hangzást nem befolyásolja, csak
+  azt, milyen ütembeosztást mutat egy külső szerkesztő. Az
+  ezredmásodperces időbélyegek ABSZOLÚT tick-értékké alakulnak, és csak
+  utána vonódnak ki egymásból, hogy a kerekítési hibák egy hosszabb
+  felvételen ne adódjanak össze.
+- **Az SMF-író ellenőrizve, független MIDI-könyvtárral.** Az író
+  algoritmus hű Python-portjával generált teszt-fájlt a **mido** (1.3.3)
+  könyvtár hibátlanul beolvasta: format 1, 2 track, 480 PPQ, helyes
+  tempó, és az ezredmásodperces időzítés pontosan visszakapható
+  (10500 ms -> 0,5 s; 13456 ms -> 3,456 s; 70000 ms -> 60,0 s), a
+  Program Change egybájtos adatrészével és a többbájtos VLQ
+  delta-time-okkal együtt. Az ellenőrző szkript állításokkal (assert)
+  dolgozik, és a hibafelismerő képessége is igazolt (szándékosan
+  elrontott felbontás, VLQ-folytatásbit és format-mező mindegyike
+  fennakadt rajta). A szkript a repóban, a
+  `Tesztek\smf_iro_ellenorzes.py` fájlban található (és a Claude
+  Projectben is el van mentve ugyanezen a néven). Futtatás:
+  `pip install mido`, majd `python smf_iro_ellenorzes.py` - sikeres
+  esetben "MINDEN ELLENORZES RENDBEN" a kimenet, 0 kilépési kóddal.
+  FONTOS: ez a VB-kód PORTJA, nem a VB futtatása, tehát ha a
+  `MidiFelvevo.vb` SMF-író része változik, a szkriptet is frissíteni
+  kell, különben már nem ugyanazt a logikát vizsgálja.
+- **A felvett `.mid` fájl mostantól tartalmazza a csatorna-beállításokat
+  is.** Eddig csak a felvétel INDULÁSA UTÁN kiküldött üzenetek kerültek a
+  fájlba - a hangszíneket viszont a felhasználó jellemzően ELŐTTE állítja
+  be, ezért a felvétel egy külső lejátszóban/DAW-ban alapértelmezett
+  zongorával szólalt meg. Mostantól a felvevő a rögzítés indulásának
+  pillanatában pillanatképet készít az aktív csatornák teljes állapotáról
+  (Bank Select + Program Change, hangerő, tér, vibrato, chorus, reverb),
+  és azt a zenei track LEGELEJÉRE, tick 0-ra írja, a felvett anyag elé.
+  - A pillanatkép SZÁNDÉKOSAN az INDULÁSKORI és nem a mentéskori
+    állapotról készül: ha felvétel közben hangszert váltunk, a váltás
+    Program Change üzenete magától rögzül, így a mentéskori állapot
+    beírása a felvétel elejét hibás hangszínnel szólaltatná meg.
+  - A blokk SZÁNDÉKOSAN nem a 0. (conductor) trackbe kerül: az a
+    szabvány szerinti szokás alapján csak meta-eseményeket tartalmaz.
+  - Csak azokra a csatornákra ír beállítást, amelyeken ténylegesen van
+    felvett anyag - ugyanaz a védelmi elv, mint a "MIDI fájlok
+    módosítása" segédprogramban (számít pl. akkor, ha egy aktív csatorna
+    a split zóna miatt maradt néma).
+- **Ütemjelzés (time signature) a mentett fájlban.** Eddig csak a tempó
+  szerepelt a conductor trackben, az ütemjelzés nem. Mostantól 4/4-et is
+  kiír a program (a hangzást nem befolyásolja, de tisztább, és nem a
+  lejátszó feltételezésére bízza) - a metronóm-kör majd a ténylegesen
+  beállított ütemet írja ide.
+
+### Javítva
+- **Az "Alaphelyzetbe állítás" nem élte túl az újraindítást.** A menüpont
+  betöltötte ugyan a gyári `GM.lst`/`GM.drm` listát, de a nyilvántartott
+  lista-nevet (`aktualisHangszerListaFajl`) nem állította vissza, mert azt
+  csak a `HangszerListaAlkalmazasa` írta - a `HangszerListaBetoltese` nem.
+  Két következménye volt:
+  - az ablak fejlécében továbbra is a KORÁBBI (pl. SoundFontból
+    importált) lista neve látszott - ez volt a szemmel látható tünet;
+  - ami sokkal komolyabb: kilépéskor ez a régi név mentődött a
+    `Kezdet.json`-ba, így a KÖVETKEZŐ INDULÁSNÁL a program újra a régi
+    listát töltötte be. Az alaphelyzetbe állítás tehát az adott
+    munkamenetben helyesnek látszott, de újraindítás után visszaállt a
+    régi hangszerlista.
+
+  Javítás: a `HangszerListaBetoltese` mostantól maga állítja be a
+  lista-nevet is. Így egy helyen dől el, hogy melyik lista aktív, és az
+  induláskori hívásnál sincs hatása (a mező amúgy is `GM.lst`-tel indul).
+- **Menet közben aktivált csatorna beállításai hiányoztak a felvételből.**
+  Ha a felhasználó FELVÉTEL KÖZBEN tett aktívvá egy csatornát, annak a
+  hangjai bekerültek a felvételbe, a beállításai (hangszín, hangerő, tér,
+  vibrato, chorus, reverb) viszont nem - így egy külső lejátszóban az a
+  csatorna alapértelmezett zongorával szólalt meg.
+  - OK: a csatorna aktiválása eddig CSAK a motor aktív-jelzőjét állította
+    át és a lenyomva tartott hangokat szólaltatta meg újra, állapotot nem
+    küldött. Élőben ez nem tűnt fel, mert a szintetizátor már induláskor
+    megkapta MIND a 16 csatorna beállítását (az `OsszesCsatornaUjrakuldese`
+    szándékosan nem szűr aktivitásra). A felvételbe viszont csak az kerül,
+    ami a felvétel INDULÁSA UTÁN ténylegesen kiment - a felvétel elejére
+    írt pillanatkép pedig csak az AKKOR aktív csatornákat tartalmazza.
+  - Javítás: a `HangszerPanel_AktivValtozott` aktiváláskor mostantól
+    kiküldi a csatorna teljes állapotát (új `CsatornaAllapotKuldese`, a
+    közös `CsatornaUzenetek` modulra építve), MIELŐTT a lenyomva tartott
+    hangok megszólalnának rajta. Így az állapot a felvételbe is bekerül,
+    méghozzá a valódi időpontjában - és élőben is helyesebb, mert az
+    aktiválás minden esetben érvényesíti a csatorna beállításait.
+
+### Változtatva (refaktor)
+- **A "csatornaállapot -> MIDI üzenetek" logika egyetlen közös helyre
+  került**: új `Modellek/CsatornaUzenetek.vb` modul (`MidiUzenet`
+  struktúra + `CsatornaAllapotUzenetei()` /
+  `AktivCsatornakAllapotUzenetei()`). Eddig ugyanez a 8 üzenetes sorozat
+  KÉT helyen, egymástól függetlenül létezett
+  (`MainForm.AktivCsatornakAllapotanakKuldese` és
+  `MidiFajlSzerkeszto`), a felvevővel pedig harmadszor is le kellett
+  volna írni. Mostantól mindhárom felhasználás ugyanabból a forrásból
+  dolgozik, tehát nem fordulhat elő, hogy az élőben kiküldött állapot
+  eltér attól, amit a fájlokba írunk - és egy jövőbeli bővítésnél (pl.
+  új CC) elég egy helyen módosítani. A csatorna-állapot CC-számai
+  (`MAIN_VOLUME`, `PAN`, `MOD_WHEEL`, `CHORUS`, `REVERB`,
+  `BANK_SELECT_MSB`/`LSB`) is ide kerültek, a korábbi két deklaráció
+  helyett.
+- **Új `MidiEngine.KozvetlenUzenetKuldese()`**: egy kész, összeállított
+  csatorna-üzenet kiküldése a feldolgozó logika (split, transzponálás,
+  fan-out) kikerülésével - ezen keresztül küldi ki a `MainForm` a közös
+  modultól kapott üzenetsorozatot.
+- **Az ellenőrző szkript kibővítve** az ütemjelzés és a
+  kezdőállapot-blokk vizsgálatával (helyes sorrend, tick 0, és hogy a
+  nem játszó csatornák kimaradnak). A hibafelismerő képesség itt is
+  igazolt: a szűrő kikapcsolása, a rossz ütemjelzés és a blokk rossz
+  helyre kerülése mind fennakadt rajta.
+
+### Hozzáadva (MIDI felvétel - folytatás)
+- **IDEIGLENES teszt-gomb a `MainForm`-ban (a 3. fázisban TÖRLENDŐ).**
+  Hogy a felvevő motorját valódi hardveren, még a felvevő ablak
+  megépítése ELŐTT ki lehessen próbálni, a meglévő `btnMidiFelvetel`
+  gomb kapott egy ideiglenes, ide-oda kapcsoló kezelőt: 1. kattintás =
+  felfegyverzés (sárga, "Várakozás billentyűre..."), az első leütésre
+  automatikusan felvételbe vált (piros, "● FELVÉTEL"), 2. kattintás =
+  lezárás és mentés a `Felvetelek` mappába, dátum szerinti almappába,
+  majd összegző üzenetablak (fájlnév, üzenetszám, hossz). A kód a
+  `MainForm.vb` végén, egyértelműen megjelölt blokkban van - a 3.
+  fázisban, amikor a gomb dolga a `MidiFelvevoForm` megnyitása lesz, az
+  EGÉSZ blokk törlendő.
+- **Új `MidiEngine.ElteltIdoMs` property.** A felvevő automatikus módjának
+  kell majd: a szünet-küszöböt csak úgy lehet helyesen mérni, ha
+  ugyanarról az óráról olvasunk, amelyikről a rögzített üzenetek
+  időbélyegei is származnak.
+- **Új `MidiEngine.LejatszottUzenetKuldese()`.** A visszajátszás
+  belépési pontja: az üzenetet VÁLTOZATLANUL, egy az egyben küldi ki, a
+  feldolgozó logika (split/transzponálás/fan-out) SZÁNDÉKOS kikerülésével
+  - a felvétel is a feldolgozott kimenetet rögzítette, tehát a
+  lejátszásnak 1:1-ben azt kell visszaadnia. Így a privát
+  `KuldesEgyCsatornara` nem kerül kifelé a motorból.
+
 ## [1.13.0] - 2026-09-03
 
 ### Javítva (kód-higiénia)

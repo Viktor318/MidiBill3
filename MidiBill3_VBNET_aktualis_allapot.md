@@ -9,12 +9,14 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.13.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
-  (a 2026-09-03-i kódátnézés mind a 15 pontjának javítása, a
-  Stopwatch-alapú MIDI időbélyeg-infrastruktúra a jövőbeli felvétel
-  funkcióhoz, egy ismétlő teljes kódátnézés (funkcionális hiba nélkül),
-  és a `GM.lst`/`GM.drm` self-contained/single-file Publish-hiányának
-  javítása - lásd `CHANGELOG.md`)
+- **Verzió**: 1.14.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a MIDI felvétel 0-2. fázisa: `Felvetelek` mappa és fájlnév-képzés, a
+  MIDI-motor kimeneti "csapja", a `MidiFelvevo` motor `.mid` mentéssel;
+  a csatorna-állapot és az ütemjelzés beírása a felvett fájlba; a
+  "csatornaállapot -> MIDI üzenetek" logika egységesítése a közös
+  `CsatornaUzenetek` modulba; valamint két hibajavítás - a menet közben
+  aktivált csatorna beállításai és az "Alaphelyzetbe állítás"
+  hangszerlista-neve - lásd `CHANGELOG.md`)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)

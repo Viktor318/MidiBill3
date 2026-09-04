@@ -30,6 +30,10 @@ Namespace Modellek
     '''   - Presetek\ .............. a mentett preset fájlok (.json)
     '''   - SF adatok\ ............. a SoundFont-ból importált vagy kézzel
     '''                              betöltött hangszerlisták (.lst / .drm)
+    '''   - Felvetelek\ ............ a MIDI felvevő által mentett .mid
+    '''                              fájlok (a felhasználó beállításától
+    '''                              függően dátum szerinti almappákba
+    '''                              rendezve)
     '''
     ''' A GM.lst és GM.drm KÜLÖNLEGES: ezek mindig a gyári mappából
     ''' olvasódnak, akkor is, ha a felhasználói mappában véletlenül lenne
@@ -42,6 +46,14 @@ Namespace Modellek
         Private Const HIBANAPLO_FAJL_NEV As String = "HibaNaplo.txt"
         Private Const PRESETEK_MAPPA_NEV As String = "Presetek"
         Private Const SF_ADATOK_MAPPA_NEV As String = "SF adatok"
+        Private Const FELVETELEK_MAPPA_NEV As String = "Felvetelek"
+
+        ''' <summary>
+        ''' A mentett felvételek alapértelmezett fájlneve - ez az érték kerül
+        ''' induláskor a felvevő ablak "Mentett fájl neve" mezőjébe, és erre
+        ''' esünk vissza akkor is, ha a felhasználó üresen hagyja a mezőt.
+        ''' </summary>
+        Public Const ALAPERTELMEZETT_FELVETEL_NEV As String = "Felvetel"
 
         ' A régi (2026-09-03 előtti) közös mappa neve - már csak az egyszeri
         ' átköltöztetéshez kell, lásd Elokeszites().
@@ -86,6 +98,13 @@ Namespace Modellek
             End Get
         End Property
 
+        ''' <summary>A MIDI felvevő által mentett .mid fájlok gyökérmappája</summary>
+        Public ReadOnly Property FelvetelekMappa As String
+            Get
+                Return Path.Combine(FelhasznaloiMappa, FELVETELEK_MAPPA_NEV)
+            End Get
+        End Property
+
         ''' <summary>A Kezdet.json teljes útvonala (mindig a felhasználói mappában)</summary>
         Public ReadOnly Property KezdetFajl As String
             Get
@@ -99,6 +118,85 @@ Namespace Modellek
                 Return Path.Combine(FelhasznaloiMappa, HIBANAPLO_FAJL_NEV)
             End Get
         End Property
+
+        ''' <summary>
+        ''' Egy ÚJ felvétel teljes mentési útvonalát állítja elő, és a
+        ''' szükséges mappá(ka)t is létrehozza. A mentés SZÁNDÉKOSAN nem kér
+        ''' útvonalat a felhasználótól (nincs SaveFileDialog) - a felvevő
+        ''' ablakban csak a fájlnév ALAPJÁT és az almappázás módját lehet
+        ''' megadni, a többit ez a függvény intézi.
+        '''
+        ''' A névképzés a datumSzerintiAlmappa kapcsolótól függ:
+        ''' - True (a felvevő ablak alapértelmezése): a fájl a dátum szerinti
+        '''   almappába kerül, és a névhez CSAK az időpont fűződik hozzá,
+        '''   mert a dátum már az almappa nevében szerepel -
+        '''   pl. "Felvetelek\2026-08-30\Felvetel_143025.mid"
+        ''' - False: a fájl közvetlenül a Felvetelek mappába kerül, laposan,
+        '''   és a névhez a TELJES dátum és időpont hozzáfűződik -
+        '''   pl. "Felvetelek\Felvetel_2026-08-30_143025.mid"
+        '''
+        ''' Az időbélyeg MÁSODPERC-pontos: az Automatikus felvétel mód rövid
+        ''' szünet-küszöbök mellett percenként több szegmenst is menthet,
+        ''' másodperc nélkül ezek felülírnák egymást.
+        ''' </summary>
+        ''' <param name="alapNev">A felhasználó által megadott fájlnév-alap (a fájlnévben tiltott karakterek automatikusan aláhúzásra cserélődnek; üres név esetén az ALAPERTELMEZETT_FELVETEL_NEV lép életbe).</param>
+        ''' <param name="datumSzerintiAlmappa">Igaz esetén dátum szerinti almappába rendez, lásd fent.</param>
+        Public Function UjFelvetelUtvonala(alapNev As String, datumSzerintiAlmappa As Boolean) As String
+            Dim most As DateTime = DateTime.Now
+            Dim tisztaAlapNev As String = FajlnevAlapTisztitasa(alapNev)
+
+            Dim celMappa As String
+            Dim fajlNevAlap As String
+
+            If datumSzerintiAlmappa Then
+                celMappa = Path.Combine(FelvetelekMappa, most.ToString("yyyy-MM-dd", Globalization.CultureInfo.InvariantCulture))
+                fajlNevAlap = tisztaAlapNev & "_" & most.ToString("HHmmss", Globalization.CultureInfo.InvariantCulture)
+            Else
+                celMappa = FelvetelekMappa
+                fajlNevAlap = tisztaAlapNev & "_" & most.ToString("yyyy-MM-dd_HHmmss", Globalization.CultureInfo.InvariantCulture)
+            End If
+
+            Directory.CreateDirectory(celMappa)
+
+            Return UtkozesmentesUtvonal(celMappa, fajlNevAlap, ".mid")
+        End Function
+
+        ''' <summary>
+        ''' A felhasználó által beírt fájlnév-alapot teszi biztonságossá: a
+        ''' Windows-on tiltott fájlnév-karaktereket (\ / : * ? " &lt; &gt; | stb.)
+        ''' aláhúzásra cseréli, és üres/csak whitespace név esetén az
+        ''' alapértelmezett névre esik vissza. Enélkül egy ártatlanul beírt
+        ''' "Próba: 1. rész" névtől a mentés kezeletlen kivétellel elszállna.
+        ''' </summary>
+        Private Function FajlnevAlapTisztitasa(alapNev As String) As String
+            Dim tiszta As String = If(alapNev, "").Trim()
+
+            For Each tiltottKarakter As Char In Path.GetInvalidFileNameChars()
+                tiszta = tiszta.Replace(tiltottKarakter, "_"c)
+            Next
+
+            If tiszta.Length = 0 Then Return ALAPERTELMEZETT_FELVETEL_NEV
+            Return tiszta
+        End Function
+
+        ''' <summary>
+        ''' Ütközésmentes fájlútvonalat ad vissza: ha a kívánt név már
+        ''' létezik, "_2", "_3" ... utótaggal próbálkozik tovább. A
+        ''' másodperc-pontos időbélyeg mellett ez ritkán fordulhat elő (két
+        ''' mentés ugyanabban a másodpercben), de így SOHA nem írunk felül
+        ''' egy korábbi felvételt.
+        ''' </summary>
+        Private Function UtkozesmentesUtvonal(mappa As String, fajlNevAlap As String, kiterjesztes As String) As String
+            Dim utvonal As String = Path.Combine(mappa, fajlNevAlap & kiterjesztes)
+            Dim sorszam As Integer = 2
+
+            While File.Exists(utvonal)
+                utvonal = Path.Combine(mappa, fajlNevAlap & "_" & sorszam.ToString(Globalization.CultureInfo.InvariantCulture) & kiterjesztes)
+                sorszam += 1
+            End While
+
+            Return utvonal
+        End Function
 
         ''' <summary>
         ''' Igaz, ha a megadott fájlnév a GYÁRI, védett listák egyike
@@ -180,6 +278,11 @@ Namespace Modellek
                 Directory.CreateDirectory(FelhasznaloiMappa)
                 Directory.CreateDirectory(PresetekMappa)
                 Directory.CreateDirectory(SfAdatokMappa)
+                ' A Felvetelek mappát is már induláskor létrehozzuk (nem csak
+                ' az első mentésnél), hogy a lejátszás fájlválasztó dialógusa
+                ' egy létező mappára tudjon nyílni, és a felhasználó akkor is
+                ' megtalálja a helyét, ha még egyetlen felvétele sincs.
+                Directory.CreateDirectory(FelvetelekMappa)
 
                 Dim regiKezdetFajl As String = Path.Combine(ProgramMappa, KEZDET_FAJL_NEV)
                 If File.Exists(regiKezdetFajl) AndAlso Not File.Exists(KezdetFajl) Then
