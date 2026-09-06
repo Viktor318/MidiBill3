@@ -66,8 +66,14 @@
         Private Const METRONOM_UTES_TICK As Integer = 24          ' MIDI-óraütés metronóm-kattintásonként (szabványos alapérték)
         Private Const HARMINCKETTED_NEGYEDENKENT As Integer = 8   ' szabványos alapérték
 
+        ''' <summary>Az előjegyzések számának szabvány szerinti határa (-7 .. +7).</summary>
+        Private Const MAX_ELOJEGYZES As Integer = 7
+
         ''' <summary>Hány MIDI tick felel meg egy ezredmásodpercnek (120 BPM / 480 PPQ mellett 0,96).</summary>
         Private Const TICK_PER_MS As Double = TICK_PER_NEGYED * 1000.0R / MIKROSZEC_PER_NEGYED
+
+        ''' <summary>A dob-csatorna 0-tól számított indexe (a 10. csatorna) - ott a dobkészlet-lista adja a neveket.</summary>
+        Private Const DOB_CSATORNA_INDEX As Integer = 9
 
         ''' <summary>Egyetlen rögzített MIDI üzenet, a MidiEngine órája szerinti abszolút időbélyeggel.</summary>
         Private Structure FelvettEsemeny
@@ -95,7 +101,8 @@
         ''' <summary>
         ''' A felvétel INDULÁSAKOR készült pillanatkép az aktív csatornák
         ''' MIDI-állapotáról (hangszín, hangerő, tér, vibrato, chorus,
-        ''' reverb) - ez kerül a mentett fájl legelejére, tick 0-ra.
+        ''' reverb) - ez kerül a mentett fájlban minden csatorna SAJÁT
+        ''' trackjének elejére, tick 0-ra.
         '''
         ''' MIÉRT KELL? A felvétel csak azokat az üzeneteket rögzíti, amelyek
         ''' az indulás UTÁN mennek ki - a hangszíneket viszont a felhasználó
@@ -126,6 +133,29 @@
         ''' A felvevő ablak "A lejátszott hangok rögzítése" checkboxa állítja.
         ''' </summary>
         Public Property LejatszottHangokRogzitese As Boolean = False
+
+        ''' <summary>
+        ''' Kerüljön-e hangnem (key signature, `FF 59`) a mentett fájlba?
+        ''' Alapból NEM: a hangnem megadása SZÁNDÉKOSAN nem kötelező - egy
+        ''' rögtönzött felvételnek nem feltétlenül van értelmes hangneme, és
+        ''' jobb üresen hagyni, mint egy oda nem illő C-dúrt állítani.
+        ''' Ilyenkor a jelentésben a "nincs a fájlban" sor jelenik meg.
+        '''
+        ''' A metronóm-körben a felvevő ablak "Hangnem megadása" jelölő-
+        ''' négyzete állítja majd (alapból kikapcsolva), és bekapcsolva egy
+        ''' listából lehet választani a hangnemet.
+        ''' </summary>
+        Public Property HangnemMegadva As Boolean = False
+
+        ''' <summary>
+        ''' Az előjegyzések száma: -7..+7, ahol a negatív a b-ket, a pozitív a
+        ''' kereszteket jelenti (0 = nincs előjegyzés). Csak akkor számít, ha
+        ''' a HangnemMegadva be van kapcsolva.
+        ''' </summary>
+        Public Property HangnemElojegyzes As Integer = 0
+
+        ''' <summary>Moll hangnem? (False = dúr.) Csak akkor számít, ha a HangnemMegadva be van kapcsolva.</summary>
+        Public Property HangnemMoll As Boolean = False
 
         Public ReadOnly Property Allapot As FelvevoAllapot
             Get
@@ -338,29 +368,71 @@
         ' egyszerűbb lenne, de a program saját "MIDI fájlok módosítása"
         ' segédprogramja (MidiFajlSzerkeszto) JELENLEG csak format 1
         ' fájlokat kezel - format 0-val mentve a felhasználó a SAJÁT
-        ' felvételeire nem tudná ráengedni ezt a funkciót. Ezért két
-        ' trackkel mentünk: a 0. a szabványos "conductor" track (csak a
-        ' tempó), az 1. pedig maga a felvett anyag.
+        ' felvételeire nem tudná ráengedni ezt a funkciót.
+        '
+        ' A TRACK-SZERKEZET: a 0. a szabványos "conductor" track (a darab
+        ' címe, a tempó és az ütemjelzés), utána pedig MINDEN SZEREPLŐ
+        ' CSATORNA KAP EGY SAJÁT TRACKET. Ez a DAW-okban bevett elrendezés:
+        ' minden csatorna külön, névvel ellátott sávként jelenik meg, és a
+        ' csatorna induló beállításai (hangszín, hangerő, tér, vibrato,
+        ' chorus, reverb) is a SAJÁT trackje elején, tick 0-n ülnek - így
+        ' minden sáv önmagában teljes. Korábban egyetlen közös zenei track
+        ' volt, egy kupac kezdőállapottal a legelején.
+
+        ''' <summary>A darab címe a 0. trackben - minden felvételnél ugyanez.</summary>
+        Private Const DARAB_CIME As String = "MidiBill3 felvétel"
+
+        ' Szöveges meta-események azonosítói (lásd Modellek\MidiFajlOlvaso.vb).
+        Private Const META_TRACKNEV As Integer = &H3
+        Private Const META_HANGSZERNEV As Integer = &H4
+        Private Const META_CSATORNA_ELOTAG As Integer = &H20
+
+        ''' <summary>A fájlba írt nevek felső hossza - egy sérült lista se hizlalhassa értelmetlenre a fájlt.</summary>
+        Private Const MAX_NEV_HOSSZ As Integer = 120
 
         Private Function SmfFajlEpitese() As Byte()
+            Dim csatornak As List(Of Integer) = SzereploCsatornak()
             Dim fajl As New List(Of Byte)
 
             ' --- MThd fejléc ---
             fajl.AddRange(AzonositoBajtok("MThd"))
-            fajl.AddRange(BeIntBajtok(6, 4))                  ' a fejléc adatrészének hossza mindig 6
-            fajl.AddRange(BeIntBajtok(1, 2))                  ' format 1
-            fajl.AddRange(BeIntBajtok(2, 2))                  ' 2 track (conductor + felvett anyag)
-            fajl.AddRange(BeIntBajtok(TICK_PER_NEGYED, 2))    ' felbontás: tick / negyed hangjegy
+            fajl.AddRange(BeIntBajtok(6, 4))                        ' a fejléc adatrészének hossza mindig 6
+            fajl.AddRange(BeIntBajtok(1, 2))                        ' format 1
+            fajl.AddRange(BeIntBajtok(1 + csatornak.Count, 2))      ' conductor + csatornánként egy track
+            fajl.AddRange(BeIntBajtok(TICK_PER_NEGYED, 2))          ' felbontás: tick / negyed hangjegy
 
             fajl.AddRange(ChunkEpitese("MTrk", ConductorTrackEpitese()))
-            fajl.AddRange(ChunkEpitese("MTrk", AdatTrackEpitese()))
+            For Each csatorna As Integer In csatornak
+                fajl.AddRange(ChunkEpitese("MTrk", CsatornaTrackEpitese(csatorna)))
+            Next
 
             Return fajl.ToArray()
         End Function
 
-        ''' <summary>A 0. (conductor) track: csak a tempó és a kötelező End of Track.</summary>
+        ''' <summary>
+        ''' A felvételben TÉNYLEGESEN szereplő csatornák, növekvő sorrendben -
+        ''' minden ilyen csatorna kap egy saját tracket. Amelyik csatornán
+        ''' egyetlen üzenet sincs, arra nem készül üres sáv.
+        ''' </summary>
+        Private Function SzereploCsatornak() As List(Of Integer)
+            Dim van(15) As Boolean
+            For Each esemeny As FelvettEsemeny In esemenyek
+                van(esemeny.StatuszBajt And &HF) = True
+            Next
+
+            Dim eredmeny As New List(Of Integer)
+            For csatorna As Integer = 0 To 15
+                If van(csatorna) Then eredmeny.Add(csatorna)
+            Next
+            Return eredmeny
+        End Function
+
+        ''' <summary>A 0. (conductor) track: a darab címe, a tempó, az ütemjelzés és a kötelező End of Track.</summary>
         Private Function ConductorTrackEpitese() As Byte()
             Dim adat As New List(Of Byte)
+
+            ' A 0. track neve a szabvány szerint magának a DARABNAK a címe.
+            SzovegesMetaHozzaadasa(adat, META_TRACKNEV, DARAB_CIME)
 
             ' delta 0 + Set Tempo meta-esemény (FF 51 03 + 3 bájt mikroszekundum/negyed)
             adat.Add(0)
@@ -380,29 +452,60 @@
             adat.Add(CByte(METRONOM_UTES_TICK))
             adat.Add(CByte(HARMINCKETTED_NEGYEDENKENT))
 
+            ' delta 0 + Key Signature meta-esemény (FF 59 02 + előjegyzés, dúr/moll),
+            ' de CSAK ha a felhasználó meg is adott hangnemet - lásd HangnemMegadva.
+            ' Az előjegyzés bájtja ELŐJELES: a maszkolás a negatív értékeket is
+            ' helyes kettes komplemensű bájttá alakítja (pl. -2 -> &HFE).
+            If HangnemMegadva Then
+                Dim elojegyzes As Integer = Math.Max(-MAX_ELOJEGYZES, Math.Min(MAX_ELOJEGYZES, HangnemElojegyzes))
+                adat.Add(0)
+                adat.Add(&HFF)
+                adat.Add(&H59)
+                adat.Add(2)
+                adat.Add(CByte(elojegyzes And &HFF))
+                adat.Add(CByte(If(HangnemMoll, 1, 0)))
+            End If
+
             VegeJelHozzaadasa(adat)
             Return adat.ToArray()
         End Function
 
         ''' <summary>
-        ''' Az 1. track: a felvett üzenetek delta-time + esemény párokként.
+        ''' EGY csatorna saját trackje: a csatorna-előtag, a nevek, a csatorna
+        ''' induló beállításai (tick 0-n), végül a csatorna felvett üzenetei
+        ''' delta-time + esemény párokként.
         '''
         ''' Az ezredmásodperces időbélyegeket ABSZOLÚT tick-értékké alakítjuk,
         ''' és csak UTÁNA vonjuk ki őket egymásból - ha delta-nként kerekítenénk,
         ''' a kerekítési hibák egy hosszabb felvételen összeadódnának, és a vége
-        ''' észrevehetően elcsúszna.
+        ''' észrevehetően elcsúszna. Minden track a felvétel KEZDETÉTŐL (tick 0)
+        ''' számol, tehát a sávok időben egymáshoz vannak igazítva.
         ''' </summary>
-        Private Function AdatTrackEpitese() As Byte()
+        Private Function CsatornaTrackEpitese(csatorna As Integer) As Byte()
             Dim adat As New List(Of Byte)
-            Dim elozoTick As Long = 0
+            Dim hangszerNev As String = CsatornaHangszerNeve(csatorna)
 
-            ' A csatorna-állapot a zenei track LEGELEJÉRE kerül, tick 0-ra,
-            ' közvetlenül a felvett anyag elé - így egy külső lejátszó/DAW a
-            ' helyes hangszínekkel, hangerővel és effektekkel szólaltatja meg
-            ' a felvételt. SZÁNDÉKOSAN nem a 0. (conductor) trackbe: az a
-            ' szabvány szerinti szokás alapján csak meta-eseményeket (tempó,
-            ' ütemjelzés) tartalmaz, csatorna-üzeneteket nem.
-            For Each uzenet As MidiUzenet In SzurtKezdoAllapotUzenetek()
+            ' Csatorna-előtag (FF 20): a szabvány szerinti módja annak, hogy a
+            ' track nevei egyértelműen ehhez a csatornához kötődjenek. Egy
+            ' csatornás tracknél önmagában is egyértelmű lenne, de kiírva a
+            ' beolvasók dolga sem kérdéses.
+            adat.Add(0)
+            adat.Add(&HFF)
+            adat.Add(CByte(META_CSATORNA_ELOTAG))
+            adat.Add(1)
+            adat.Add(CByte(csatorna))
+
+            SzovegesMetaHozzaadasa(adat, META_TRACKNEV, TracknevSzoveg(csatorna, hangszerNev))
+            If hangszerNev.Length > 0 Then
+                SzovegesMetaHozzaadasa(adat, META_HANGSZERNEV, hangszerNev)
+            End If
+
+            ' A csatorna induló beállításai a SAJÁT trackje legelejére kerülnek,
+            ' tick 0-ra - így egy külső lejátszó/DAW a helyes hangszínnel,
+            ' hangerővel és effektekkel szólaltatja meg a sávot, és a sáv
+            ' önmagában, a többitől függetlenül is teljes.
+            For Each uzenet As MidiUzenet In kezdoAllapotUzenetek
+                If uzenet.Csatorna <> csatorna Then Continue For
                 adat.Add(0)  ' delta-time = 0: mind a felvétel legelső pillanatában
                 adat.Add(CByte(uzenet.StatuszBajt And &HFF))
                 adat.Add(Adatbajt(uzenet.Adat1))
@@ -411,7 +514,10 @@
                 End If
             Next
 
+            Dim elozoTick As Long = 0
             For Each esemeny As FelvettEsemeny In esemenyek
+                If (esemeny.StatuszBajt And &HF) <> csatorna Then Continue For
+
                 Dim relativMs As Long = esemeny.IdobelyegMs - elsoIdobelyegMs
                 Dim abszolutTick As Long = CLng(Math.Round(relativMs * TICK_PER_MS))
                 If abszolutTick < elozoTick Then abszolutTick = elozoTick
@@ -431,29 +537,114 @@
         End Function
 
         ''' <summary>
-        ''' A kezdőállapot-blokk azon üzenetei, amelyeknek a csatornáján
-        ''' TÉNYLEGESEN van is felvett anyag.
-        '''
-        ''' Ugyanazt a védelmi elvet követi, mint a "MIDI fájlok módosítása"
-        ''' segédprogram (lásd MidiFajlSzerkeszto): nincs értelme beállítani
-        ''' egy csatornát, amin a fájlban egyetlen hang sem szól. Ez a
-        ''' gyakorlatban akkor számít, ha egy aktív csatorna a split zóna
-        ''' miatt maradt néma (pl. csak a felső zónára van állítva, a
-        ''' felhasználó viszont csak mély hangokat játszott).
+        ''' A track neve: KÉTJEGYŰ CSATORNASZÁM - HANGSZERNÉV (pl. "03 - Tenor
+        ''' Sax"). A csatornaszám a felületen és a jelentésben látható, 1-től
+        ''' induló sorszám (nem a track sorszáma, és nem a 0-tól induló belső
+        ''' index) - így egy DAW sávlistájában rögtön látszik, melyik sáv
+        ''' melyik csatorna. Ha a hangszernév nem deríthető ki, csak a szám
+        ''' marad.
         ''' </summary>
-        Private Function SzurtKezdoAllapotUzenetek() As List(Of MidiUzenet)
-            Dim hasznaltCsatorna(15) As Boolean
-            For Each esemeny As FelvettEsemeny In esemenyek
-                hasznaltCsatorna(esemeny.StatuszBajt And &HF) = True
-            Next
-
-            Dim eredmeny As New List(Of MidiUzenet)
-            For Each uzenet As MidiUzenet In kezdoAllapotUzenetek
-                If hasznaltCsatorna(uzenet.Csatorna) Then eredmeny.Add(uzenet)
-            Next
-
-            Return eredmeny
+        Private Shared Function TracknevSzoveg(csatorna As Integer, hangszerNev As String) As String
+            Dim szam As String = (csatorna + 1).ToString("00", Globalization.CultureInfo.InvariantCulture)
+            If hangszerNev.Length = 0 Then Return szam
+            Return szam & " - " & hangszerNev
         End Function
+
+        ''' <summary>
+        ''' Egy csatorna hangszerneve a BETÖLTÖTT hangszerlistából, üres
+        ''' sztring, ha nem deríthető ki.
+        '''
+        ''' A bank+program párost a csatorna ELSŐ Program Change üzenetéből
+        ''' olvassuk ki: először a felvétel indulásakor készült pillanatképből
+        ''' (ott van a legtöbb csatorna hangszíne), és ha ott nincs, a felvett
+        ''' anyagból - ez utóbbi akkor számít, ha a csatorna csak MENET KÖZBEN
+        ''' vált aktívvá. A bank meghatározása ugyanaz, mint a beolvasónál
+        ''' (MidiFajlOlvaso): amelyik Bank Select bájt nem nulla, az a bank.
+        ''' </summary>
+        Private Function CsatornaHangszerNeve(csatorna As Integer) As String
+            Dim bankMsb As Integer = 0
+            Dim bankLsb As Integer = 0
+            Dim program As Integer = -1
+
+            For Each uzenet As MidiUzenet In kezdoAllapotUzenetek
+                If uzenet.Csatorna <> csatorna Then Continue For
+                If ProgramFigyelese(uzenet.StatuszBajt, uzenet.Adat1, uzenet.Adat2, bankMsb, bankLsb, program) Then Exit For
+            Next
+
+            If program < 0 Then
+                For Each esemeny As FelvettEsemeny In esemenyek
+                    If (esemeny.StatuszBajt And &HF) <> csatorna Then Continue For
+                    If ProgramFigyelese(esemeny.StatuszBajt, esemeny.Adat1, esemeny.Adat2, bankMsb, bankLsb, program) Then Exit For
+                Next
+            End If
+
+            If program < 0 Then Return ""
+
+            Dim bank As Integer = If(bankLsb <> 0, bankLsb, bankMsb)
+            Dim dobCsatorna As Boolean = (csatorna = DOB_CSATORNA_INDEX)
+
+            Dim nev As String = HangszerNev(bank * 128 + program, dobCsatorna)
+            If nev.Length > 0 Then Return nev
+
+            ' A pontos bank+program páros nincs a listában - visszaesés a
+            ' puszta programszámra, ugyanúgy, ahogy a jelentés is teszi.
+            Return HangszerNev(program, dobCsatorna)
+        End Function
+
+        ''' <summary>
+        ''' Egyetlen üzenet feldolgozása a hangszín kiderítéséhez: a Bank
+        ''' Select bájtokat eltárolja, Program Change-nél pedig beállítja a
+        ''' programot.
+        ''' </summary>
+        ''' <returns>True, ha ez volt a Program Change, tehát megvan a hangszín.</returns>
+        Private Shared Function ProgramFigyelese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
+                                                 ByRef bankMsb As Integer, ByRef bankLsb As Integer,
+                                                 ByRef program As Integer) As Boolean
+            Dim uzenetTipus As Integer = statuszBajt And &HF0
+
+            If uzenetTipus = &HB0 Then
+                If adat1 = CsatornaUzenetek.BANK_SELECT_MSB Then bankMsb = adat2
+                If adat1 = CsatornaUzenetek.BANK_SELECT_LSB Then bankLsb = adat2
+                Return False
+            End If
+
+            If uzenetTipus = &HC0 Then
+                program = adat1
+                Return True
+            End If
+
+            Return False
+        End Function
+
+        ''' <summary>Hangszernév a megfelelő listából: a 10. csatornán a dobkészlet-listából, egyébként a hangszerlistából.</summary>
+        Private Shared Function HangszerNev(kombinaltKulcs As Integer, dobCsatorna As Boolean) As String
+            If dobCsatorna Then Return HangszerLista.DobNev(kombinaltKulcs, "")
+            Return HangszerLista.Nev(kombinaltKulcs, "")
+        End Function
+
+        ''' <summary>
+        ''' Szöveges meta-esemény hozzáadása delta 0-val (FF &lt;típus&gt;
+        ''' &lt;hossz&gt; &lt;bájtok&gt;).
+        '''
+        ''' A Standard MIDI File szabvány a szövegeket 8 bites, Latin-1
+        ''' karakterekként tárolja - a magyar "ő" és "ű" viszont NINCS benne.
+        ''' Ezeket ezért "ö"/"ü"-re cseréljük, ami olvasható marad; e nélkül
+        ''' a kódolás kérdőjelet tenne a helyükre. A többi magyar ékezetes
+        ''' betű (á é í ó ö ú ü) benne van a Latin-1-ben.
+        ''' </summary>
+        Private Shared Sub SzovegesMetaHozzaadasa(adat As List(Of Byte), metaTipus As Integer, szoveg As String)
+            Dim tisztitott As String = szoveg.Replace("ő"c, "ö"c).Replace("Ő"c, "Ö"c).
+                                             Replace("ű"c, "ü"c).Replace("Ű"c, "Ü"c)
+            If tisztitott.Length > MAX_NEV_HOSSZ Then tisztitott = tisztitott.Substring(0, MAX_NEV_HOSSZ)
+
+            Dim bajtok As Byte() = Text.Encoding.Latin1.GetBytes(tisztitott)
+
+            adat.Add(0)
+            adat.Add(&HFF)
+            adat.Add(CByte(metaTipus))
+            VlqHozzaadasa(adat, bajtok.Length)
+            adat.AddRange(bajtok)
+        End Sub
 
         ''' <summary>
         ''' Hány adatbájt tartozik egy csatorna-üzenethez? A Program Change

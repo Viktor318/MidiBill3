@@ -10,6 +10,134 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.16.0] - 2026-09-06
+
+### Változtatva - a felvett .mid szerkezete (csatornánként külön track)
+
+A felvevő eddig KÉT tracket írt: a 0. a tempó/ütemjelzés, az 1. pedig az
+ÖSSZES csatorna hangjait együtt, egy kupac csatorna-beállítással a
+legelején. **Mostantól minden szereplő csatorna kap egy saját tracket**
+(a felhasználó kérése, hogy a fájlba tracknév is kerüljön).
+
+- **A 0. (conductor) track** a darab címét is megkapta:
+  `MidiBill3 felvétel`.
+- **Minden szereplő csatorna saját trackje** tartalmazza: a
+  csatorna-előtagot (`FF 20`), a tracknevet (`FF 03`), a hangszernevet
+  (`FF 04`, ha kideríthető), a csatorna induló beállításait tick 0-n, és
+  végül a csatorna felvett üzeneteit. Amelyik csatornán nincs anyag, arra
+  nem készül üres sáv.
+- **A tracknév alakja `"NN - Hangszernév"`** (pl. `03 - Tenor Sax`), ahol
+  NN az 1-től induló CSATORNASZÁM két számjegyen - szándékosan nem a
+  track sorszáma (a felhasználó kifejezett kérése): így egy DAW
+  sávlistájában rögtön látszik, melyik sáv melyik csatorna.
+- **A hangszernév a BETÖLTÖTT listából jön**, a csatorna első Program
+  Change üzenete alapján - először a felvétel indulásakor készült
+  pillanatképből, és ha ott nincs, a felvett anyagból (ez akkor számít,
+  ha a csatorna csak menet közben vált aktívvá). A 10. csatornán a
+  dobkészlet-listából; ha a bank nincs a listában, visszaesik a puszta
+  programszámra, ugyanúgy, ahogy a jelentés.
+- **A csatorna induló beállításai a SAJÁT trackjük elejére kerülnek**,
+  nem egy közös kupacba - így minden sáv önmagában teljes.
+- A nevek a szabvány szerinti **Latin-1** kódolással mennek a fájlba.
+  A magyar `ő` és `ű` nincs benne, ezért `ö`/`ü` lesz belőlük - így
+  olvasható marad (enélkül kérdőjel kerülne a helyükre).
+
+### Hozzáadva - jelentés automatikusan a felvétel mellé
+
+A `.mid` mentése után elkészül mellé a "MIDI fájl beállításainak mentése
+olvasható formában" `.txt` jelentése is, azonos alapnévvel.
+
+- A hangszerlistát és a preset nevét KÉRDÉS NÉLKÜL az éppen betöltöttből
+  veszi - a felvétel pontosan azokkal készült, a menüpont felugró
+  kérdése itt csak zavaró lenne.
+- Új, opcionális `presetFajl` paraméter a
+  `MidiJelentes.JelentesKeszitese()`-ben: ha meg van adva, a fejlécbe
+  bekerül egy **`Preset fájl`** sor a `Hangszerlista` fölé. A menüből
+  indított jelentésben ez SZÁNDÉKOSAN nem jelenik meg: ott egy IDEGEN
+  MIDI fájlt elemzünk, aminek semmi köze a betöltött preset-hez.
+- A `.mid` mentése a fontos: a jelentés hibája NEM veszélyeztetheti -
+  hiba esetén csak egy sor jelzi az összegzésben, a felvétel megmarad.
+- A kód a `MainForm.FelvetelJelentesenekKeszitese()` közös
+  segédrutinjában van, NEM a `MidiFelvevo`-ben (az maradjon tiszta
+  SMF-író, ami nem tud a hangszerlistákról) - a 3. fázis kézi és a 4.
+  fázis automatikus mentése is ezt fogja hívni.
+- A "Jelentés készítése a felvétel mellé" jelölőnégyzet a 3. fázisban
+  készül el a felvevő ablakkal együtt (alapból bekapcsolva); addig az
+  ideiglenes teszt-gomb mindig elkészíti.
+
+### Hozzáadva - hangnem a felvett fájlban (nem kötelező)
+
+A felvevő ki tudja írni a hangnemet (`FF 59`) a 0. trackbe. **A megadása
+SZÁNDÉKOSAN nem kötelező**: egy rögtönzött felvételnek nem feltétlenül
+van értelmes hangneme, és jobb üresen hagyni, mint egy oda nem illőt
+beírni. Ha nincs megadva, `FF 59` sem kerül a fájlba.
+
+- Három új property a felvevőn: `HangnemMegadva` (alapból False),
+  `HangnemElojegyzes` (-7..+7, negatív = b, pozitív = kereszt) és
+  `HangnemMoll`. Azért property és nem konstans, mint a tempó és az
+  ütem: itt van egy valódi "nincs megadva" állapot is.
+- Az előjegyzés bájtja ELŐJELES; az érték írás előtt -7..+7 közé
+  szorítódik, hogy egy hibás beállítás se okozhasson érvénytelen fájlt.
+- **A metronóm-körben** a felvevő ablakban, a BPM és az ütem beállítás
+  UTÁN kerül egy "Hangnem megadása" jelölőnégyzet (alapból kikapcsolva),
+  bepipálva listából választható hangnemmel. A metronóm-értékek
+  MUNKAMENET-SZINTŰEK lesznek (a felhasználó döntése): nem kerülnek a
+  `Kezdet.json`-ba és a presetekbe sem, tehát a `Beallitasok` osztályt
+  az a kör sem érinti.
+
+### Változtatva - menü és gyorsbillentyűk
+
+- A **Segédprogramok menü sorrendje** átrendezve (a felhasználó): elöl a
+  három preset-tel dolgozó menüpont, utána a kettő, ami MIDI fájlt ír
+  vagy olvas. A "Preset készítése MIDI fájlból" így a rokonai mellé
+  került.
+- **Gyorsbillentyű-ütközés javítva**: a "Régi .mb3 fájlok konvertálása"
+  és a "Preset készítése MIDI fájlból" is `R`-t használt, ami miatt
+  egyik sem indult el a billentyűre, csak ugrált köztük. Az utóbbi
+  mostantól `k` ("Preset &készítése MIDI fájlból") - a menü mind az öt
+  gyorsbillentyűje egyedi (P, R, k, M, o).
+
+### Ellenőrzés
+
+- **A `Tesztek/smf_iro_ellenorzes.py` átírva** a megváltozott
+  szerkezethez: a szimulált felvétel most ÖT csatornát fed le, négy
+  KÜLÖNBÖZŐ névfeloldási esettel (pillanatképből jövő név, hosszú
+  ékezetes név, Program Change nélküli csatorna, menet közben aktivált
+  csatorna nem nulla bankkal, dobcsatorna), és minden ellenőrzés lefut
+  MINDKÉT hangnem-esetre (nincs megadva / g-moll). Azért pont egy b-s
+  moll: csak a negatív előjegyzés mutatja meg, ha valaki elrontja az
+  előjeles bájt kódolását.
+- A szkript **12 szándékosan elrontott változatot** futtat le a végén,
+  és mind a 12 fennakad: VLQ folytatásbit, Program Change adatbájtjai,
+  trackszám a fejlécben, kezdőállapot rossz trackben, tracknév a track
+  sorszámával, kimaradó bank-visszaesés, dobnév a rossz listából,
+  hiányzó csatorna-előtag, hosszú ékezetek Latin-1 cseréje,
+  delta-nkénti kerekítés, hangnem beírása amikor nincs megadva, és a
+  b-s előjegyzés előjel nélkül.
+- A kerekítéses eset kimutatásához a teszt-felvétel kapott egy SŰRŰ
+  FUTAMOT (15 ms-onkénti hangok): ez a lépésköz minden lépésnél lefelé
+  kerekedik, így egy delta-nként kerekítő megvalósításnál a hiba
+  összeadódik és kilép a tűrésből. A korábbi időbélyegeknél a kerekítési
+  hibák véletlenül kioltották egymást, és ez a mutáció átcsúszott.
+
+### Javítva - dokumentáció és a repóban lévő teszt
+
+- **A `Tesztek/midi_olvaso_ellenorzes.py` a repóban a RÉGI, kiterjesztés
+  előtti változat volt** - egy korábbi mentésnél a régi tartalom került
+  vissza a lemezre, miközben a CHANGELOG már a bővített változatról írt.
+  A helyes verzió visszaállítva és lefuttatva.
+
+### Hozzáadva - Bank Select diagnosztika
+
+- Új `Tesztek/bank_select_teszt.py` + a belőle generált
+  `bank_select_teszt.mid`: 13 másodperces diagnosztikai fájl, ami
+  ugyanazt a programszámot négy szakaszban szólaltatja meg - bank
+  nélkül, `CC0=8`-cal (Roland GS stílus), `CC32=8`-cal (Yamaha XG
+  stílus, a MidiBill3 ezt küldi), majd újra bank nélkül. Egyetlen
+  meghallgatásból kiderül, hogy egy adott lejátszó (VirtualMIDISynth,
+  FluidSynth, hardveres modul) melyik bájtot veszi figyelembe. A bank és
+  a program a szkript tetején állítható a saját SoundFonthoz.
+
 ## [1.15.0] - 2026-09-06
 
 ### Hozzáadva - két új segédprogram

@@ -9,13 +9,17 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.15.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.16.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a felvett `.mid` szerkezetének átalakítása csatornánkénti trackekre,
+  tracknévvel és hangszernévvel; nem kötelező hangnem a fájlban;
+  automatikus `.txt` jelentés a felvétel mellé; a Segédprogramok menü
+  átrendezése és gyorsbillentyű-javítás - lásd `CHANGELOG.md`)
+- **Előző verzió**: 1.15.0
   (a közös SMF-beolvasó `MidiFajlOlvaso` és a rá épülő két új
   segédprogram: "Preset készítése MIDI fájlból" és "MIDI fájl
   beállításainak mentése olvasható formában"; a `MidiFajlSzerkeszto`
-  átállítása a közös beolvasóra; a riport finomhangolása - lásd
-  `CHANGELOG.md`)
-- **Előző verzió**: 1.14.0
+  átállítása a közös beolvasóra; a riport finomhangolása)
+- **Korábbi verzió**: 1.14.0
   (a MIDI felvétel 0-2. fázisa: `Felvetelek` mappa és fájlnév-képzés, a
   MIDI-motor kimeneti "csapja", a `MidiFelvevo` motor `.mid` mentéssel;
   a csatorna-állapot és az ütemjelzés beírása a felvett fájlba; a
@@ -85,9 +89,11 @@ MidiBill3/                        - EGYETLEN projekt
 │                                   átköltöztetés a régi szerkezetből
 ├── Tesztek/                     - Független ELLENŐRZŐ Python programok
 │   ├── smf_iro_ellenorzes.py    - A felvevő SMF-kimenetének ellenőrzése
-│   └── midi_olvaso_ellenorzes.py - A MidiFajlOlvaso logikájának ellenőrzése
-│                                   (mindkettő: hű Python-port + független
-│                                   `mido` visszaolvasás + mutációs teszt)
+│   ├── midi_olvaso_ellenorzes.py - A MidiFajlOlvaso logikájának ellenőrzése
+│   │                               (mindkettő: hű Python-port + független
+│   │                               `mido` visszaolvasás + mutációs teszt)
+│   ├── bank_select_teszt.py     - Diagnosztika: melyik Bank Select bájtot
+│   └── bank_select_teszt.mid      veszi figyelembe egy adott lejátszó
 ├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
 ├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
 ├── README.md                    - Magyar README (alapértelmezett)
@@ -297,6 +303,23 @@ ez a pont MOSTANTÓL MEGVALÓSULT (a format 1 ág):
   program ellenőrzi a `Tesztek` mappában - hű port + `mido` könyvtár +
   MUTÁCIÓS teszt (szándékosan elrontott változatok), utóbbi bizonyítja,
   hogy a teszt tényleg képes hibát találni.
+
+**A felvett `.mid` szerkezete + jelentés a felvétel mellé** (2026-09-06):
+
+- A felvétel **format 1**, és a 0. (conductor) track után **minden
+  szereplő csatorna kap egy saját tracket**: csatorna-előtag (`FF 20`),
+  tracknév (`FF 03`) `"NN - Hangszernév"` alakban (NN = az 1-től induló
+  CSATORNASZÁM két számjegyen), hangszernév (`FF 04`), a csatorna induló
+  beállításai tick 0-n, majd a felvett üzenetek. A 0. track a darab
+  címét (`MidiBill3 felvétel`), a tempót és az ütemjelzést tartalmazza.
+- **Hangnem** (`FF 59`) csak akkor kerül a fájlba, ha a felhasználó meg
+  is adta (`HangnemMegadva` property, alapból False) - a megadása
+  szándékosan nem kötelező.
+- A `.mid` mentése után **automatikusan elkészül mellé a `.txt`
+  jelentés**, az éppen betöltött hangszerlistával és preset-tel, kérdés
+  nélkül. A jelentés hibája nem veszélyezteti a felvételt. A közös rutin
+  a `MainForm.FelvetelJelentesenekKeszitese()` - ezt hívja majd a 3. és
+  a 4. fázis is.
 
 ## Ismert, tudatosan meghozott döntések
 

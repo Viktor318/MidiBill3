@@ -1766,6 +1766,41 @@ Public Class MainForm
         CimsorFrissitese(kezdetFile)
     End Sub
 
+    ''' <summary>
+    ''' Egy ELKÉSZÜLT felvétel mellé legyártja a "MIDI fájl beállításainak
+    ''' mentése olvasható formában" jelentést, azonos alapnévvel, .txt
+    ''' kiterjesztéssel, a .mid MELLÉ.
+    '''
+    ''' MIÉRT ITT, ÉS NEM A MidiFelvevo-ben? A felvevő szándékosan nem tud
+    ''' semmit a hangszerlistákról és a preset-ekről - ő egy tiszta SMF-író.
+    ''' Ez a rutin köti össze a kettőt, és a felvétel 3. fázisának KÉZI
+    ''' mentése és a 4. fázis AUTOMATIKUS mentése is ezt fogja hívni.
+    '''
+    ''' A hangszerlistát és a preset nevét KÉRDÉS NÉLKÜL az éppen betöltöttből
+    ''' veszi (a felhasználó kérése): a felvétel pontosan azokkal készült,
+    ''' tehát azok adják a leghűbb képet - a menüpont felugró kérdése itt
+    ''' csak zavaró lenne.
+    ''' </summary>
+    ''' <returns>
+    ''' Üres sztring, ha elkészült a jelentés; egyébként a hiba szövege. A
+    ''' hívó dolga megjeleníteni - de a felvétel MENTÉSÉT ez sosem
+    ''' veszélyeztetheti: a .mid ilyenkor is megvan.
+    ''' </returns>
+    Private Function FelvetelJelentesenekKeszitese(midiUtvonal As String) As String
+        Try
+            Dim fajlAdat As MidiFajlAdat = MidiFajlOlvaso.Beolvas(midiUtvonal)
+            Dim jelentes As String = MidiJelentes.JelentesKeszitese(
+                fajlAdat, IO.Path.GetFileName(midiUtvonal), aktualisHangszerListaFajl, aktualisFajlNev)
+
+            ' UTF-8 BOM-mal, hogy a Jegyzettömb is helyesen jelenítse meg
+            ' az ékezetes betűket - ugyanúgy, mint a menüpontnál.
+            IO.File.WriteAllText(KimenetiUtvonal(midiUtvonal, ".txt"), jelentes, New Text.UTF8Encoding(True))
+            Return ""
+        Catch ex As Exception
+            Return ex.Message
+        End Try
+    End Function
+
     ' ================================================================
     ' ================================================================
     '  IDEIGLENES TESZT-KÓD - a 3. fázisban TELJES EGÉSZÉBEN TÖRLENDŐ!
@@ -1844,9 +1879,17 @@ Public Class MainForm
 
         Try
             If midiFelvevoTeszt.LezarasEsMentes(utvonal) Then
+                ' A .mid megvan - a jelentés már csak "ráadás": ha nem sikerül,
+                ' azt csak jelezzük, a felvételt nem érinti. (A 3. fázisban
+                ' ezt a felvevő ablak jelölőnégyzete fogja engedélyezni.)
+                Dim jelentesHiba As String = FelvetelJelentesenekKeszitese(utvonal)
+
                 MsgBox("A felvétel elmentve:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
                        "Rögzített üzenetek: " & esemenySzam & vbCrLf &
-                       "Hossz: " & hosszMasodperc.ToString("0.0") & " másodperc",
+                       "Hossz: " & hosszMasodperc.ToString("0.0") & " másodperc" & vbCrLf &
+                       If(jelentesHiba.Length = 0,
+                          "Jelentés: elkészült (.txt a felvétel mellett)",
+                          "A jelentés nem készült el: " & jelentesHiba),
                        MsgBoxStyle.Information, "MidiBill - teszt felvétel")
             Else
                 MsgBox("Nem rögzült egyetlen üzenet sem, ezért nem készült fájl." & vbCrLf &

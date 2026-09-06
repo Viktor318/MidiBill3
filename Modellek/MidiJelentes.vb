@@ -49,10 +49,20 @@ Namespace Modellek
         ''' <param name="fajlAdat">A MidiFajlOlvaso.Beolvas() eredménye.</param>
         ''' <param name="fajlNev">A forrás .mid fájl neve (csak megjelenítésre).</param>
         ''' <param name="hangszerListaFajl">A hangszernevek feloldásához használt lista neve.</param>
-        Public Function JelentesKeszitese(fajlAdat As MidiFajlAdat, fajlNev As String, hangszerListaFajl As String) As String
+        ''' <param name="presetFajl">
+        ''' A jelentés készítésekor betöltött preset (.json) fájl neve, VAGY
+        ''' üres sztring, ha nem tartozik ide. Csak a FELVÉTEL mellé készülő
+        ''' jelentésnél van értelme: ott a felvétel ténylegesen azzal a
+        ''' preset-tel készült, tehát fontos adat. A menüből indított
+        ''' jelentésnél viszont egy IDEGEN MIDI fájlt elemzünk, aminek semmi
+        ''' köze a nálunk éppen betöltött preset-hez - ezért ott üresen marad,
+        ''' és a sor meg sem jelenik (a felhasználó kifejezett kérése).
+        ''' </param>
+        Public Function JelentesKeszitese(fajlAdat As MidiFajlAdat, fajlNev As String, hangszerListaFajl As String,
+                                          Optional presetFajl As String = "") As String
             Dim sb As New StringBuilder()
 
-            FejlecIrasa(sb, fajlNev, hangszerListaFajl)
+            FejlecIrasa(sb, fajlNev, hangszerListaFajl, presetFajl)
             AltalanosAdatokIrasa(sb, fajlAdat)
 
             For csatornaIndex As Integer = 0 To 15
@@ -66,12 +76,13 @@ Namespace Modellek
             Return sb.ToString()
         End Function
 
-        Private Sub FejlecIrasa(sb As StringBuilder, fajlNev As String, hangszerListaFajl As String)
+        Private Sub FejlecIrasa(sb As StringBuilder, fajlNev As String, hangszerListaFajl As String, presetFajl As String)
             sb.AppendLine(New String("="c, VONAL_HOSSZ))
             sb.AppendLine(" MidiBill3 - MIDI fájl beállításai")
             sb.AppendLine(New String("="c, VONAL_HOSSZ))
             Sor(sb, "Fájl", fajlNev)
             Sor(sb, "Készült", DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss", Globalization.CultureInfo.InvariantCulture))
+            If presetFajl.Length > 0 Then Sor(sb, "Preset fájl", presetFajl)
             Sor(sb, "Hangszerlista", hangszerListaFajl)
             sb.AppendLine()
         End Sub
