@@ -96,9 +96,18 @@ MidiBill3/                        - EGYETLEN projekt
 │   └── bank_select_teszt.mid      veszi figyelembe egy adott lejátszó
 ├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
 ├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
+├── CHANGELOG.md                 - Verziónkénti fejlesztési történet
+├── MidiBill3_VBNET_aktualis_allapot.md - EZ a dokumentum
+├── MIDI_felvetel_fazisterv.md   - A felvétel/lejátszás fázisterve (0-8.)
+├── MSB_LSB_GM2_terv.md          - A külön MSB/LSB bank-kezelés terve
+│                                  ("Következő lépések" 13. pont)
 ├── README.md                    - Magyar README (alapértelmezett)
 └── README.en.md                 - Angol README
 ```
+
+A `.md` TERVDOKUMENTUMOK a repó részei (2026-09-06-tól), hogy a
+verziótörténetben is nyomon követhető legyen, mikor mi változott a
+terveken - nem csak a Claude Projectben élnek.
 
 **A futásidejű felhasználói mappa** (nem a forrásfa része, a program hozza
 létre) - ide megy MINDEN írás:
