@@ -79,7 +79,18 @@
                 Throw New IO.InvalidDataException("A fájl 0. tracke csonka (a jelzett hossz túlnyúlik a fájl végén).")
             End If
 
-            Dim hasznaltCsatornak As Boolean() = HasznaltCsatornakFelderitese(adat, elsoTrackKezdete, trackSzam)
+            ' A fájl felderítése a KÖZÖS beolvasóval (Modellek\MidiFajlOlvaso):
+            ' ugyanazt a bájt-szintű SMF-értelmezést használja, mint a
+            ' "Preset készítése MIDI fájlból" és a szöveges jelentés
+            ' segédprogram. Itt csak az érdekel, MELY csatornákon van
+            ' egyáltalán adat - a VÉDELEM ehhez igazodik: aktív csatornára is
+            ' csak akkor írunk beállítást, ha a fájl ténylegesen használja.
+            Dim fajlAdat As MidiFajlAdat = MidiFajlOlvaso.BeolvasBajtokbol(adat)
+
+            Dim hasznaltCsatornak(15) As Boolean
+            For c As Integer = 0 To 15
+                hasznaltCsatornak(c) = fajlAdat.Csatornak(c).VanAdat
+            Next
 
             Dim irtCsatornaSzam As Integer
             Dim ujTrackAdat As Byte() = UjTrackAdatEpitese(csatornak, alapHangero, reverbSzazalek, hasznaltCsatornak, irtCsatornaSzam)
@@ -108,107 +119,6 @@
             Return irtCsatornaSzam
         End Function
 
-        ''' <summary>
-        ''' Végigmegy a fájl ÖSSZES trackjén (a 0. tracktől kezdve), és
-        ''' megállapítja, mely csatornákon (0-15) fordul elő ténylegesen
-        ''' bármilyen csatorna-üzenet (Note On/Off, Control Change, Program
-        ''' Change stb.) - a meta- és SysEx-eseményeket csak átugorja,
-        ''' azok nem csatorna-specifikusak.
-        ''' </summary>
-        Private Function HasznaltCsatornakFelderitese(adat As Byte(), elsoTrackKezdete As Integer, trackSzam As Integer) As Boolean()
-            Dim hasznalt(15) As Boolean
-            Dim offset As Integer = elsoTrackKezdete
-
-            For t As Integer = 0 To trackSzam - 1
-                If Not ChunkAzonositoEgyezikE(adat, offset, "MTrk") Then Exit For
-                Dim trackHossz As Integer = OlvasBeInt32(adat, offset + 4)
-                Dim trackVege As Integer = offset + 8 + trackHossz
-                If trackVege > adat.Length Then Exit For
-
-                TrackCsatornaiFelderitese(adat, offset + 8, trackVege, hasznalt)
-
-                offset = trackVege
-            Next
-
-            Return hasznalt
-        End Function
-
-        ''' <summary>
-        ''' Egyetlen track adat-részét járja végig (delta-time + esemény
-        ''' párok, running status-t is kezelve), és a talált csatorna-
-        ''' üzenetek csatornáit True-ra állítja a hasznalt tömbben. Hibás/
-        ''' felismerhetetlen bájtnál egyszerűen megszakítja a track
-        ''' feldolgozását (a már addig felderített csatornák megmaradnak) -
-        ''' ez csak a védelmi funkciót gyengítené egy sérült fájlnál, magát
-        ''' a beszúrást nem hiúsítja meg.
-        ''' </summary>
-        Private Sub TrackCsatornaiFelderitese(adat As Byte(), kezdet As Integer, vege As Integer, hasznalt As Boolean())
-            Dim pos As Integer = kezdet
-            Dim elozoStatusz As Byte = 0
-
-            While pos < vege
-                pos = VlqAtugras(adat, pos, vege)
-                If pos >= vege Then Exit While
-
-                Dim elsoBajt As Byte = adat(pos)
-                Dim statuszBajt As Byte
-                If elsoBajt >= &H80 Then
-                    statuszBajt = elsoBajt
-                    pos += 1
-                Else
-                    statuszBajt = elozoStatusz  ' running status - az előző csatorna-üzenet státuszbájtja érvényes
-                End If
-
-                If statuszBajt = &HFF Then
-                    pos += 1 ' meta-esemény típusbájtja
-                    Dim hossz As Integer
-                    pos = VlqOlvasas(adat, pos, vege, hossz)
-                    pos += hossz
-                    elozoStatusz = 0
-                ElseIf statuszBajt = &HF0 OrElse statuszBajt = &HF7 Then
-                    Dim hossz As Integer
-                    pos = VlqOlvasas(adat, pos, vege, hossz)
-                    pos += hossz
-                    elozoStatusz = 0
-                ElseIf statuszBajt >= &H80 AndAlso statuszBajt < &HF0 Then
-                    Dim csatorna As Integer = statuszBajt And &HF
-                    hasznalt(csatorna) = True
-                    elozoStatusz = statuszBajt
-
-                    Dim tipus As Integer = statuszBajt And &HF0
-                    If tipus = &HC0 OrElse tipus = &HD0 Then
-                        pos += 1 ' Program Change / Channel Pressure: 1 adatbájt
-                    Else
-                        pos += 2 ' a többi csatorna-üzenet: 2 adatbájt
-                    End If
-                Else
-                    Exit While ' ismeretlen/érvénytelen bájt - védelmi kilépés
-                End If
-            End While
-        End Sub
-
-        Private Function VlqAtugras(adat As Byte(), pos As Integer, hatar As Integer) As Integer
-            Dim p As Integer = pos
-            While p < hatar
-                Dim b As Byte = adat(p)
-                p += 1
-                If (b And &H80) = 0 Then Exit While
-            End While
-            Return p
-        End Function
-
-        Private Function VlqOlvasas(adat As Byte(), pos As Integer, hatar As Integer, ByRef ertek As Integer) As Integer
-            Dim p As Integer = pos
-            Dim v As Integer = 0
-            While p < hatar
-                Dim b As Byte = adat(p)
-                p += 1
-                v = (v << 7) Or (b And &H7F)
-                If (b And &H80) = 0 Then Exit While
-            End While
-            ertek = v
-            Return p
-        End Function
 
         ''' <summary>
         ''' Az AKTÍV ÉS a fájlban ténylegesen használt csatornák MIDI-

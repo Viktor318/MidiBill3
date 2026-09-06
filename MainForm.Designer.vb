@@ -41,6 +41,8 @@ Partial Class MainForm
         mnuPresetFajlokFrissitese = New ToolStripMenuItem()
         mnuMb3FajlokKonvertalasa = New ToolStripMenuItem()
         mnuMidiFajlModositasa = New ToolStripMenuItem()
+        mnuPresetMidibol = New ToolStripMenuItem()
+        mnuMidiBeallitasokMentese = New ToolStripMenuItem()
         SúgóToolStripMenuItem = New ToolStripMenuItem()
         mnuNevjegy = New ToolStripMenuItem()
         chkPedal = New CheckBox()
@@ -82,6 +84,9 @@ Partial Class MainForm
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
         dlgMidiFajlModositas = New OpenFileDialog()
+        dlgPresetMidibol = New OpenFileDialog()
+        dlgMidiBeallitasokMentese = New OpenFileDialog()
+        dlgHangszerlistaValasztas = New OpenFileDialog()
         btnMidiFelvetel = New Button()
         menuStrip1.SuspendLayout()
         grpVolume.SuspendLayout()
@@ -185,7 +190,7 @@ Partial Class MainForm
         ' 
         ' mnuSegedprogramok
         ' 
-        mnuSegedprogramok.DropDownItems.AddRange(New ToolStripItem() {mnuPresetFajlokFrissitese, mnuMb3FajlokKonvertalasa, mnuMidiFajlModositasa})
+        mnuSegedprogramok.DropDownItems.AddRange(New ToolStripItem() {mnuPresetFajlokFrissitese, mnuMb3FajlokKonvertalasa, mnuMidiFajlModositasa, mnuPresetMidibol, mnuMidiBeallitasokMentese})
         mnuSegedprogramok.Name = "mnuSegedprogramok"
         mnuSegedprogramok.Size = New Size(139, 26)
         mnuSegedprogramok.Text = "&Segédprogramok"
@@ -207,6 +212,18 @@ Partial Class MainForm
         mnuMidiFajlModositasa.Name = "mnuMidiFajlModositasa"
         mnuMidiFajlModositasa.Size = New Size(414, 26)
         mnuMidiFajlModositasa.Text = "&MIDI fájlok módosítása az aktuális beállításokkal"
+        ' 
+        ' mnuPresetMidibol
+        ' 
+        mnuPresetMidibol.Name = "mnuPresetMidibol"
+        mnuPresetMidibol.Size = New Size(414, 26)
+        mnuPresetMidibol.Text = "P&reset készítése MIDI fájlból"
+        ' 
+        ' mnuMidiBeallitasokMentese
+        ' 
+        mnuMidiBeallitasokMentese.Name = "mnuMidiBeallitasokMentese"
+        mnuMidiBeallitasokMentese.Size = New Size(414, 26)
+        mnuMidiBeallitasokMentese.Text = "MIDI fájl beállításainak mentése &olvasható formában"
         ' 
         ' SúgóToolStripMenuItem
         ' 
@@ -563,6 +580,24 @@ Partial Class MainForm
         dlgMidiFajlModositas.Multiselect = True
         dlgMidiFajlModositas.Title = "MIDI fájlok módosítása az aktuális beállításokkal"
         ' 
+        ' dlgPresetMidibol
+        ' 
+        dlgPresetMidibol.Filter = "MIDI fájlok (*.mid;*.midi)|*.mid;*.midi"
+        dlgPresetMidibol.Multiselect = True
+        dlgPresetMidibol.Title = "Preset készítése MIDI fájlból"
+        ' 
+        ' dlgMidiBeallitasokMentese
+        ' 
+        dlgMidiBeallitasokMentese.Filter = "MIDI fájlok (*.mid;*.midi)|*.mid;*.midi"
+        dlgMidiBeallitasokMentese.Multiselect = True
+        dlgMidiBeallitasokMentese.Title = "MIDI fájl beállításainak mentése olvasható formában"
+        ' 
+        ' dlgHangszerlistaValasztas
+        ' 
+        dlgHangszerlistaValasztas.Filter = "Hangszerlista fájlok (*.lst)|*.lst"
+        dlgHangszerlistaValasztas.Multiselect = False
+        dlgHangszerlistaValasztas.Title = "Hangszerlista választása a nevek feloldásához"
+        ' 
         ' btnMidiFelvetel
         ' 
         btnMidiFelvetel.Location = New Point(799, 411)
@@ -669,6 +704,11 @@ Partial Class MainForm
     Friend WithEvents dlgMb3Konvertalas As OpenFileDialog
     Friend WithEvents mnuMidiFajlModositasa As ToolStripMenuItem
     Friend WithEvents dlgMidiFajlModositas As OpenFileDialog
+    Friend WithEvents mnuPresetMidibol As ToolStripMenuItem
+    Friend WithEvents mnuMidiBeallitasokMentese As ToolStripMenuItem
+    Friend WithEvents dlgPresetMidibol As OpenFileDialog
+    Friend WithEvents dlgMidiBeallitasokMentese As OpenFileDialog
+    Friend WithEvents dlgHangszerlistaValasztas As OpenFileDialog
     Friend WithEvents mnuBeallitasok As ToolStripMenuItem
     Friend WithEvents mnuAlaphelyzetbeAllitas As ToolStripMenuItem
     Friend WithEvents grpExtraMidi As GroupBox

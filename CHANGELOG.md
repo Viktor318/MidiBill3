@@ -10,6 +10,179 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.15.0] - 2026-09-06
+
+### Hozzáadva - két új segédprogram
+
+- **"Preset készítése MIDI fájlból"** (új menüpont a Segédprogramok alatt).
+  A "MIDI fájlok módosítása" FORDÍTOTTJA: nem beleírja, hanem KIOLVASSA a
+  csatorna-beállításokat egy MIDI fájlból, és presetet (`.json`) készít
+  belőlük. Több fájl is választható; a preset a forrásfájl MELLÉ, azonos
+  néven készül. A leképezés szabályai (a felhasználóval egyeztetve):
+  - **Aktív** az a csatorna, amelyen a fájlban TÉNYLEGESEN megszólal hang.
+    Szándékosan szigorúbb ez, mint a fájl-patchelő szabálya (ott bármilyen
+    csatorna-üzenet elég): ott a tág definíció ártalmatlan, itt viszont egy
+    kósza vezérlő miatt aktívvá tett csatorna ténylegesen megváltoztatná a
+    játékot. A nem aktív csatornák MINDEN mezője alapértéken marad.
+  - **Alap hangerő = 100%**, a csatorna hangereje pedig a nyers CC7-érték.
+    A program íráskor a "csatorna hangerő × alap hangerő / 100" szorzatot
+    küldi ki, visszaolvasáskor viszont csak a szorzat látszik - 100%-os
+    alap hangerővel a preset visszatöltve pontosan ugyanazt a hangerőt
+    adja, mint ami a fájlban van (70%-kal halkabb lenne az eredetinél).
+  - **Visszhang**: a MIDI-ben csatornánkénti (CC91), a presetben globális -
+    a LEGNAGYOBB talált érték nyer, 0-127-ből 0-100%-ra átszámítva.
+  - **Bank Select**: amelyik bájt nem nulla, azt tekintjük banknak - így a
+    Roland GS (MSB=0, LSB=bank) és a Yamaha XG (MSB=bank) konvenció is
+    helyesen olvasódik. Ha mindkettő nem nulla, az LSB nyer (a program is
+    így ír).
+  - Ami **változik a fájl közben** (hangerő, hangszín stb.), abból mindig
+    az ELSŐ érték kerül a presetbe - vagyis a fájl kezdőállapota.
+  - Amit a MIDI nem tartalmaz, az alapértéken marad: split pont 60,
+    transzponálás 0, pedál-inverzió ki, Alul/Felül bekapcsolva, oktáv 0. A
+    MIDI be-/kimenet neve szándékosan üres, hogy a preset betöltése ne
+    írja felül az aktuális eszközválasztást.
+
+- **"MIDI fájl beállításainak mentése olvasható formában"** (új menüpont).
+  Egy MIDI fájl kezdeti beállításait menti EMBERI OLVASÁSRA szánt szöveges
+  (`.txt`) jelentésként, magyar megnevezésekkel - szándékosan nem JSON vagy
+  más gépi formátum. Felépítése: általános adatok (formátum, trackek száma,
+  felbontás, tempó, ütemjelzés, hangnem, teljes hossz, mely csatornákon van
+  adat), majd csatornánként külön blokk. A csatorna-blokkba a TÁGABB szabály
+  szerint kerül be egy csatorna (elég bármilyen üzenet) - egy riportnak az a
+  dolga, hogy mindent megmutasson, a "Hangok száma" sorból pedig rögtön
+  látszik, ha egy csatornán valójában egy hang sem szól. Csatornánként:
+  - hangszín NÉVVEL (a 10. csatornánál a dobkészlet-listából), és ha a
+    fájlban több hangszínváltás van, MINDEGYIK kiírásra kerül egymás alatt,
+    a fájlbeli sorrendben (a felhasználó kifejezett kérése);
+  - a program által kezelt vezérlők (hangerő, tér, vibrato, chorus,
+    visszhang) MINDIG megjelennek - ha nincsenek a fájlban, azt is kiírja,
+    az alapértékkel együtt;
+  - statisztikák: hangok száma és hangterjedelem.
+
+- **Két új menüpont a Segédprogramok menüben** (`MainForm.Designer.vb`),
+  és a hozzájuk tartozó kezelők a `MainForm.vb`-ben. A két segédprogram
+  munkamenete majdnem azonos (fájlválasztás -> feldolgozás -> összegzés),
+  ezért a közös lépések KÜLÖN, újrahasznosítható rutinokba kerültek:
+  `HangszerlistaValasztasa()`, `KimenetiUtvonal()`,
+  `FelulirasEngedelyezese()` és `OsszegzesMegjelenitese()` - így a két
+  menüpont kezelője rövid maradt, és a harmadik ilyen segédprogram is
+  ezekre tud majd épülni.
+
+- **Új `Modellek/MidiFajlOlvaso.vb` - a program KÖZÖS SMF-értelmezője.**
+  Mindkét új segédprogram (és a fájl-patchelő) erre épül. Format 0 ÉS
+  format 1 fájlokat is kezel - a patchelő továbbra is csak format 1-be tud
+  BESZÚRNI, de az az írás korlátja, nem az olvasásé, így a két új
+  segédprogram format 0 fájlokkal is működik. Kezeli a running statust, a
+  meta- és SysEx-eseményeket, a Bank Select + Program Change párosítást,
+  és a tempóváltásokat is figyelembe véve számol teljes hosszt.
+
+### Hozzáadva - a MIDI fájlok szöveges információi
+
+A "MIDI fájl beállításainak mentése olvasható formában" segédprogram
+mostantól a fájlba írt SZÖVEGES adatokat is kiolvassa és megjeleníti. A
+MIDI szabvány több szöveges meta-eseményt is definiál - eddig a beolvasó
+mindet átugrotta.
+
+- **Két hangszín-sor csatornánként.** A `Hangszín (MIDI fájlban)` a
+  FÁJLBA ÍRT szöveges nevet mutatja, a `Hangszín (lista szerint)` pedig
+  azt, amit a betöltött hangszerlista mond ugyanarra a bank+program
+  párosra. A kettő egymás mellett rögtön megmutatja, ha eltérés van.
+  A fájlbeli név forrásának sorrendje: hangszernév (`FF 04`) >
+  programnév (`FF 08`) > tracknév (`FF 03`) - az első kettő kifejezetten
+  a hangszínt nevezi meg, a tracknév általánosabb. A név TRACK-szintű,
+  ezért csatornánként EGYSZER szerepel: a hangszínváltásoknál nem tud
+  különbözni, ott a lista szerinti nevek sorakoznak.
+- **Cím, szerzői jog, eszköznév, megjegyzés** az általános blokkban
+  (`FF 03` a 0. trackben, `FF 02`, `FF 09`, `FF 01`). Csak akkor
+  jelennek meg, ha a fájl ténylegesen tartalmazza őket.
+- **Szerkezeti jelölők** (`FF 06`) külön blokkban a jelentés végén,
+  IDŐPONTTAL együtt (pl. `0:32  Refrén`) - ezek mutatják a darab
+  felépítését. Legfeljebb 30 jelölő jelenik meg, hogy egy sűrűn jelölt
+  fájl ne öntse el a jelentést.
+- **Szabvány-felismerés a SysEx üzenetből**: a fájlok a GM System On /
+  GM2 System On / GS Reset / XG System On üzenettel jelzik, melyik
+  szabványra készültek. Ez a program szempontjából fontos, mert a
+  bankszámok értelmezése szabványonként más - lásd az állapot-dokumentum
+  "Következő lépések" 13. pontját.
+- **Csatorna-előtag (`FF 20`) támogatása**: a szabvány szerinti módja
+  annak, hogy egy több csatornát tartalmazó trackben is egyértelmű
+  legyen, melyik csatornáról szól egy név. Ha nincs előtag, a név csak
+  akkor társítható, ha a track PONTOSAN EGY csatornát használ - egyébként
+  kétértelmű lenne, ezért ilyenkor nem társítjuk.
+- **A hangszernév visszaesése a programszámra**: ha a pontos bank+program
+  páros nincs a betöltött listában (tipikusan azért, mert a fájl nem
+  nulla bankot használ, a `GM.lst` viszont csak a 0-ás bankot ismeri),
+  a jelentés a puszta programszám nevét mutatja - így nem marad üres
+  kézzel a felhasználó, de látja, hogy ez már csak közelítés. A sor
+  szándékosan TÖMÖR (a felhasználó kérése):
+  `nincs a listában (bank 124, program 80) - GM: Square Wave`.
+  A visszaesés az AKTÍV listából olvas, nem külön GM-listából - egy
+  bővebb, kétforrású változat (`Bank 0: GM - ..., Aktuális - ...`)
+  elkészült, majd a felhasználó döntése alapján visszavonásra került,
+  a `HangszerLista` így továbbra is CSAK az aktív listát ismeri.
+
+### Változtatva
+
+- **A jelentésből kikerült a "Felbontás" sor** és a tempó utáni
+  zárójeles mikroszekundum-érték (a felhasználó kérése) - a felbontás
+  belül továbbra is kell a hossz kiszámításához, csak nem jelenik meg.
+  SMPTE-időzítésű fájlnál ezt mostantól a "Teljes hossz" sor jelzi.
+- **A jelentésből kikerült az "Egyéb vezérlők" blokk is** (a felhasználó
+  kérése) - a csatorna-blokkban a kiemelt vezérlők után rögtön a "Hangok
+  száma" jön. A blokkal együtt törlésre került a `VezerloNevSzoveg()`
+  segédfüggvény (a CC-nevek felsorolása) is, mert semmi más nem használta -
+  nem maradt holt kód. A közös beolvasó továbbra is GYŰJTI az összes
+  kezdő vezérlőértéket (`KezdoVezerlok`), csak a jelentés nem írja ki
+  őket: ez az adat kell a preset-készítőnek, és bármikor újra
+  megjeleníthető.
+
+### Ellenőrzés
+
+- A `Tesztek/midi_olvaso_ellenorzes.py` kibővítve az új részekkel: a
+  szöveges meta-események kiolvasása, a névforrások sorrendje, a
+  szabvány-felismerés a SysEx-ből, a jelölők időpontja, a csatorna-előtag
+  (`FF 20`), a vezérlőkarakterek kiszűrése a szövegekből, és hogy a darab
+  CÍME nem szivárog át csatornanévként (sem format 1-nél, sem format
+  0-nál, ahol ugyanaz a track hordozza a címet és a csatorna-adatokat).
+  A hibafelismerő képesség igazolt: 7 szándékosan elrontott változatból
+  mind a 7 fennakadt. Két hézag menet közben derült ki és pótlásra
+  került: nem volt olyan teszteset, amiben egy track TÖBB csatornát
+  használ ÉS neve is van, illetve amiben a format 0 fájl trackje nevet
+  kap - e nélkül két hibás változat észrevétlen maradt volna.
+
+### Változtatva (szervezés)
+
+- **A `Tesztek` mappa bekerült a repóba.** A verifikáló Python programok
+  eddig csak a beszélgetésben léteztek (illetve a `Claude outputs`
+  mappában); mostantól a projekt részei, hogy egy későbbi módosítás után
+  bárki újra le tudja futtatni őket. Futtatásukhoz a `mido` (1.3.3)
+  csomag kell; a projekt fordításához NEM szükségesek.
+
+### Változtatva (refaktor)
+
+- **A `MidiFajlSzerkeszto` átállt a közös beolvasóra**: a saját, ~100 soros
+  track-bejáró rutinja (`HasznaltCsatornakFelderitese`,
+  `TrackCsatornaiFelderitese` és a hozzájuk tartozó VLQ-olvasók) törölve, a
+  helyükön a `MidiFajlOlvaso.BeolvasBajtokbol()` hívása áll. Az
+  SMF-értelmezés így egyetlen helyen él, ahogy a csatorna-üzeneteknél is
+  tettük. A patchelő viselkedése változatlan: továbbra is a TÁGABB szabály
+  szerint dönti el, mely csatornákra írjon beállítást.
+
+### Ellenőrzés
+
+- **Új `Tesztek/midi_olvaso_ellenorzes.py`**: a beolvasó logika hű
+  Python-portját futtatja olyan teszt-MIDI-fájlokon, amelyeket a FÜGGETLEN
+  `mido` könyvtár állít elő, majd összeveti a két eredményt. Lefedi a
+  format 0 és format 1 fájlokat, a running statust, a meta- és
+  SysEx-eseményeket, a GS és XG bank-konvenciót (beleértve azt az esetet,
+  amikor MINDKÉT bank-bájt nem nulla), a vezérlők első értékének
+  megőrzését, a hangszámlálást és a tempóváltásos hosszszámítást. Két
+  kézzel összerakott, SZÁNDÉKOSAN hibás fájl is szerepel benne: egy
+  running statusszal meta-esemény után, és egy csonka fájl - ezeken azt
+  ellenőrzi, hogy a beolvasó nem talál ki nem létező hangokat, és nem száll
+  el kivétellel. A hibafelismerő képesség igazolt: 7 szándékosan elrontott
+  változatból mind a 7 fennakadt a teszten.
+
 ## [1.14.0] - 2026-09-04
 
 ### Hozzáadva (MIDI felvétel - 0. és 1. fázis)

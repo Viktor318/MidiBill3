@@ -1559,6 +1559,170 @@ Public Class MainForm
         End If
     End Sub
 
+    ' ============================================================
+    ' Segédprogramok: MIDI fájl -> preset, illetve olvasható jelentés
+    ' ============================================================
+    '
+    ' Mindkettő a KÖZÖS Modellek\MidiFajlOlvaso beolvasóra épül, és ugyanúgy
+    ' viselkedik: több fájl választható, a kimenet a forrásfájl MELLÉ, azonos
+    ' néven készül, a felülírásra egyszer kérdezünk rá az egész kötegre, a
+    ' végén pedig összegzés jön a hibákkal együtt.
+
+    Private utolsoPresetMidibolMappa As String = ""
+    Private utolsoMidiBeallitasMentesMappa As String = ""
+
+    ''' <summary>
+    ''' Preset (.json) készítése MIDI fájl(ok)ból - a "MIDI fájlok módosítása"
+    ''' segédprogram FORDÍTOTTJA: nem beleírja, hanem KIOLVASSA a
+    ''' csatorna-beállításokat. A leképezés szabályait lásd
+    ''' Modellek\MidiPresetKeszito.vb.
+    ''' </summary>
+    Private Sub mnuPresetMidibol_Click(sender As Object, e As EventArgs) Handles mnuPresetMidibol.Click
+        DialogusMappaBeallitasa(dlgPresetMidibol, utolsoPresetMidibolMappa)
+        If dlgPresetMidibol.ShowDialog() <> DialogResult.OK Then Return
+
+        Dim fajlok As String() = dlgPresetMidibol.FileNames
+
+        Dim hangszerListaFajl As String = HangszerlistaValasztasa()
+        If hangszerListaFajl Is Nothing Then Return   ' a felhasználó megszakította
+
+        If Not FelulirasEngedelyezese(fajlok, ".json", "preset") Then Return
+
+        Dim sikeres As Integer = 0
+        Dim hibaUzenetek As New List(Of String)
+
+        For Each fajl As String In fajlok
+            Dim nev As String = IO.Path.GetFileName(fajl)
+            Try
+                Dim fajlAdat As MidiFajlAdat = MidiFajlOlvaso.Beolvas(fajl)
+                Dim preset As Beallitasok = MidiPresetKeszito.PresetKeszitese(fajlAdat, hangszerListaFajl, AppInfo.AppVerzio())
+                preset.Mentes(KimenetiUtvonal(fajl, ".json"))
+                sikeres += 1
+            Catch ex As Exception
+                hibaUzenetek.Add(nev & ": " & ex.Message)
+            End Try
+        Next
+
+        OsszegzesMegjelenitese(fajlok, sikeres, hibaUzenetek, ".json",
+                               "MidiBill - Preset készítése MIDI fájlból")
+
+        DialogusAllapotMentese(dlgPresetMidibol, fajlok(0), utolsoPresetMidibolMappa)
+    End Sub
+
+    ''' <summary>
+    ''' MIDI fájl(ok) kezdeti beállításainak mentése EMBERI OLVASÁSRA szánt
+    ''' szöveges (.txt) jelentésként - lásd Modellek\MidiJelentes.vb.
+    ''' </summary>
+    Private Sub mnuMidiBeallitasokMentese_Click(sender As Object, e As EventArgs) Handles mnuMidiBeallitasokMentese.Click
+        DialogusMappaBeallitasa(dlgMidiBeallitasokMentese, utolsoMidiBeallitasMentesMappa)
+        If dlgMidiBeallitasokMentese.ShowDialog() <> DialogResult.OK Then Return
+
+        Dim fajlok As String() = dlgMidiBeallitasokMentese.FileNames
+
+        Dim hangszerListaFajl As String = HangszerlistaValasztasa()
+        If hangszerListaFajl Is Nothing Then Return
+
+        If Not FelulirasEngedelyezese(fajlok, ".txt", "szöveges") Then Return
+
+        Dim sikeres As Integer = 0
+        Dim hibaUzenetek As New List(Of String)
+
+        For Each fajl As String In fajlok
+            Dim nev As String = IO.Path.GetFileName(fajl)
+            Try
+                Dim fajlAdat As MidiFajlAdat = MidiFajlOlvaso.Beolvas(fajl)
+                Dim jelentes As String = MidiJelentes.JelentesKeszitese(fajlAdat, nev, hangszerListaFajl)
+
+                ' UTF-8 BOM-mal, hogy a Jegyzettömb is helyesen jelenítse meg
+                ' az ékezetes betűket.
+                IO.File.WriteAllText(KimenetiUtvonal(fajl, ".txt"), jelentes, New Text.UTF8Encoding(True))
+                sikeres += 1
+            Catch ex As Exception
+                hibaUzenetek.Add(nev & ": " & ex.Message)
+            End Try
+        Next
+
+        OsszegzesMegjelenitese(fajlok, sikeres, hibaUzenetek, ".txt",
+                               "MidiBill - MIDI fájl beállításainak mentése")
+
+        DialogusAllapotMentese(dlgMidiBeallitasokMentese, fajlok(0), utolsoMidiBeallitasMentesMappa)
+    End Sub
+
+    ''' <summary>
+    ''' A hangszernevek feloldásához használt lista kiválasztása. A gyári
+    ''' GM.lst az alapértelmezett; ha a felhasználó mást szeretne, egy
+    ''' fájlválasztó nyílik az "SF adatok" mappára.
+    ''' </summary>
+    ''' <returns>A választott lista FÁJLNEVE, vagy Nothing, ha a felhasználó megszakította a műveletet.</returns>
+    Private Function HangszerlistaValasztasa() As String
+        Dim valasz As MsgBoxResult = MsgBox(
+            "A hangszernevek feloldásához a gyári ""GM.lst"" listát használjuk?" & vbCrLf & vbCrLf &
+            "Igen  - a gyári General MIDI lista" & vbCrLf &
+            "Nem   - másik hangszerlista választása az ""SF adatok"" mappából" & vbCrLf &
+            "Mégse - a művelet megszakítása",
+            MsgBoxStyle.YesNoCancel Or MsgBoxStyle.Question, "MidiBill - hangszerlista")
+
+        Select Case valasz
+            Case MsgBoxResult.Yes
+                Return "GM.lst"
+            Case MsgBoxResult.Cancel
+                Return Nothing
+        End Select
+
+        dlgHangszerlistaValasztas.InitialDirectory = Utvonalak.SfAdatokMappa
+        If dlgHangszerlistaValasztas.ShowDialog() <> DialogResult.OK Then Return Nothing
+
+        Return IO.Path.GetFileName(dlgHangszerlistaValasztas.FileName)
+    End Function
+
+    ''' <summary>
+    ''' A kimeneti fájl útvonala: a FORRÁSFÁJL MELLÉ, azonos alapnévvel, csak
+    ''' más kiterjesztéssel (a felhasználó kifejezett kérése).
+    ''' </summary>
+    Private Function KimenetiUtvonal(forrasUtvonal As String, kiterjesztes As String) As String
+        Return IO.Path.Combine(IO.Path.GetDirectoryName(forrasUtvonal),
+                               IO.Path.GetFileNameWithoutExtension(forrasUtvonal) & kiterjesztes)
+    End Function
+
+    ''' <summary>
+    ''' Ha a kötegben van olyan fájl, aminek a kimenete MÁR LÉTEZIK, egyszer
+    ''' rákérdez a felülírásra - az egész kötegre vonatkozóan, nem fájlonként.
+    ''' </summary>
+    ''' <returns>True, ha folytatható a művelet.</returns>
+    Private Function FelulirasEngedelyezese(fajlok As String(), kiterjesztes As String, megnevezes As String) As Boolean
+        Dim letezok As New List(Of String)
+        For Each fajl As String In fajlok
+            Dim celUtvonal As String = KimenetiUtvonal(fajl, kiterjesztes)
+            If IO.File.Exists(celUtvonal) Then letezok.Add(IO.Path.GetFileName(celUtvonal))
+        Next
+
+        If letezok.Count = 0 Then Return True
+
+        Dim lista As String = String.Join(vbCrLf, letezok.Take(10))
+        If letezok.Count > 10 Then lista &= vbCrLf & "... és még " & (letezok.Count - 10) & " fájl"
+
+        Dim valasz As MsgBoxResult = MsgBox(
+            letezok.Count & " " & megnevezes & " fájl MÁR LÉTEZIK a forrásfájlok mellett:" & vbCrLf & vbCrLf &
+            lista & vbCrLf & vbCrLf & "Felülírjuk őket?",
+            MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")
+
+        Return (valasz = MsgBoxResult.Yes)
+    End Function
+
+    ''' <summary>A két új segédprogram közös, összegző üzenetablaka.</summary>
+    Private Sub OsszegzesMegjelenitese(fajlok As String(), sikeres As Integer, hibaUzenetek As List(Of String),
+                                       kiterjesztes As String, cim As String)
+        Dim osszegzes As String = "Kész. Sikeres: " & sikeres & ", hibás: " & hibaUzenetek.Count & "." & vbCrLf &
+                                  "A(z) " & kiterjesztes & " fájlok a forrásfájlok mellé kerültek:" & vbCrLf &
+                                  IO.Path.GetDirectoryName(fajlok(0))
+
+        If hibaUzenetek.Count > 0 Then
+            osszegzes &= vbCrLf & vbCrLf & "Hibák:" & vbCrLf & String.Join(vbCrLf, hibaUzenetek)
+        End If
+
+        MsgBox(osszegzes, MsgBoxStyle.Information, cim)
+    End Sub
+
     Private Sub mnuAlaphelyzetbeAllitas_Click(sender As Object, e As EventArgs) Handles mnuAlaphelyzetbeAllitas.Click
         Dim valasz As MsgBoxResult = MsgBox("Minden jelenlegi beállítás törlődni fog! Folytatja?",
                                              MsgBoxStyle.YesNo Or MsgBoxStyle.Question, "MidiBill")

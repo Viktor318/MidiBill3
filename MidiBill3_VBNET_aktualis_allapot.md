@@ -9,7 +9,13 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.14.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.15.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a közös SMF-beolvasó `MidiFajlOlvaso` és a rá épülő két új
+  segédprogram: "Preset készítése MIDI fájlból" és "MIDI fájl
+  beállításainak mentése olvasható formában"; a `MidiFajlSzerkeszto`
+  átállítása a közös beolvasóra; a riport finomhangolása - lásd
+  `CHANGELOG.md`)
+- **Előző verzió**: 1.14.0
   (a MIDI felvétel 0-2. fázisa: `Felvetelek` mappa és fájlnév-képzés, a
   MIDI-motor kimeneti "csapja", a `MidiFelvevo` motor `.mid` mentéssel;
   a csatorna-állapot és az ütemjelzés beírása a felvett fájlba; a
@@ -58,10 +64,30 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               dobkészlet-presetek (Dobok, ISMERT DOBKÉSZLET-
 │   │                               BANKOK: 120, 127, 128) külön
 │   ├── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
+│   ├── CsatornaUzenetek.vb      - EGYETLEN forrás a "csatorna-állapot ->
+│   │                               MIDI üzenetek" leképezéshez (élő küldés,
+│   │                               fájl-patchelés és felvétel is ezt hívja)
+│   ├── MidiFajlOlvaso.vb        - A program EGYETLEN SMF-értelmezője
+│   │                               (format 0 és 1, running status, meta- és
+│   │                               SysEx-események, Bank Select + Program
+│   │                               Change párosítás, tempótérkép a hosszhoz)
+│   ├── MidiFajlSzerkeszto.vb    - "MIDI fájlok módosítása": a beállítások
+│   │                               BEÍRÁSA meglévő .mid fájlokba
+│   ├── MidiPresetKeszito.vb     - "Preset készítése MIDI fájlból": a
+│   │                               fentinek a FORDÍTOTTJA (MIDI -> .json)
+│   ├── MidiJelentes.vb          - "MIDI fájl beállításainak mentése
+│   │                               olvasható formában" (magyar .txt riport)
+│   ├── MidiFelvevo.vb           - Felvevő motor: állapotgép + kézzel írt
+│   │                               SMF-kimenet (format 1, 480 PPQ)
 │   └── Utvonalak.vb             - MINDEN fájl-útvonal egy helyen: gyári
 │                                   (csak olvasható) vs. felhasználói
 │                                   (írható) szétválasztás + egyszeri
 │                                   átköltöztetés a régi szerkezetből
+├── Tesztek/                     - Független ELLENŐRZŐ Python programok
+│   ├── smf_iro_ellenorzes.py    - A felvevő SMF-kimenetének ellenőrzése
+│   └── midi_olvaso_ellenorzes.py - A MidiFajlOlvaso logikájának ellenőrzése
+│                                   (mindkettő: hű Python-port + független
+│                                   `mido` visszaolvasás + mutációs teszt)
 ├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
 ├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
 ├── README.md                    - Magyar README (alapértelmezett)
@@ -242,6 +268,35 @@ ez a pont MOSTANTÓL MEGVALÓSULT (a format 1 ág):
   `Presetek` almappában laknak (lásd a mappaszerkezet-átalakítást
   fentebb), nem egy "Adatok" mappában. Az "SF adatok" mappanév
   szándékosan változatlan maradt (más fogalom)
+
+**Közös SMF-beolvasó + két új segédprogram** (2026-09-06, kiadatlan):
+
+- **`Modellek/MidiFajlOlvaso.vb`** - a program EGYETLEN SMF-értelmezője.
+  Mindhárom MIDI-fájlt olvasó funkció (a patchelő és a két új
+  segédprogram) erre épül; a `MidiFajlSzerkeszto` saját, ~100 soros
+  track-bejáró rutinja megszűnt. Format 0 ÉS format 1 fájlokat is kezel
+  (a patchelő továbbra is csak format 1-be tud BESZÚRNI - ez az írás
+  korlátja, nem az olvasásé). Kiolvassa a szöveges meta-eseményeket is
+  (cím, szerzői jog, eszköznév, megjegyzés, hangszer-/program-/tracknév,
+  jelölők), felismeri a SysEx-ből a szabványt (GM / GM2 / GS / XG), és
+  kezeli a csatorna-előtagot (`FF 20`).
+- **"Preset készítése MIDI fájlból"** - a fájl-patchelő FORDÍTOTTJA:
+  kiolvassa a csatorna-beállításokat egy `.mid` fájlból és presetet
+  (`.json`) készít belőlük. Aktív az a csatorna, amelyen ténylegesen
+  megszólal hang; alap hangerő 100% (így a CC7 pontosan visszajön);
+  a globális visszhang a csatornánkénti CC91-ek LEGNAGYOBB értéke.
+- **"MIDI fájl beállításainak mentése olvasható formában"** - magyar
+  nyelvű, ember számára olvasható `.txt` riport egy MIDI fájl kezdeti
+  beállításairól. Csatornánként KÉT hangszín-sor: `Hangszín (MIDI
+  fájlban)` a fájlba írt szöveges név, `Hangszín (lista szerint)` a
+  betöltött hangszerlista neve ugyanarra a bank+program párosra.
+  A riportban SZÁNDÉKOSAN NINCS: felbontás-sor, a tempó utáni zárójeles
+  mikroszekundum-érték, és "Egyéb vezérlők" blokk (mind a három a
+  felhasználó kérésére került ki).
+- **Ellenőrzés**: mindkét irányt (SMF-írás és -olvasás) független Python
+  program ellenőrzi a `Tesztek` mappában - hű port + `mido` könyvtár +
+  MUTÁCIÓS teszt (szándékosan elrontott változatok), utóbbi bizonyítja,
+  hogy a teszt tényleg képes hibát találni.
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -543,6 +598,11 @@ munkalista is a további javításokhoz.
       jelzésre szánt megjegyzés volt
 
 ## Következő lépések / nyitott témák
+
+> **FIGYELEM - eltávolítandó**: a `MainForm.vb` VÉGÉN van egy
+> "IDEIGLENES TESZT-KÓD" blokk, ami a felvétel élesben való
+> kipróbálására szolgál, amíg a felvevő ablak nincs kész. A felvétel
+> **3. fázisában** (a `MidiFelvevoForm` megépítésekor) törlendő.
 
 1. **GS-támogatás további tesztelése** - folyamatban, a felhasználó
    több különböző SoundFont-tal teszteli (JJazzLab, SGM-v2_02 eddig)
@@ -1019,4 +1079,43 @@ munkalista is a további javításokhoz.
       könyvtár, kézzel megírható, hasonlóan a `MidiEngine` és
       `HangszerLista`/`SoundFontOlvaso` meglévő, kézzel írt bájt-szintű
       kódjához
-</content>
+
+13. **Külön MSB/LSB bank-kezelés + GM2 hangszerlista** - felvetve
+    2026-09-05, KÜLÖN körben megvalósítandó.
+
+    **A probléma**: a program egyetlen számként tárolja a bankot, és
+    mindig `MSB = 0 / LSB = bank` formában küldi ki
+    (`MidiEngine.ProgramValtas`). Ez pontosan megfelel az XG
+    dallamhangszereinek (ahol az MSB a kategória, 0 = dallam, és a
+    variáció az LSB-ben van) és a SoundFontokból importált bankoknak -
+    DE nem tudja megszólaltatni:
+    - a **Roland GS** variációkat: ott a variáció az **MSB**-ben van
+      (jellemző értékek 1, 2, 3, 8, 9, 16, 24), az LSB a hangkészlet-
+      térképet (SC-55 / SC-88 / SC-88Pro) jelöli;
+    - a **GM2** hangokat: ott `MSB = 121` a dallamhangszereknél és
+      `MSB = 120` a doboknál, a variáció pedig az LSB-ben van.
+
+    **FONTOS pontosítás** (2026-09-05-i utánanézés alapján): egy korábbi
+    magyarázatban fordítva szerepelt, hogy melyik szabvány melyik bájtot
+    használja. A helyes állás a fenti. Forrás: MIDI.org fórum és a
+    General MIDI Level 2 leírása.
+
+    **Következmények, amíg ez nincs megoldva**:
+    - A `MidiFajlOlvaso` "amelyik bank-bájt nem nulla, az a bank"
+      szabálya GS fájloknál félremehet, ha a fájl az LSB-be is ír
+      térkép-számot (MSB=8, LSB=1 esetén az LSB nyerne, pedig a 8 lenne
+      a helyes).
+    - GM2 vagy GS hanglistát nincs értelme betölteni, mert a NEVEK
+      ugyan megjelennének, de a program a hangszereket nem tudná
+      ténylegesen kiküldeni.
+
+    **A megoldás iránya**: a bank tárolása MSB és LSB szerint KÜLÖN (a
+    mostani egyetlen szám helyett), ami érinti a `MidiEngine`-t
+    (`ProgramValtas`), a preset-formátumot (`CsatornaBeallitas.Hangszer`),
+    a hangszerlista-fájlformátumot (`bank.program=Név` helyett
+    `msb.lsb.program=Név`), a `HangszerPanel`-t és a `MidiFajlOlvaso`-t
+    is. Ezután lenne értelme egy **GM2 hangszerlistának** is: az az
+    egyetlen a három közül (GM2 / GS / XG), ami valódi, nyílt MMA
+    szabvány (1999), 256 hangszerrel - a GS és az XG gyártói
+    kiterjesztés, és mindkettő modulfüggő (SC-55/SC-88/SC-88Pro,
+    illetve MU50/MU80/MU100/MU128).
