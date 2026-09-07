@@ -118,6 +118,17 @@ alatt. A régi, egyfájlos menüpont VÁLTOZATLANUL megmarad.
   jelzést mutat. A kulcs szerinti rendezés a bankokat értelmesen
   csoportosítja: elöl a sima GM hangszerek, utánuk az LSB-s bankok,
   majd MSB szerint a többi.
+- **A preset (`.json`) fájlok `Hangszer` kommentje is mutatja a bankot**,
+  ugyanazzal a rövid jelöléssel: `"Hangszer": 131096,  // Ukulele (B8.0)`.
+  A mező egy kombinált kulcs, amiből szabad szemmel nem látszik a bank -
+  egy SoundFontban pedig simán lehet ugyanaz a név a 0-ás és a 8-as
+  bankban is, és eddig a komment nem különböztette meg őket. A magát a
+  MEZŐT szándékosan nem alakítottuk szöveges (`"8.0.24"`) formára: az a
+  preset-beolvasó bővítését igényelné egy szám-és-szöveg kompatibilitási
+  réteggel, és ezt a formátumváltást akkor érdemes megtenni, ha amúgy is
+  hozzányúlunk a preset-formátumhoz.
+  A dallamhangszer- és a dobkészlet-ág egy közös `KommentNev()`
+  függvénybe került, hogy a jelölés ne tudjon a kettő között elcsúszni.
 
 ### Ellenőrzés
 

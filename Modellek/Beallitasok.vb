@@ -171,9 +171,25 @@ Namespace Modellek
             End While
         End Sub
 
-        ''' <summary>Egy patch index alapján visszaadja a hangszer nevét a jelenleg aktív (dallamhangszer-)listából</summary>
-        Private Shared Function HangszerNev(index As Integer) As String
-            Return HangszerLista.Nev(index, "Ismeretlen hangszer")
+        ''' <summary>
+        ''' A JSON-kommentbe kerülő hangszernév: a név + a bank RÖVID jelölése
+        ''' (ugyanaz, mint a hangszer-legördülőben - lásd
+        ''' Modellek\Hangszerkulcs.vb).
+        '''
+        ''' MIÉRT KELL A BANK IS? A "Hangszer" mező egy kombinált kulcs, amiből
+        ''' szabad szemmel nem látszik a bank. Egy SoundFontban simán lehet
+        ''' ugyanaz a név a 0-ás és a 8-as bankban is - a puszta név ilyenkor
+        ''' nem különbözteti meg őket, és a preset fájlt olvasva nem derülne
+        ''' ki, melyikről van szó.
+        ''' </summary>
+        Private Shared Function KommentNev(kulcs As Integer, dobCsatorna As Boolean) As String
+            Dim nev As String
+            If dobCsatorna Then
+                nev = HangszerLista.DobNev(kulcs, "Ismeretlen dobkészlet")
+            Else
+                nev = HangszerLista.Nev(kulcs, "Ismeretlen hangszer")
+            End If
+            Return nev & Hangszerkulcs.BankJeloles(kulcs)
         End Function
 
         Private Shared Function KommentekHozzaadasa(json As String) As String
@@ -183,10 +199,10 @@ Namespace Modellek
             ' számolva) tudjuk, melyik csatornáról van szó. A 10. csatorna
             ' (index 9) DOB-csatorna: a hozzá tartozó "Hangszer" érték nem
             ' hagyományos hangszer-patchet, hanem dobkészlet-variációt jelöl,
-            ' ezért a kommentnek a dallamhangszer-lista (HangszerNev) helyett
-            ' a dedikált dobkészlet-listából (HangszerLista.DobNev) kell
-            ' neveznie - korábban ez a megkülönböztetés hiányzott, és a 10.
-            ' csatorna Hangszer-értékére is a dallamhangszer-nevet írta ki.
+            ' ezért a kommentnek a dallamhangszer-lista helyett a dedikált
+            ' dobkészlet-listából (HangszerLista.DobNev) kell neveznie -
+            ' korábban ez a megkülönböztetés hiányzott, és a 10. csatorna
+            ' Hangszer-értékére is a dallamhangszer-nevet írta ki.
             Dim csatornaSorszamHangszernel As Integer = 0
             Dim hangszerMinta As New Regex("(""Hangszer"":\s*)(-?\d+)(,?)")
             Dim jsonKommentekkel As String = hangszerMinta.Replace(json,
@@ -194,12 +210,7 @@ Namespace Modellek
             Dim idx As Integer = 0
             Integer.TryParse(m.Groups(2).Value, idx)
             csatornaSorszamHangszernel += 1
-            Dim nev As String
-            If csatornaSorszamHangszernel = 10 Then
-                nev = HangszerLista.DobNev(idx, "Ismeretlen dobkészlet")
-            Else
-                nev = HangszerNev(idx)
-            End If
+            Dim nev As String = KommentNev(idx, csatornaSorszamHangszernel = 10)
             Return m.Groups(1).Value & m.Groups(2).Value & m.Groups(3).Value & "  // " & nev
         End Function)
 
