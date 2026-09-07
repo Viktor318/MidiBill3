@@ -113,10 +113,9 @@ Namespace Modellek
 
         ''' <summary>
         ''' Betölti a hangszerlistát egy "index=Hangszernév" formátumú
-        ''' szöveges fájlból (pl. Adatok/GM.lst). Két index-formátumot
-        ''' ismer fel: sima "program" (bank=0, visszamenőleg kompatibilis a
-        ''' régi listákkal) és "bank.program" (Roland GS/Yamaha XG-stílusú
-        ''' Bank Select-tel elérhető hangszerekhez). Sikertelen betöltés
+        ''' szöveges fájlból (pl. Adatok/GM.lst). Három index-formátumot
+        ''' ismer fel - "program", "lsb.program" és "msb.lsb.program" -,
+        ''' a részleteket lásd az IndexReszFeldolgozasa-nál. Sikertelen betöltés
         ''' (hiányzó/sérült/üres fájl) esetén a JELENLEG AKTÍV lista
         ''' VÁLTOZATLANUL megmarad (nem áll vissza a beépített GM-listára) -
         ''' a hívó felelőssége eldönteni, mit tegyen a sikertelenség esetén
@@ -152,6 +151,14 @@ Namespace Modellek
                     Dim tisztaSor As String = sor.Trim()
                     If tisztaSor.Length = 0 Then Continue For
 
+                    ' MEGJEGYZÉS-SOR: a "#"-tel kezdődő sorokat átugorjuk.
+                    ' Eddig csak az mentette meg őket, hogy nem volt bennük
+                    ' "=" - egy olyan megjegyzés viszont, ami történetesen
+                    ' tartalmaz egyenlőségjelet (pl. "# MSB = 121"), bejegyzésnek
+                    ' látszott. Így a listafájlok tetejére nyugodtan írható
+                    ' magyarázat.
+                    If tisztaSor.StartsWith("#", StringComparison.Ordinal) Then Continue For
+
                     Dim elvalaszto As Integer = tisztaSor.IndexOf("="c)
                     If elvalaszto <= 0 Then Continue For
 
@@ -175,52 +182,74 @@ Namespace Modellek
 
         ''' <summary>
         ''' Egy .lst sor bal oldalát (az "=" előtti részt) alakítja kombinált
-        ''' kulccsá. Két formátumot ismer fel:
-        ''' - "program" (pl. "40") -> bank=0, kulcs=program (visszamenőleg
-        '''   kompatibilis a régi, sima GM .lst fájlokkal)
-        ''' - "bank.program" (pl. "8.0") -> kulcs = bank*128+program
+        ''' kulccsá. HÁROM formátumot ismer fel:
+        '''
+        ''' - "program" (pl. "40") -> nincs bank; visszamenőleg kompatibilis
+        '''   a régi, sima GM .lst fájlokkal;
+        ''' - "lsb.program" (pl. "8.0") -> a szám a Bank Select LSB.
+        '''   SZÁNDÉKOSAN maradt LSB: a régi fájlok jelentése így NEM változik
+        '''   meg csendben. (A SoundFontból importált listákban ez volt a
+        '''   bankszám - lásd a 13. pont tervét arról, miért kell azokat
+        '''   egyszer újragenerálni.)
+        ''' - "msb.lsb.program" (pl. "121.1.48") -> mindkét bank-bájt, ez az
+        '''   EGYÉRTELMŰ alak. A Roland GS variációk (MSB), a General MIDI 2
+        '''   hangok (MSB = 121/120) és a Yamaha XG variációk (LSB) csak így
+        '''   írhatók le pontosan.
+        '''
+        ''' Minden szám 0-127 lehet: ami ezen kívül esik, azt ÉRVÉNYTELEN
+        ''' sornak tekintjük és kihagyjuk. Korábban nem volt tartomány-
+        ''' ellenőrzés, és egy hibás sor (pl. "200.24") érvénytelen MIDI
+        ''' adatbájtot eredményezett volna a kiküldésnél.
         ''' </summary>
         Private Function IndexReszFeldolgozasa(indexResz As String, ByRef kombinaltKulcs As Integer) As Boolean
-            Dim pontPoz As Integer = indexResz.IndexOf("."c)
+            Dim reszek As String() = indexResz.Split("."c)
+            If reszek.Length < 1 OrElse reszek.Length > 3 Then Return False
 
-            If pontPoz < 0 Then
-                Dim program As Integer
-                If Integer.TryParse(indexResz, program) Then
-                    kombinaltKulcs = program
-                    Return True
-                End If
-                Return False
-            Else
-                Dim bankResz As String = indexResz.Substring(0, pontPoz).Trim()
-                Dim programResz As String = indexResz.Substring(pontPoz + 1).Trim()
-                Dim bank As Integer
-                Dim program As Integer
-                If Integer.TryParse(bankResz, bank) AndAlso Integer.TryParse(programResz, program) Then
-                    kombinaltKulcs = bank * 128 + program
-                    Return True
-                End If
-                Return False
-            End If
+            ' Jobbról balra töltjük fel: az UTOLSÓ tag mindig a programszám,
+            ' az előtte lévő az LSB, az az előtti az MSB.
+            Dim ertekek As Integer() = {0, 0, 0}   ' {MSB, LSB, program}
+            For i As Integer = 0 To reszek.Length - 1
+                Dim ertek As Integer
+                If Not Integer.TryParse(reszek(reszek.Length - 1 - i).Trim(), ertek) Then Return False
+                If ertek < 0 OrElse ertek > Hangszerkulcs.MAX_ADATBAJT Then Return False
+                ertekek(2 - i) = ertek
+            Next
+
+            kombinaltKulcs = Hangszerkulcs.Kulcs(ertekek(0), ertekek(1), ertekek(2))
+            Return True
         End Function
 
         ''' <summary>
         ''' Egy hangszerlistát (index=Név párok) elment egy .lst fájlba -
-        ''' ugyanabban a formátumban, amit a Betolt() beolvas. Bank=0
-        ''' kulcsoknál egyszerű "program=Név" sort ír (olvashatóbb,
-        ''' visszamenőleg kompatibilis), bank≠0-nál "bank.program=Név"
-        ''' formát. A SoundFont-importálás használja, hogy a beolvasott
+        ''' ugyanabban a formátumban, amit a Betolt() beolvas. Mindig a
+        ''' LEGRÖVIDEBB alakot írja, ami hibátlanul visszaolvasható (lásd
+        ''' IndexSzoveg) - így egy sima GM lista ugyanolyan olvasható marad,
+        ''' mint eddig. A SoundFont-importálás használja, hogy a beolvasott
         ''' presetekből ténylegesen .lst fájlt hozzon létre.
         ''' </summary>
         Public Sub Ment(fajlUtvonal As String, nevek As Dictionary(Of Integer, String))
             Dim sorok As New List(Of String)
             For Each kulcs As Integer In nevek.Keys.OrderBy(Function(k) k)
-                Dim bank As Integer = kulcs \ 128
-                Dim program As Integer = kulcs Mod 128
-                Dim indexSzoveg As String = If(bank = 0, program.ToString(), bank & "." & program)
-                sorok.Add(indexSzoveg & "=" & nevek(kulcs))
+                sorok.Add(IndexSzoveg(kulcs) & "=" & nevek(kulcs))
             Next
             IO.File.WriteAllLines(fajlUtvonal, sorok)
         End Sub
+
+        ''' <summary>
+        ''' Egy kulcs .lst-beli, szöveges alakja - a lehető legrövidebben:
+        ''' "program", ha nincs bank; "lsb.program", ha csak LSB van;
+        ''' "msb.lsb.program", ha MSB is. Az IndexReszFeldolgozasa PÁRJA:
+        ''' amit ez ír, azt annak vissza kell tudnia olvasni.
+        ''' </summary>
+        Private Function IndexSzoveg(kulcs As Integer) As String
+            Dim msb As Integer = Hangszerkulcs.BankMsb(kulcs)
+            Dim lsb As Integer = Hangszerkulcs.BankLsb(kulcs)
+            Dim program As Integer = Hangszerkulcs.ProgramSzam(kulcs)
+
+            If msb <> 0 Then Return msb & "." & lsb & "." & program
+            If lsb <> 0 Then Return lsb & "." & program
+            Return program.ToString()
+        End Function
 
     End Module
 

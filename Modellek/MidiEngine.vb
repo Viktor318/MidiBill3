@@ -477,22 +477,26 @@ Namespace Modellek
 
         ''' <summary>
         ''' Hangszerváltás küldése egy csatornára. A kombinaltKulcs egy Bank
-        ''' Select-tel kombinált patch-szám (bank*128+program) - ugyanígy
-        ''' tárolja a HangszerLista/HangszerPanel is. MINDIG elküldi a teljes
-        ''' Bank Select párost (CC0 MSB=0, CC32 LSB=bank) a Program Change
-        ''' előtt, még sima GM (bank=0) hangszernél is - egyszerű, konzisztens
+        ''' Select-tel kombinált patch-szám - a felépítését lásd
+        ''' Modellek\Hangszerkulcs.vb -, ugyanígy tárolja a
+        ''' HangszerLista/HangszerPanel is. MINDIG elküldi a teljes Bank
+        ''' Select párost (CC0 = MSB, CC32 = LSB) a Program Change előtt, még
+        ''' sima GM hangszernél is (ahol mindkettő 0) - egyszerű, konzisztens
         ''' kód, és ez teszi lehetővé a General MIDI-n túli, Bank Select-tel
-        ''' elérhető hangszerek (Roland GS, Yamaha XG, egyedi SoundFont-bankok)
-        ''' használatát.
+        ''' elérhető hangszerek (Roland GS, Yamaha XG, General MIDI 2, egyedi
+        ''' SoundFont-bankok) használatát.
         ''' </summary>
         Public Sub ProgramValtas(csatornaSzam As Integer, kombinaltKulcs As Integer)
             Dim csatornaIndex As Integer = csatornaSzam - 1
-            Dim bank As Integer = kombinaltKulcs \ 128
-            Dim program As Integer = kombinaltKulcs Mod 128
 
-            KuldesEgyCsatornara(&HB0 + csatornaIndex, 0, 0)        ' Bank Select MSB (CC0) - mindig 0
-            KuldesEgyCsatornara(&HB0 + csatornaIndex, 32, bank)    ' Bank Select LSB (CC32) - a tényleges bankszám
-            KuldesEgyCsatornara(&HC0 + csatornaIndex, program, 0)  ' Program Change
+            ' A kulcs szétbontása egy helyen történik - lásd Modellek\Hangszerkulcs.vb.
+            Dim bankMsb As Integer = Hangszerkulcs.BankMsb(kombinaltKulcs)
+            Dim bankLsb As Integer = Hangszerkulcs.BankLsb(kombinaltKulcs)
+            Dim program As Integer = Hangszerkulcs.ProgramSzam(kombinaltKulcs)
+
+            KuldesEgyCsatornara(&HB0 + csatornaIndex, 0, bankMsb)   ' Bank Select MSB (CC0)
+            KuldesEgyCsatornara(&HB0 + csatornaIndex, 32, bankLsb)  ' Bank Select LSB (CC32)
+            KuldesEgyCsatornara(&HC0 + csatornaIndex, program, 0)   ' Program Change
         End Sub
 
         Public Sub ControllerValtas(csatornaSzam As Integer, controllerSzam As Integer, ertek As Integer)

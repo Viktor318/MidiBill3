@@ -10,6 +10,139 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.17.0] - 2026-09-07
+
+### Javítva - a Bank Select MSB és LSB külön kezelése
+
+**Ez hibajavítás, nem bővítés**: a program eddig EGYETLEN számként
+tárolta a bankot, és mindig `MSB = 0 / LSB = bank` alakban küldte ki.
+A felhasználó lejátszója (BASSMIDI-alapú VirtualMIDISynth) viszont - a
+FluidSynth alapértelmezett `gs` módjához hasonlóan - a **CC0-t (MSB)**
+tekinti a SoundFont bankjának, a CC32-t pedig figyelmen kívül hagyja.
+Emiatt a programban **egyetlen nem nulla bankú hangszer sem szólalt
+meg**: az "Ukulele (B8)" kiválasztva is nylon gitár hangzott.
+
+Ezt nem feltételezésre, hanem MÉRÉSRE alapoztuk: az új
+`Tesztek/bank_select_teszt.mid` ugyanazt a programszámot négy szakaszban
+szólaltatja meg (bank nélkül, `CC0=8`, `CC32=8`, majd újra bank nélkül),
+így egyetlen meghallgatásból kiderül, melyik bájtot veszi figyelembe egy
+adott lejátszó. A bank és a program a `bank_select_teszt.py` tetején
+átírható.
+
+- **Új `Modellek/Hangszerkulcs.vb`**: a hangszer-azonosító kulcs
+  kezelése EGY helyen. A kulcs mostantól
+  `MSB * 16384 + LSB * 128 + programszám`.
+
+  **A meglévő fájlok migrálás nélkül érvényesek maradnak**: a korábbi
+  képlet `bank * 128 + program` volt, ahol a "bank" a Bank Select LSB-t
+  jelentette - a fenti képletbe `MSB = 0`-t behelyettesítve PONTOSAN
+  ugyanaz a szám jön ki. Ezt a `Tesztek/hangszerkulcs_ellenorzes.py`
+  KIMERÍTŐEN (mind a 16 384 régi kulcsra) ellenőrzi, mert az egész
+  átállás ezen az azonosságon nyugszik.
+- **A `.lst` formátum bővült a háromtagú `msb.lsb.program` alakkal.**
+  A régi kéttagú `bank.program` SZÁNDÉKOSAN továbbra is LSB-t jelent,
+  hogy a meglévő fájlok jelentése ne változzon meg csendben. A `Ment()`
+  mindig a legrövidebb visszaolvasható alakot írja, tehát egy sima GM
+  lista ugyanúgy néz ki, mint eddig. Bekerült a **tartomány-ellenőrzés**
+  is (0-127): egy hibás sor korábban érvénytelen MIDI adatbájtot
+  eredményezett volna.
+- **Megjegyzés-sorok a `.lst` fájlokban**: a `#`-tel kezdődő sorokat a
+  beolvasó átugorja. Eddig csak a véletlen mentette meg őket - egy
+  egyenlőségjelet tartalmazó megjegyzés bejegyzésnek látszott.
+- **A `MidiEngine.ProgramValtas` és a `CsatornaUzenetek`** a kulcs MSB
+  részét küldi a CC0-ba (eddig fix 0-t).
+- **A `MidiFajlOlvaso` MINDKÉT bank-bájtot megőrzi.** A korábbi "amelyik
+  nem nulla, az a bank" szabály épp a Roland GS tipikus alakjánál
+  hibázott (`MSB = 8, LSB = 1` esetén az LSB-t választotta volna). Ez
+  érinti a jelentést, a preset-készítőt és a felvevő névfeloldását is.
+- **A `SoundFontOlvaso`** a `.sf2` `wBank` mezőjét mostantól az
+  **MSB**-be teszi (`8.0.24` a régi `8.24` helyett). A dobkészletek
+  SZÁNDÉKOSAN bank nélkül maradnak: a 10. csatornát a lejátszók eleve
+  dobként kezelik, a 128-as bank nem is küldhető ki, a 120-as pedig egy
+  SoundFontban jellemzően nem létezik.
+
+  **A korábban importált `.lst` fájlokat egyszer újra kell generálni** -
+  a régi, kéttagú bejegyzések továbbra is LSB-t jelentenek. A meglévő
+  presetek NEM igényelnek migrációt, mert mind a 0-ás bankot használják.
+- **Rejtett akna a preset-betöltésben**: a hangszerkulcsot
+  `Korlatoz(cs.Hangszer, 0, 16383)` szorította tartományba - ez a régi
+  képlet maximuma, ami CSENDBEN levágta volna az MSB-t tartalmazó
+  kulcsokat. Mostantól `Hangszerkulcs.MAX_KULCS` (2 097 151).
+
+### Hozzáadva - General MIDI Level 2 hangszerlista
+
+- **Új gyári `GM2.lst`**: a teljes GM2 hangkészlet, **256 hang** - 128
+  alapváltozat (LSB 0) és 128 variáció -, `121.<lsb>.<program>` alakban.
+  Forrás: a General MIDI Level 2 leírása; a 256-os végösszeg és a
+  "minden programszám pontosan egyszer szerepel LSB 0-val" ellenőrzés
+  igazolja, hogy az átírás sem kihagyott, sem duplikált semmit.
+- **Új gyári `GM2.drm`**: a kilenc szabványos dobkészlet
+  `120.0.<program>` alakban.
+- Mindkét fájl bekerült az `Utvonalak` GYÁRI listái közé (enélkül a
+  program az "SF adatok" mappában kereste volna őket), és a `.vbproj`
+  publish-másoló targetjébe is - különben a publish mappából hiányoznának,
+  ugyanaz a hiba, amit az 1.13.0-ban a `GM.lst`-tel javítottunk.
+- A `Tesztek/gm2_lista.py` állítja elő a két fájlt, ellenőrzésekkel
+  együtt - ha a lista valaha bővül, ezt kell futtatni.
+
+### Hozzáadva - "Több SoundFont importálása" menüpont
+
+Új menüpont a Fájl menüben, a meglévő "SoundFont adatok importálása"
+alatt. A régi, egyfájlos menüpont VÁLTOZATLANUL megmarad.
+
+- Egyszerre több `.sf2` fájlból generál listát, felülírásra NEM kérdez
+  rá, és a végén egy összegzést mutat: hány lista készült újonnan és
+  hány cserélődött le (a `.lst` és a `.drm` külön tételként).
+- A végén SZÁNDÉKOSAN nem tölt be listát: több fájlnál önkényes lenne
+  választani, a betöltés viszont a csatornák hangszereit az első elemre
+  állíthatná.
+- Egy hibás fájl nem állítja meg a köteget - kimarad, és az összegzés
+  végén megjelenik, melyik és miért (legfeljebb 15 tétel felsorolva).
+- KIVÉTEL: ha a köteg érinti az ÉPPEN BETÖLTÖTT listát, azt az egyet
+  újratölti - különben a lemezen lévő és a memóriában lévő változat
+  csendben elcsúszna egymástól.
+
+### Változtatva - a jelentés hangszín-sorai
+
+- A számok kiírása FOKOZATOS: `(program 24)`, ha nincs bank;
+  `(bank 8, program 24)`, ha csak LSB van; `(MSB 8, LSB 0, program 24)`,
+  ha MSB is. Egy sima GM hangszernél a bank-bájtok kiírása csak zaj
+  lenne, egy MSB-s hangszernél viszont a puszta "bank" szó félrevezető.
+- A "nincs a listában" visszaesés KÉT lépcsős: pontos hármas -> MSB
+  nélkül (a variáció megmarad) -> puszta programszám. A szöveg
+  megmondja, melyik lépcsőn talált. Az "MSB nélkül" lépcső csak akkor
+  fut, ha LSB is van - különben azonos lenne a GM-visszaeséssel, és a
+  felirat félrevezetne. Ugyanez a lánc került a felvevő
+  névfeloldásába is.
+- A hangszer-legördülő bankos hangszereknél `(B8)`, illetve `(B121.1)`
+  jelzést mutat. A kulcs szerinti rendezés a bankokat értelmesen
+  csoportosítja: elöl a sima GM hangszerek, utánuk az LSB-s bankok,
+  majd MSB szerint a többi.
+
+### Ellenőrzés
+
+- **Új `Tesztek/hangszerkulcs_ellenorzes.py`**: a kulcs-számítás és a
+  `.lst` index-formátum hű Python-portja. Ellenőrzi a visszamenőleges
+  kompatibilitást (kimerítően), az oda-vissza alakítást, a kulcsok
+  egyediségét, a felső határt, a bank-jelölést, a régi és az új `.lst`
+  alakok jelentését, kilenc érvénytelen sor elutasítását, a
+  megjegyzés-sorok kiszűrését és a SoundFont-import MSB-s címzését.
+- A `midi_olvaso_ellenorzes.py` frissítve: a "mindkét bank-bájt nem
+  nulla" tesztesetnek MÁS a várt eredménye (mindkettő megőrződik), és
+  külön állítás mondja ki, hogy az MSB-s bank NEM eshet egybe az LSB-s
+  bankkal.
+- A valódi `GM.lst` és `GM.drm` fájlt a régi ÉS az új elemzővel is
+  lefuttattuk: bájtra ugyanaz a 128, illetve 9 bejegyzés.
+
+### Javítva - dokumentáció
+
+- A `midi_olvaso_ellenorzes.py` fejlécében és kommentjeiben **fel volt
+  cserélve a GS és az XG** (a GS-nél az MSB, az XG-nél és a GM2-nél az
+  LSB hordozza a variációt). Ugyanez a tévedés a CHANGELOG 1.15.0-s
+  szakaszában is szerepel a preset-készítő leírásánál - az a bejegyzés
+  már kiadott verzióhoz tartozik, ezért ott nem írtuk át, de a
+  viselkedés mindkét esetben helyes volt, csak a címke rossz.
+
 ## [1.16.0] - 2026-09-06
 
 ### Változtatva - a felvett .mid szerkezete (csatornánként külön track)

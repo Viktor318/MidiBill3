@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows7.0</TargetFramework>
-	<Version>1.16.0</Version>
+	<Version>1.17.0</Version>
 	<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <StartupObject>MidiBill3.My.MyApplication</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
@@ -61,6 +61,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
+    <None Include="GM2.lst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="GM2.drm">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 
 <ItemGroup>
@@ -76,19 +84,21 @@
     "olvasztja össze" - ezt a lépést a build a bin\...\<RID>\ köztes
     mappában készíti elő, a TÉNYLEGES publish-kimenet pedig a
     bin\...\publish\<RID>\ mappában landol, VÉGLEGESEN CSAK az összeolvasztott
-    .exe-vel (+ .pdb-vel). A GM.lst/GM.drm nem "olvasztható bele" az exe-be
+    .exe-vel (+ .pdb-vel). A gyári listafájlok nem "olvaszthatók bele" az exe-be
     (nem .NET assembly), és ilyenkor a fenti CopyToPublishDirectory
     metaadat ellenére sem kerülnek át automatikusan ebbe a végső publish
     mappába - ez egy ismert SDK-sajátosság single-file publish esetén.
     Az alábbi Target ezért a Publish célfeladat UTÁN, FELTÉTEL NÉLKÜL,
-    közvetlenül a $(PublishDir)-be másolja mindkét fájlt - ez minden
+    közvetlenül a $(PublishDir)-be másolja MINDEGYIKET - ez minden
     publish-módnál (sima Folder, self-contained, single-file, ClickOnce)
     egyaránt megbízhatóan működik, függetlenül attól, hogyan bánik az SDK
     éppen a "None"/CopyToPublishDirectory elemekkel.
   -->
   <Target Name="GyariAdatokMasolasaPublishUtan" AfterTargets="Publish">
     <ItemGroup>
-      <GyariAdatFajlok Include="$(MSBuildProjectDirectory)\GM.lst;$(MSBuildProjectDirectory)\GM.drm" />
+      <!-- FONTOS: ha új gyári listafájl kerül a projektbe, IDE IS fel kell venni,
+           különben a publish mappából hiányozni fog. -->
+      <GyariAdatFajlok Include="$(MSBuildProjectDirectory)\GM.lst;$(MSBuildProjectDirectory)\GM.drm;$(MSBuildProjectDirectory)\GM2.lst;$(MSBuildProjectDirectory)\GM2.drm" />
     </ItemGroup>
     <Copy SourceFiles="@(GyariAdatFajlok)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
   </Target>

@@ -1,0 +1,12 @@
+# General MIDI Level 2 dobkeszletek a 10. csatornara
+# Cimzes: Bank Select MSB 120, LSB 0, majd Program Change.
+
+120.0.0=Standard Kit
+120.0.8=Room Kit
+120.0.16=Power Kit
+120.0.24=Electronic Kit
+120.0.25=Analog Kit
+120.0.32=Jazz Kit
+120.0.40=Brush Kit
+120.0.48=Orchestra Kit
+120.0.56=SFX Kit

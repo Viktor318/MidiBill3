@@ -19,6 +19,7 @@ Public Class MainForm
     Private utolsoImportMappa As String = ""
     Private utolsoHangszerlistaMappa As String = ""
     Private utolsoSoundFontMappa As String = ""
+    Private utolsoTobbSoundFontMappa As String = ""
     Private utolsoPresetKonvertalasMappa As String = ""
     Private utolsoMb3KonvertalasMappa As String = ""
     Private utolsoMidiFajlModositasMappa As String = ""
@@ -982,7 +983,11 @@ Public Class MainForm
 
             Dim cs As CsatornaBeallitas = b.Csatornak(i)
 
-            Dim ujHangszer As Integer = Korlatoz(cs.Hangszer, 0, 16383)
+            ' A felső határ a kombinált hangszerkulcs legnagyobb értéke -
+            ' lásd Modellek\Hangszerkulcs.vb. FONTOS: korábban 16383 volt (a
+            ' bank*128+program képlet maximuma), ami levágta volna a Bank
+            ' Select MSB-t tartalmazó kulcsokat.
+            Dim ujHangszer As Integer = Korlatoz(cs.Hangszer, 0, Hangszerkulcs.MAX_KULCS)
             Dim ujHangero As Integer = Korlatoz(cs.Hangero, 0, 127)
             Dim ujTer As Integer = Korlatoz(cs.Ter, -64, 63)
             Dim ujVibrato As Integer = Korlatoz(cs.Vibrato, 0, 127)
@@ -1163,7 +1168,13 @@ Public Class MainForm
             Case &HB0
                 Return "CC" & adat1 & " " & adat2
             Case &HC0
-                Return "PC " & HangszerLista.Nev(adat1)
+                ' A Program Change üzenet ÖNMAGÁBAN nem hordozza a bankot - az
+                ' egy külön, korábbi Bank Select üzenetben érkezik. Ez a
+                ' kijelzés a nyers forgalmat mutatja, üzenetenként, csatorna-
+                ' állapot nyilvántartása nélkül, ezért itt a BANK NÉLKÜLI
+                ' (0/0) értelmezés szerinti nevet írjuk ki. Bankos hangszernél
+                ' ez közelítés - a pontos név a hangszerpanelen látszik.
+                Return "PC " & HangszerLista.Nev(Hangszerkulcs.Kulcs(0, 0, adat1))
             Case &HD0
                 Return "ChanPress " & adat1
             Case &HE0
@@ -1409,6 +1420,146 @@ Public Class MainForm
 
             DialogusAllapotMentese(dlgSoundFont, sf2Utvonal, utolsoSoundFontMappa)
         End If
+    End Sub
+    ''' <summary>
+    ''' "Több SoundFont importálása": KÖTEGELT változata a fenti menüpontnak.
+    ''' Egyszerre több .sf2 fájlból generál hangszerlistát, és a végén EGY
+    ''' összegzést mutat.
+    '''
+    ''' Miben tér el az egyfájlos változattól (a felhasználóval egyeztetve)?
+    ''' - A felülírásra NEM kérdez rá: a köteg lényege, hogy egy lépésben
+    '''   frissüljön minden lista. Az összegzés megmondja, mennyi készült
+    '''   újonnan és mennyi cserélődött le.
+    ''' - A végén NEM tölt be egyetlen listát sem. Több fájlnál önkényes
+    '''   lenne választani, a betöltés viszont a csatornák hangszereit az
+    '''   első elemre állíthatná - a listát utána a "Hangszerlista betöltése"
+    '''   menüpontból veszed elő.
+    ''' - Egy hibás fájl NEM állítja meg a köteget: kimarad, és az összegzés
+    '''   végén megjelenik, melyik és miért.
+    ''' </summary>
+    Private Sub mnuTobbSoundFontImportalasa_Click(sender As Object, e As EventArgs) Handles mnuTobbSoundFontImportalasa.Click
+        DialogusMappaBeallitasa(dlgTobbSoundFont, utolsoTobbSoundFontMappa, Utvonalak.SfAdatokMappa)
+        If dlgTobbSoundFont.ShowDialog() <> DialogResult.OK Then Return
+
+        Dim fajlok As String() = dlgTobbSoundFont.FileNames
+        Dim letrehozva As Integer = 0
+        Dim lecserelve As Integer = 0
+        Dim kihagyottak As New List(Of String)
+
+        ' Ha a KÖZBEN ÉPPEN AKTÍV lista fájlja is felülíródik, a memóriában
+        ' lévő példány elavulna - ezt a végén újratöltjük.
+        Dim aktivListaFrissult As Boolean = False
+
+        For Each sf2Utvonal As String In fajlok
+            Dim sf2Nev As String = IO.Path.GetFileName(sf2Utvonal)
+            Dim alapNev As String = IO.Path.GetFileNameWithoutExtension(sf2Utvonal)
+            Dim ujLstNev As String = alapNev & ".lst"
+            Dim ujDrmNev As String = alapNev & ".drm"
+
+            ' Egy "GM.sf2" nevű SoundFont a gyári GM.lst-tel ütközne - ezt a
+            ' fájlt kihagyjuk, de a köteg megy tovább.
+            If Utvonalak.GyariListaE(ujLstNev) OrElse Utvonalak.GyariListaE(ujDrmNev) Then
+                kihagyottak.Add(sf2Nev & " - a neve a program gyári listájával ütközne")
+                Continue For
+            End If
+
+            Try
+                Dim eredmeny As (Nevek As Dictionary(Of Integer, String), Dobok As Dictionary(Of Integer, String), Kihagyottak As List(Of String)) =
+                    SoundFontOlvaso.Beolvas(sf2Utvonal)
+
+                If eredmeny.Nevek.Count = 0 AndAlso eredmeny.Dobok.Count = 0 Then
+                    kihagyottak.Add(sf2Nev & " - nincs benne felhasználható preset")
+                    Continue For
+                End If
+
+                If eredmeny.Nevek.Count > 0 Then
+                    ListaMentesSzamlaloval(ujLstNev, eredmeny.Nevek, letrehozva, lecserelve, aktivListaFrissult)
+                End If
+                If eredmeny.Dobok.Count > 0 Then
+                    ListaMentesSzamlaloval(ujDrmNev, eredmeny.Dobok, letrehozva, lecserelve, aktivListaFrissult)
+                End If
+
+            Catch ex As Exception
+                kihagyottak.Add(sf2Nev & " - " & ex.Message)
+            End Try
+        Next
+
+        TobbSoundFontOsszegzese(fajlok.Length, letrehozva, lecserelve, kihagyottak)
+
+        ' Az aktív lista újratöltése CSAK akkor, ha a fájlja tényleg cserélődött -
+        ' egyébként a memóriában lévő és a lemezen lévő változat elcsúszna.
+        If aktivListaFrissult AndAlso HangszerListaAlkalmazasa(aktualisHangszerListaFajl) Then
+            Dim korrigalva As Boolean = HangszerekErvenyesitese()
+            CsatornaPanelekFrissitese()
+            OsszesCsatornaUjrakuldese()
+            If korrigalva Then
+                MsgBox("Az éppen használt """ & aktualisHangszerListaFajl & """ lista is frissült, és egy vagy több" & vbCrLf &
+                       "csatorna olyan hangszert használt, ami már nem szerepel benne." & vbCrLf &
+                       "Ezek automatikusan az első elérhető hangszerre álltak.",
+                       MsgBoxStyle.Exclamation, "MidiBill")
+            End If
+        End If
+
+        If fajlok.Length > 0 Then
+            DialogusAllapotMentese(dlgTobbSoundFont, fajlok(0), utolsoTobbSoundFontMappa)
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Egy generált listát ment az "SF adatok" mappába, és számolja, hogy ÚJ
+    ''' fájl keletkezett-e vagy meglévőt cseréltünk le. Azt is jelzi, ha épp
+    ''' az AKTUÁLISAN BETÖLTÖTT lista fájlját írtuk felül.
+    ''' </summary>
+    Private Sub ListaMentesSzamlaloval(fajlNev As String, nevek As Dictionary(Of Integer, String),
+                                       ByRef letrehozva As Integer, ByRef lecserelve As Integer,
+                                       ByRef aktivListaFrissult As Boolean)
+        Dim utvonal As String = Utvonalak.HangszerListaIrasra(fajlNev)
+        Dim letezett As Boolean = IO.File.Exists(utvonal)
+
+        HangszerLista.Ment(utvonal, nevek)
+
+        If letezett Then
+            lecserelve += 1
+        Else
+            letrehozva += 1
+        End If
+
+        If String.Equals(fajlNev, aktualisHangszerListaFajl, StringComparison.OrdinalIgnoreCase) Then
+            aktivListaFrissult = True
+        End If
+    End Sub
+
+    ''' <summary>A kötegelt SoundFont-import záró összegzése.</summary>
+    Private Sub TobbSoundFontOsszegzese(fajlSzam As Integer, letrehozva As Integer, lecserelve As Integer,
+                                        kihagyottak As List(Of String))
+        Dim sb As New Text.StringBuilder()
+        sb.AppendLine(fajlSzam & " SoundFont fájl feldolgozva.")
+        sb.AppendLine()
+        sb.AppendLine("Létrehozva: " & letrehozva & " lista")
+        sb.AppendLine("Lecserélve: " & lecserelve & " lista")
+
+        If letrehozva + lecserelve > 0 Then
+            sb.AppendLine()
+            sb.AppendLine("A listák helye:")
+            sb.AppendLine(Utvonalak.SfAdatokMappa)
+        End If
+
+        If kihagyottak.Count > 0 Then
+            ' Hosszkorlát: egy nagy kötegnél a felsorolás kifuthatna a
+            ' képernyőből, és akkor a fenti számok se látszanának.
+            Const MAX_FELSOROLT As Integer = 15
+
+            sb.AppendLine()
+            sb.AppendLine("Kihagyva (" & kihagyottak.Count & "):")
+            For i As Integer = 0 To Math.Min(kihagyottak.Count, MAX_FELSOROLT) - 1
+                sb.AppendLine("  " & kihagyottak(i))
+            Next
+            If kihagyottak.Count > MAX_FELSOROLT Then
+                sb.AppendLine("  ... és még " & (kihagyottak.Count - MAX_FELSOROLT))
+            End If
+        End If
+
+        MsgBox(sb.ToString(), MsgBoxStyle.Information, "MidiBill - Több SoundFont importálása")
     End Sub
 
     ''' <summary>

@@ -278,41 +278,77 @@ Namespace Modellek
         End Function
 
         ''' <summary>
-        ''' Kombinált hangszer-kulcs (bank * 128 + program) olvasható alakban.
+        ''' Kombinált hangszer-kulcs olvasható alakban (a kulcs felépítését
+        ''' lásd Modellek\Hangszerkulcs.vb).
         '''
-        ''' Ha a pontos bank+program páros nincs a betöltött listában (tipikusan
-        ''' azért, mert a fájl nem nulla bankot használ, a GM.lst viszont csak a
-        ''' 0-ás bankot ismeri), akkor a puszta PROGRAMSZÁMRA esünk vissza, és a
-        ''' beépített General MIDI nevet mutatjuk - így nem marad üres kézzel a
-        ''' felhasználó, de látja, hogy ez már csak közelítés.
+        ''' Ha a pontos hármas (MSB + LSB + program) nincs a betöltött
+        ''' listában, KÉT lépcsőben esünk vissza - lásd VisszaeseskorNev -,
+        ''' hogy ne maradjon üres kézzel a felhasználó, de látszódjon, hogy
+        ''' ez már csak közelítés.
         ''' </summary>
         Private Function HangszerSzoveg(kombinaltKulcs As Integer, dobCsatorna As Boolean) As String
-            Dim bank As Integer = kombinaltKulcs \ 128
-            Dim program As Integer = kombinaltKulcs Mod 128
-            Dim szamok As String = "(bank " & bank & ", program " & program & ")"
+            Dim szamok As String = SzamokSzoveg(kombinaltKulcs)
 
-            Dim nev As String
-            If dobCsatorna Then
-                nev = HangszerLista.DobNev(kombinaltKulcs, "")
-            Else
-                nev = HangszerLista.Nev(kombinaltKulcs, "")
-            End If
-
+            Dim nev As String = ListabolNev(kombinaltKulcs, dobCsatorna)
             If nev.Length > 0 Then Return nev & " " & szamok
 
-            ' Nincs a listában - visszaesés a puszta programszámra.
-            Dim tartalekNev As String
-            If dobCsatorna Then
-                tartalekNev = HangszerLista.DobNev(program, "")
-            Else
-                tartalekNev = HangszerLista.Nev(program, "")
+            Return "nincs a listában " & szamok & VisszaeseskorNev(kombinaltKulcs, dobCsatorna)
+        End Function
+
+        ''' <summary>
+        ''' A kulcs számai olvasható alakban. SZÁNDÉKOSAN fokozatos: csak
+        ''' annyit ír ki, amennyi az adott hangszernél jelentést hordoz.
+        ''' Egy sima GM hangszernél a bank-bájtok kiírása csak zaj lenne, egy
+        ''' MSB-s hangszernél viszont a puszta "bank" szó félrevezető, mert
+        ''' nem mondja meg, MELYIK bájtról van szó.
+        ''' </summary>
+        Private Function SzamokSzoveg(kulcs As Integer) As String
+            Dim msb As Integer = Hangszerkulcs.BankMsb(kulcs)
+            Dim lsb As Integer = Hangszerkulcs.BankLsb(kulcs)
+            Dim program As Integer = Hangszerkulcs.ProgramSzam(kulcs)
+
+            If msb <> 0 Then Return "(MSB " & msb & ", LSB " & lsb & ", program " & program & ")"
+            If lsb <> 0 Then Return "(bank " & lsb & ", program " & program & ")"
+            Return "(program " & program & ")"
+        End Function
+
+        ''' <summary>
+        ''' Visszaesés, ha a pontos hármas nincs a listában. KÉT lépcső:
+        '''
+        ''' 1. Az MSB elhagyása (csak ha volt MSB ÉS LSB is): a variáció
+        '''    száma megmarad, és
+        '''    ez gyakran talál - egy Roland GS fájl "MSB 8" variációja
+        '''    például ráeshet a lista "8"-as bankjára.
+        ''' 2. A puszta PROGRAMSZÁM: ez a sima General MIDI hangszer, ami
+        '''    minden listában megvan.
+        '''
+        ''' A visszaadott szöveg MEGMONDJA, melyik lépcsőn talált - így a
+        ''' felhasználó tudja, mennyire közelítés, amit lát.
+        ''' </summary>
+        Private Function VisszaeseskorNev(kulcs As Integer, dobCsatorna As Boolean) As String
+            Dim msb As Integer = Hangszerkulcs.BankMsb(kulcs)
+            Dim lsb As Integer = Hangszerkulcs.BankLsb(kulcs)
+            Dim program As Integer = Hangszerkulcs.ProgramSzam(kulcs)
+
+            ' Az LSB-t is meg kell nézni: ha az nulla, akkor az "MSB nélkül"
+            ' lépcső ugyanaz lenne, mint a GM-visszaesés - a felirat pedig
+            ' félrevezetne, mert azt sugallná, hogy egy bankos hangszert
+            ' találtunk.
+            If msb <> 0 AndAlso lsb <> 0 Then
+                Dim msbNelkul As String = ListabolNev(Hangszerkulcs.Kulcs(0, lsb, program), dobCsatorna)
+                If msbNelkul.Length > 0 Then Return " - MSB nélkül: " & msbNelkul
             End If
 
-            If tartalekNev.Length > 0 Then
-                Return "nincs a listában " & szamok & " - GM: " & tartalekNev
-            End If
+            Dim gmNev As String = ListabolNev(Hangszerkulcs.Kulcs(0, 0, program), dobCsatorna)
+            If gmNev.Length > 0 Then Return " - GM: " & gmNev
 
-            Return "nincs a listában " & szamok
+            Return ""
+        End Function
+
+        ''' <summary>Név a megfelelő listából: a 10. csatornán a dobkészlet-listából, egyébként a hangszerlistából.</summary>
+        Private Function ListabolNev(kulcs As Integer, dobCsatorna As Boolean) As String
+            If dobCsatorna Then Return HangszerLista.DobNev(kulcs, "")
+            Return HangszerLista.Nev(kulcs, "")
         End Function
 
         Private Function PanoramaSzoveg(ertek As Integer) As String

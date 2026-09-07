@@ -38,19 +38,24 @@ Public Class HangszerPanel
     ''' Feltölti a cmbHangszer Items listáját és a hangszerKulcsok leképezést
     ''' az aktuális hangszerforrás (AktivHangszerLista - a globális
     ''' HangszerLista.Nevek, vagy a HangszerListaForrasBeallitasa()-val
-    ''' beállított dedikált lista) alapján, patch-szám szerint rendezve.
-    ''' Bank≠0 hangszereknél a névhez hozzáfűzi a "(B<bank>)" jelzést, hogy
-    ''' egyértelmű legyen, ha egy hangszer nem a sima GM-bankból jön.
+    ''' beállított dedikált lista) alapján, KULCS szerint rendezve.
+    '''
+    ''' A kulcs szerinti rendezés a bankokat is értelmesen csoportosítja
+    ''' (lásd Modellek\Hangszerkulcs.vb): elöl a bank nélküli, sima General
+    ''' MIDI hangszerek, utánuk az LSB-s bankok, majd MSB szerint a többi -
+    ''' vagyis egy GM2 vagy GS lista a végén, egy tömbben jelenik meg.
+    ''' Bankos hangszereknél a névhez hozzáfűzi a bank rövid jelzését
+    ''' ("(B8)", illetve "(B121.1)", ha MSB is van), hogy egyértelmű legyen,
+    ''' ha egy hangszer nem a sima GM-bankból jön - lásd Hangszerkulcs.vb.
     ''' </summary>
     Private Sub HangszerListaItemekFeltoltese()
         cmbHangszer.Items.Clear()
         hangszerKulcsok.Clear()
         For Each kulcs As Integer In AktivHangszerLista.Keys.OrderBy(Function(k) k)
             hangszerKulcsok.Add(kulcs)
-            Dim bank As Integer = kulcs \ 128
-            Dim nev As String = AktivHangszerLista(kulcs)
-            Dim megjelenitettNev As String = If(bank = 0, nev, nev & " (B" & bank & ")")
-            cmbHangszer.Items.Add(megjelenitettNev)
+            ' A bank rövid jelölése egy helyen készül - lásd
+            ' Modellek\Hangszerkulcs.vb (üres, " (B8)" vagy " (B121.1)").
+            cmbHangszer.Items.Add(AktivHangszerLista(kulcs) & Hangszerkulcs.BankJeloles(kulcs))
         Next
     End Sub
 
@@ -102,7 +107,7 @@ Public Class HangszerPanel
 
     ''' <summary>
     ''' Hangszerválasztás változott (a paraméter a VALÓDI kombinált kulcs,
-    ''' bank*128+program, 0-16383 - nem a combo pozíciója)
+    ''' lásd Modellek\Hangszerkulcs.vb - nem a combo pozíciója)
     ''' </summary>
     Public Event HangszerValtozott(sender As Object, patchIndex As Integer)
 
@@ -139,8 +144,9 @@ Public Class HangszerPanel
     ' őket a .Designer.vb fájlba (WFO1000 figyelmeztetés/hiba elkerülése).
 
     ''' <summary>
-    ''' A kiválasztott hangszer VALÓDI kombinált kulcsa (bank*128+program,
-    ''' 0-16383) - NEM a combo pozíciója! ... Íráskor, ha a megadott patch-szám
+    ''' A kiválasztott hangszer VALÓDI kombinált kulcsa (a felépítését lásd
+    ''' Modellek\Hangszerkulcs.vb) - NEM a combo pozíciója! Íráskor, ha a
+    ''' megadott patch-szám
     ''' nem szerepel a jelenlegi hangszerlistában, biztonságosan az első elemre
     ''' esik vissza (nem dob kivételt).
     ''' </summary>

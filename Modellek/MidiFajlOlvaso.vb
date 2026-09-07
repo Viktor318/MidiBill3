@@ -22,7 +22,8 @@ Namespace Modellek
 
         ''' <summary>
         ''' A csatorna ÖSSZES hangszerváltása, a fájlbeli SORRENDBEN, kombinált
-        ''' kulcsként (bank * 128 + program). Az első elem a kezdő hangszín.
+        ''' kulcsként (lásd Modellek\Hangszerkulcs.vb). Az első elem a kezdő
+        ''' hangszín.
         ''' A szöveges jelentés mindet kiírja egymás alá, a preset-készítő
         ''' viszont csak az elsőt használja.
         ''' </summary>
@@ -595,16 +596,17 @@ Namespace Modellek
                     End If
 
                 Case &HC0
-                    ' A bank meghatározása: a program mindig MSB = 0 / LSB = bank
-                    ' formában ír, egy idegen fájl viszont használhatja fordítva
-                    ' is. Ezért amelyik nem nulla, azt tekintjük banknak - így
-                    ' mindkét konvenció olvasható.
-                    ' MEGJEGYZÉS: a Roland GS a variációt az MSB-ben tárolja, az
-                    ' LSB-t pedig a hangkészlet-térképre használja, ezért egy
-                    ' GS fájlnál ez a szabály félremehet - lásd az
-                    ' állapot-dokumentum "Következő lépések" 13. pontját.
-                    Dim bank As Integer = If(bankLsb(csatorna) <> 0, bankLsb(csatorna), bankMsb(csatorna))
-                    csatornaAdat.Hangszervaltasok.Add(bank * 128 + adat1)
+                    ' MINDKÉT bank-bájtot megőrizzük, ahogy a fájlban áll.
+                    '
+                    ' Korábban "amelyik nem nulla, az a bank" szabály szerint
+                    ' egyetlen számra vontuk össze őket. Ez azért volt hibás,
+                    ' mert a szabványok MÁSHOL tárolják a variációt: a Roland
+                    ' GS az MSB-ben (az LSB a hangkészlet-térkép), a Yamaha XG
+                    ' és a General MIDI 2 az LSB-ben. Egy GS fájlnál, ami az
+                    ' LSB-be is ír térkép-számot (pl. MSB = 8, LSB = 1), a régi
+                    ' szabály az LSB-t választotta volna - vagyis rossz hangot.
+                    csatornaAdat.Hangszervaltasok.Add(
+                        Hangszerkulcs.Kulcs(bankMsb(csatorna), bankLsb(csatorna), adat1))
             End Select
         End Sub
 

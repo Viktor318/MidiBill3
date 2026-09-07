@@ -17,7 +17,8 @@ Igy derul ki, hogy helyes-e a bajt-szintu ertelmezes:
   - meta-esemenyek (tempo, utemjelzes, hangnem) es SysEx atugrasa,
     valamint hogy ezek ERVENYTELENITIK a running statust
   - Bank Select (MSB/LSB) + Program Change osszeparositasa, mindket
-    konvencioval (GS: LSB = bank, XG: MSB = bank)
+    konvencioval - a variacio a GS-nel az MSB-ben, az XG-nel es a GM2-nel
+    az LSB-ben van, ezert MINDKET bajtot meg kell orizni
   - a vezerlok ELSO ertekenek megorzese
   - a hangok szamlalasa (a 0 sebessegu Note On NEM megszolalo hang)
   - a teljes hossz szamitasa tempovaltasokkal egyutt
@@ -46,6 +47,15 @@ import tempfile
 
 BANK_SELECT_MSB = 0
 BANK_SELECT_LSB = 32
+
+# A hangszerkulcs osszefuzese - a Modellek/Hangszerkulcs.vb portja.
+# Reszletesen a Tesztek/hangszerkulcs_ellenorzes.py vizsgalja.
+LSB_SULY = 128
+MSB_SULY = 16384
+
+
+def hangszerkulcs(bank_msb, bank_lsb, program):
+    return bank_msb * MSB_SULY + bank_lsb * LSB_SULY + program
 ALAP_TEMPO_MIKROSZEK = 500000
 
 META_TEMPO = 0x51
@@ -317,8 +327,11 @@ def csatorna_uzenet_feldolgozasa(cs, csatorna, uzenet_tipus, adat1, adat2, bank_
             cs.kezdo_vezerlok[adat1] = adat2
 
     elif uzenet_tipus == 0xC0:
-        bank = bank_lsb[csatorna] if bank_lsb[csatorna] != 0 else bank_msb[csatorna]
-        cs.hangszervaltasok.append(bank * 128 + adat1)
+        # MINDKET bank-bajt megorzodik, ahogy a fajlban all. Korabban
+        # "amelyik nem nulla, az a bank" szabaly volt - az egy GS fajlnal
+        # (MSB = variacio, LSB = hangkeszlet-terkep) rossz hangot adott.
+        cs.hangszervaltasok.append(
+            hangszerkulcs(bank_msb[csatorna], bank_lsb[csatorna], adat1))
 
 
 def track_feldolgozasa(adat, kezdet, vege, eredmeny, tempo_valtasok, jelolok=None, ta=None):
@@ -496,7 +509,7 @@ def teszt_fajl_format1(utvonal):
     # (szandekosan a kozepen: ha a vegen lenne, a hossz-szamitas hibaja nem latszana)
     mf.tracks.append(meta)
 
-    # 1. csatorna: GS-stilusu bank (MSB=0, LSB=2) + program 48
+    # 1. csatorna: XG-stilusu bank (a variacio az LSB-ben: MSB=0, LSB=2) + program 48
     t1 = mido.MidiTrack()
     t1.append(mido.MetaMessage("track_name", name="Vonosok", time=0))
     t1.append(mido.Message("control_change", channel=0, control=0, value=0, time=0))
@@ -516,7 +529,7 @@ def teszt_fajl_format1(utvonal):
     t1.append(mido.Message("note_off", channel=0, note=48, velocity=0, time=960))
     mf.tracks.append(t1)
 
-    # 2. csatorna: XG-stilusu bank (MSB=8, LSB=0)
+    # 2. csatorna: GS-stilusu bank (a variacio az MSB-ben: MSB=8, LSB=0)
     t2 = mido.MidiTrack()
     t2.append(mido.MetaMessage("track_name", name="2. sav", time=0))
     t2.append(mido.MetaMessage("instrument_name", name="Tenor Sax", time=0))
@@ -629,10 +642,11 @@ def ellenoriz_format1(utvonal, mf):
         f"F-dur (-1, dur) vartunk, ez ({e.hangnem_elojegyzes}, moll={e.hangnem_moll})"
     print(f"    OK  utemjelzes {e.utem_szamlalo}/{e.utem_nevezo}, hangnem elojegyzes {e.hangnem_elojegyzes}")
 
-    # 1. csatorna - GS bank (LSB=2) + program 48 -> 2*128+48 = 304
+    # 1. csatorna - XG-stilusu bank (LSB=2) + program 48/49
     cs1 = e.csatornak[0]
-    assert cs1.hangszervaltasok == [2 * 128 + 48, 2 * 128 + 49], \
-        f"[304, 305]-ot vartunk, ez {cs1.hangszervaltasok}"
+    vart1 = [hangszerkulcs(0, 2, 48), hangszerkulcs(0, 2, 49)]
+    assert cs1.hangszervaltasok == vart1, \
+        f"{vart1}-t vartunk, ez {cs1.hangszervaltasok}"
     assert cs1.kezdo_vezerlok[7] == 100, f"CC7 kezdoerteke 100 kell legyen, ez {cs1.kezdo_vezerlok[7]}"
     assert cs1.kezdo_vezerlok[10] == 32
     assert cs1.kezdo_vezerlok[91] == 40
@@ -640,15 +654,21 @@ def ellenoriz_format1(utvonal, mf):
     assert cs1.hangok_szama == ref_hangok[0], \
         f"a mido {ref_hangok[0]} hangot lat az 1. csatornan, mi {cs1.hangok_szama}-t"
     assert (cs1.legmelyebb_hang, cs1.legmagasabb_hang) == (48, 72)
-    print(f"    OK  1. csatorna: GS bank -> hangszinek {cs1.hangszervaltasok}, "
+    print(f"    OK  1. csatorna: XG-stilusu bank (LSB) -> hangszinek {cs1.hangszervaltasok}, "
           f"CC7 kezdoerteke {cs1.kezdo_vezerlok[7]} (a kesobbi 60 helyesen figyelmen kivul), "
           f"{cs1.hangok_szama} hang, {cs1.legmelyebb_hang}-{cs1.legmagasabb_hang}")
 
-    # 2. csatorna - XG bank (MSB=8) + program 25 -> 8*128+25 = 1049
+    # 2. csatorna - GS-stilusu bank (MSB=8) + program 25. A REGI szabaly
+    # szerint ez 8*128+25 = 1049 lett volna, vagyis UGYANAZ a kulcs, mint
+    # egy XG-fajl "LSB=8" bankja - pedig a ketto MAS hangszer.
     cs2 = e.csatornak[1]
-    assert cs2.hangszervaltasok == [8 * 128 + 25], f"[1049]-et vartunk, ez {cs2.hangszervaltasok}"
+    vart2 = [hangszerkulcs(8, 0, 25)]
+    assert cs2.hangszervaltasok == vart2, f"{vart2}-t vartunk, ez {cs2.hangszervaltasok}"
+    assert cs2.hangszervaltasok != [8 * 128 + 25], \
+        ("az MSB-s bank NEM eshet egybe az LSB-s bankkal - ha igen, a "
+         "beolvaso megint osszevonja a ket konvenciot")
     assert cs2.kezdo_vezerlok[91] == 90
-    print(f"    OK  2. csatorna: XG bank -> hangszin {cs2.hangszervaltasok}, reverb {cs2.kezdo_vezerlok[91]}")
+    print(f"    OK  2. csatorna: GS-stilusu bank (MSB) -> hangszin {cs2.hangszervaltasok}, reverb {cs2.kezdo_vezerlok[91]}")
 
     # --- A fajlba irt szoveges informaciok ---
     assert e.cim == "Teszt darab cime", f"a cimet vartuk, ez {e.cim!r}"
@@ -702,12 +722,16 @@ def ellenoriz_format1(utvonal, mf):
             f"a darab cime tevesen a(z) {cs_index + 1}. csatorna nevekent jelent meg"
     print("    OK  a darab cime nem szivargott at csatornanevkent")
 
-    # 5. csatorna - MINDKET bank-bajt nem nulla: az LSB-nek kell nyernie
+    # 5. csatorna - MINDKET bank-bajt nem nulla: MINDKETTO megorzodik.
+    # Ez a legelesebb eset: a regi, osszevono szabaly itt dobta el az egyik
+    # bajtot, es epp ez a Roland GS tipikus alakja (MSB = variacio,
+    # LSB = hangkeszlet-terkep).
     cs5 = e.csatornak[4]
-    assert cs5.hangszervaltasok == [3 * 128 + 10], \
-        (f"MSB=1 es LSB=3 mellett az LSB-nek kell nyernie -> [394]-et vartunk, "
+    vart5 = [hangszerkulcs(1, 3, 10)]
+    assert cs5.hangszervaltasok == vart5, \
+        (f"MSB=1 es LSB=3 mellett MINDKETTONEK meg kell orzodnie -> {vart5}, "
          f"ez {cs5.hangszervaltasok}")
-    print(f"    OK  5. csatorna: MSB=1 ES LSB=3 -> az LSB nyer, hangszin {cs5.hangszervaltasok}")
+    print(f"    OK  5. csatorna: MSB=1 ES LSB=3 -> mindketto megorizve, hangszin {cs5.hangszervaltasok}")
 
     # 10. csatorna - van adat, de NINCS hang
     cs10 = e.csatornak[9]

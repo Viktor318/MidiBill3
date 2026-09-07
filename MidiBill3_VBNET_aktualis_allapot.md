@@ -9,17 +9,22 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.16.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.17.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a Bank Select MSB és LSB külön kezelése - HIBAJAVÍTÁS, eddig egyetlen
+  nem nulla bankú hangszer sem szólalt meg; új gyári GM2 hangszerlista
+  256 hanggal; "Több SoundFont importálása" menüpont - lásd
+  `CHANGELOG.md` és `MSB_LSB_GM2_terv.md`)
+- **Előző verzió**: 1.16.0
   (a felvett `.mid` szerkezetének átalakítása csatornánkénti trackekre,
   tracknévvel és hangszernévvel; nem kötelező hangnem a fájlban;
   automatikus `.txt` jelentés a felvétel mellé; a Segédprogramok menü
-  átrendezése és gyorsbillentyű-javítás - lásd `CHANGELOG.md`)
-- **Előző verzió**: 1.15.0
+  átrendezése és gyorsbillentyű-javítás)
+- **Korábbi verzió**: 1.15.0
   (a közös SMF-beolvasó `MidiFajlOlvaso` és a rá épülő két új
   segédprogram: "Preset készítése MIDI fájlból" és "MIDI fájl
   beállításainak mentése olvasható formában"; a `MidiFajlSzerkeszto`
   átállítása a közös beolvasóra; a riport finomhangolása)
-- **Korábbi verzió**: 1.14.0
+- **Még korábbi verzió**: 1.14.0
   (a MIDI felvétel 0-2. fázisa: `Felvetelek` mappa és fájlnév-képzés, a
   MIDI-motor kimeneti "csapja", a `MidiFelvevo` motor `.mid` mentéssel;
   a csatorna-állapot és az ütemjelzés beírása a felvett fájlba; a
@@ -68,6 +73,9 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               dobkészlet-presetek (Dobok, ISMERT DOBKÉSZLET-
 │   │                               BANKOK: 120, 127, 128) külön
 │   ├── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
+│   ├── Hangszerkulcs.vb         - A hangszer-azonosító KULCS egy helyen:
+│   │                               MSB * 16384 + LSB * 128 + programszám,
+│   │                               szétbontás és a bank rövid jelölése
 │   ├── CsatornaUzenetek.vb      - EGYETLEN forrás a "csatorna-állapot ->
 │   │                               MIDI üzenetek" leképezéshez (élő küldés,
 │   │                               fájl-patchelés és felvétel is ezt hívja)
@@ -92,10 +100,18 @@ MidiBill3/                        - EGYETLEN projekt
 │   ├── midi_olvaso_ellenorzes.py - A MidiFajlOlvaso logikájának ellenőrzése
 │   │                               (mindkettő: hű Python-port + független
 │   │                               `mido` visszaolvasás + mutációs teszt)
+│   ├── hangszerkulcs_ellenorzes.py - A kulcs-számítás és a .lst
+│   │                               index-formátum ellenőrzése
+│   ├── gm2_lista.py             - A GM2.lst és GM2.drm előállítása
 │   ├── bank_select_teszt.py     - Diagnosztika: melyik Bank Select bájtot
-│   └── bank_select_teszt.mid      veszi figyelembe egy adott lejátszó
+│   ├── bank_select_teszt.mid      veszi figyelembe egy adott lejátszó
+│   └── Bankteszt.lst            - Teszt-hangszerlista MSB-s és LSB-s
+│                                  bejegyzésekkel (kézi próbához)
 ├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
 ├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
+├── GM2.lst                      - GYÁRI General MIDI 2 lista (256 hang,
+│                                  MSB 121) - a telepítő szállítja
+├── GM2.drm                      - GYÁRI GM2 dobkészletek (MSB 120)
 ├── CHANGELOG.md                 - Verziónkénti fejlesztési történet
 ├── MidiBill3_VBNET_aktualis_allapot.md - EZ a dokumentum
 ├── MIDI_felvetel_fazisterv.md   - A felvétel/lejátszás fázisterve (0-8.)
@@ -329,6 +345,26 @@ ez a pont MOSTANTÓL MEGVALÓSULT (a format 1 ág):
   nélkül. A jelentés hibája nem veszélyezteti a felvételt. A közös rutin
   a `MainForm.FelvetelJelentesenekKeszitese()` - ezt hívja majd a 3. és
   a 4. fázis is.
+
+**Külön MSB/LSB bank-kezelés + GM2 lista** (2026-09-07, a "Következő
+lépések" 13. pontja MEGVALÓSULT):
+
+- A hangszer-azonosító kulcs `MSB * 16384 + LSB * 128 + programszám`
+  (`Modellek/Hangszerkulcs.vb`). `MSB = 0` mellett SZÁMTANILAG azonos a
+  korábbi `bank * 128 + program` képlettel, ezért a meglévő preset- és
+  listafájlok migrálás nélkül érvényesek.
+- A `.lst` három alakot ismer: `program`, `lsb.program` (a régi,
+  visszamenőleg kompatibilis) és `msb.lsb.program` (az egyértelmű).
+  A `#`-tel kezdődő sorok megjegyzések.
+- A SoundFont-import a `.sf2` bankját az **MSB**-be teszi - ezt MÉRÉS
+  alapozza meg (`Tesztek/bank_select_teszt.mid`), nem feltételezés.
+  A dobkészletek szándékosan bank nélkül maradnak.
+- Gyári `GM2.lst` (256 hang) és `GM2.drm` (9 dobkészlet).
+- Új "Több SoundFont importálása" menüpont a Fájl menüben.
+
+**A felhasználó teendője a frissítés után**: a korábban importált
+SoundFont-listákat egyszer újra kell generálni (a régi, kéttagú
+bejegyzések LSB-t jelentenek). A presetekhez nem kell hozzányúlni.
 
 ## Ismert, tudatosan meghozott döntések
 
@@ -1112,8 +1148,13 @@ munkalista is a további javításokhoz.
       `HangszerLista`/`SoundFontOlvaso` meglévő, kézzel írt bájt-szintű
       kódjához
 
-13. **Külön MSB/LSB bank-kezelés + GM2 hangszerlista** - felvetve
-    2026-09-05, KÜLÖN körben megvalósítandó.
+13. ~~**Külön MSB/LSB bank-kezelés + GM2 hangszerlista**~~ -
+    **MEGVALÓSULT (2026-09-07, 1.17.0 verzió)**. A részletes tervet és a
+    megvalósítás menetét lásd `MSB_LSB_GM2_terv.md`, a változásokat a
+    `CHANGELOG.md` 1.17.0 szakaszában. Az alábbi eredeti leírás
+    TÖRTÉNETI, a probléma megértéséhez hagytuk meg.
+
+    Felvetve 2026-09-05.
 
     **A probléma**: a program egyetlen számként tárolja a bankot, és
     mindig `MSB = 0 / LSB = bank` formában küldi ki

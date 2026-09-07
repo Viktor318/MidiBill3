@@ -1,8 +1,14 @@
 ﻿# Külön MSB/LSB bank-kezelés + GM2 hangszerlista - megvalósítási terv
 
 Ez az állapot-dokumentum "Következő lépések" **13. pontjának** részletes
-lebontása. A pont maga 2026-09-05-én került fel; ez a terv 2026-09-06-án
-készült, a megvalósítás a következő munkamenet feladata.
+lebontása. A pont 2026-09-05-én került fel, a terv 2026-09-06-án készült.
+
+> **ELKÉSZÜLT: 2026-09-07, az 1.17.0 verzióban.** Mind a kilenc fázis
+> megvalósult és a felhasználó élesben kipróbálta. A dokumentum
+> megmarad, mert a MIÉRTEKET rögzíti - a részletes változáslistát lásd a
+> `CHANGELOG.md` 1.17.0 szakaszában. A megvalósítás közben tett
+> eltéréseket és a menet közben talált hibákat a végén, a
+> "Megvalósítás - mi lett belőle" szakasz sorolja fel.
 
 ---
 
@@ -217,3 +223,66 @@ a 120 mostantól a GM2 dob-MSB, ami már ténylegesen kiküldhető.
   és a preset-készítő csendben rossz bankot adna.
 - **A GM2 lista adatgyűjtés, nem kódolás.** Emlékezetből legenerálni
   hibás listát adna; elsődleges forrásból kell dolgozni.
+
+---
+
+## 8. Megvalósítás - mi lett belőle (2026-09-07)
+
+### A blokkoló mérés eredménye
+
+A `bank_select_teszt.mid` egyértelmű választ adott: a felhasználó
+BASSMIDI-alapú VirtualMIDISynth-e a **CC0-t (MSB)** tekinti a SoundFont
+bankjának, a CC32-t pedig egyszerűen figyelmen kívül hagyja. Ez cáfolta
+a korábbi feltevést, hogy a CC32-t esetleg SoundFont-választásra
+használná (akkor a harmadik szakasz elnémult volna).
+
+**Következmény**: a 8. fázisban a `.sf2` `wBank` mezője az MSB-be került.
+Egyben kiderült, hogy a 13. pont nem kényelmi bővítés volt, hanem
+HIBAJAVÍTÁS: a programban addig egyetlen nem nulla bankú hangszer sem
+szólalt meg.
+
+### Eltérések a tervtől
+
+- **A preset-migráció teljesen elmaradt.** A terv a régi bankszámok
+  átértelmezésével számolt, és egy `BankFormatum` jelölővel tette volna
+  idempotenssé a konverziót. Kiderült, hogy a felhasználó MINDEN
+  presetje a 0-ás bankot használja, ahol a régi és az új kulcs
+  számtanilag azonos - így nincs mit migrálni. A kockázatos lépés
+  egyszerűen kiesett.
+- **A `.lst` kéttagú alakja LSB maradt**, nem lett átértelmezve MSB-re.
+  Így a régi fájlok jelentése nem változik meg csendben; a helyes
+  viselkedést a SoundFontok egyszeri újraimportálása adja.
+- **A 6. fázis (felület) nagyrészt az 1.-ben megtörtént**, mert a
+  bank-jelölés a közös segédfüggvénybe került. A legördülő - a
+  felhasználó döntése alapján - egyelőre sima lista maradt.
+- **Nem készült szabvány-választó a felületen** (a terv 5. nyitott
+  kérdése): a `.lst` fájl tartalmazza a teljes MSB/LSB párost, tehát a
+  szabvány kérdése ott dől el.
+- **Bónusz, ami nem volt a tervben**: "Több SoundFont importálása"
+  menüpont, hogy a listák újragenerálása egy lépés legyen.
+
+### Menet közben talált hibák
+
+1. **`Korlatoz(cs.Hangszer, 0, 16383)`** a preset-betöltésben - a régi
+   képlet maximuma. Ha nem derül ki, az MSB-t tartalmazó kulcsokat
+   CSENDBEN levágta volna, és a hiba csak a preset-mentésnél jelentkezik.
+2. **A `GM2.lst` be sem töltődött volna**: az `Utvonalak` gyári
+   fájlneveinek listája nem tartalmazta, ezért a program az "SF adatok"
+   mappában kereste volna.
+3. **A `.vbproj` publish-targetje** sem tudott a GM2 fájlokról - ugyanaz
+   a hiba, amit az 1.13.0-ban a `GM.lst`-tel javítottunk.
+4. **A `.lst` megjegyzés-sorai**: eddig csak a véletlen mentette meg
+   őket (nem volt bennük `=`). A saját GM2-fejlécem elbukott ezen.
+5. **Felcserélt GS/XG megnevezés** a beolvasó tesztjének kommentjeiben -
+   a viselkedés helyes volt, a címke rossz.
+
+### Ami továbbra is nyitott
+
+- A **GM2 dobkészletek 49-es (Orchestra) és 57-es (SFX) programszáma**
+  nem volt megerősíthető a fellelhető forrásokból. Ezek a GS/GM2 bevett
+  készletei, és a program beépített listájában eddig is szerepeltek, de
+  ha egyszer előkerül egy hivatalos táblázat, érdemes összevetni.
+- A **MIDI üzenet-kijelzés** (`PC <név>`) a bank nélküli értelmezést
+  mutatja, mert egy Program Change üzenet önmagában nem hordozza a
+  bankot. Csatornánkénti Bank Select-nyilvántartással pontosítható
+  lenne, de az egy nyers üzenet-kijelzőbe túl sok.

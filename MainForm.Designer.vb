@@ -32,6 +32,7 @@ Partial Class MainForm
         ToolStripSeparator2 = New ToolStripSeparator()
         mnuHangszerlistaBetoltese = New ToolStripMenuItem()
         mnuSoundFontImportalasa = New ToolStripMenuItem()
+        mnuTobbSoundFontImportalasa = New ToolStripMenuItem()
         ToolStripSeparator1 = New ToolStripSeparator()
         mnuKilepes = New ToolStripMenuItem()
         mnuKilepesMentesNelkul = New ToolStripMenuItem()
@@ -81,6 +82,7 @@ Partial Class MainForm
         lblExtraMidiAllapot = New Label()
         dlgHangszerlista = New OpenFileDialog()
         dlgSoundFont = New OpenFileDialog()
+        dlgTobbSoundFont = New OpenFileDialog()
         dlgPresetKonvertalas = New OpenFileDialog()
         dlgMb3Konvertalas = New OpenFileDialog()
         dlgMidiFajlModositas = New OpenFileDialog()
@@ -113,7 +115,7 @@ Partial Class MainForm
         ' 
         ' mnuFajl
         ' 
-        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator3, mnuImportMb3, ToolStripSeparator2, mnuHangszerlistaBetoltese, mnuSoundFontImportalasa, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
+        mnuFajl.DropDownItems.AddRange(New ToolStripItem() {mnuBetolt, mnuMent, ToolStripSeparator3, mnuImportMb3, ToolStripSeparator2, mnuHangszerlistaBetoltese, mnuSoundFontImportalasa, mnuTobbSoundFontImportalasa, ToolStripSeparator1, mnuKilepes, mnuKilepesMentesNelkul})
         mnuFajl.Name = "mnuFajl"
         mnuFajl.Size = New Size(45, 26)
         mnuFajl.Text = "&Fájl"
@@ -158,6 +160,12 @@ Partial Class MainForm
         mnuSoundFontImportalasa.Size = New Size(296, 26)
         mnuSoundFontImportalasa.Text = "&SoundFont adatok importálása"
         ' 
+        ' mnuTobbSoundFontImportalasa
+        ' 
+        mnuTobbSoundFontImportalasa.Name = "mnuTobbSoundFontImportalasa"
+        mnuTobbSoundFontImportalasa.Size = New Size(296, 26)
+        mnuTobbSoundFontImportalasa.Text = "&Több SoundFont importálása"
+        ' 
         ' ToolStripSeparator1
         ' 
         ToolStripSeparator1.Name = "ToolStripSeparator1"
@@ -173,7 +181,7 @@ Partial Class MainForm
         ' 
         mnuKilepesMentesNelkul.Name = "mnuKilepesMentesNelkul"
         mnuKilepesMentesNelkul.Size = New Size(296, 26)
-        mnuKilepesMentesNelkul.Text = "Kilépés &mentés nélkül"
+        mnuKilepesMentesNelkul.Text = "Kilépés mentés &nélkül"
         ' 
         ' mnuBeallitasok
         ' 
@@ -562,6 +570,12 @@ Partial Class MainForm
         dlgSoundFont.Filter = "SoundFont fájlok (*.sf2)|*.sf2"
         dlgSoundFont.Title = "SoundFont adatok importálása"
         ' 
+        ' dlgTobbSoundFont
+        ' 
+        dlgTobbSoundFont.Filter = "SoundFont fájlok (*.sf2)|*.sf2"
+        dlgTobbSoundFont.Multiselect = True
+        dlgTobbSoundFont.Title = "Több SoundFont importálása"
+        ' 
         ' dlgPresetKonvertalas
         ' 
         dlgPresetKonvertalas.Filter = "MidiBill preset fájlok (*.json)|*.json"
@@ -695,7 +709,9 @@ Partial Class MainForm
     Friend WithEvents ToolStripSeparator3 As ToolStripSeparator
     Friend WithEvents dlgHangszerlista As OpenFileDialog
     Friend WithEvents mnuSoundFontImportalasa As ToolStripMenuItem
+    Friend WithEvents mnuTobbSoundFontImportalasa As ToolStripMenuItem
     Friend WithEvents dlgSoundFont As OpenFileDialog
+    Friend WithEvents dlgTobbSoundFont As OpenFileDialog
     Friend WithEvents mnuSegedprogramok As ToolStripMenuItem
     Friend WithEvents mnuPresetFajlokFrissitese As ToolStripMenuItem
     Friend WithEvents mnuMb3FajlokKonvertalasa As ToolStripMenuItem

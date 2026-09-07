@@ -22,6 +22,9 @@ Namespace Modellek
     '''   - GM.lst, GM.drm ... a beépített General MIDI hangszer- és
     '''     dobkészlet-lista, közvetlenül a program mappájában (NINCS többé
     '''     "Adatok" almappa)
+    '''   - GM2.lst, GM2.drm ... a General MIDI Level 2 hangszerlista (256
+    '''     hang) és dobkészletek; a GM2 a Bank Select MSB 121-es (dallam),
+    '''     illetve 120-as (dob) bankját használja
     '''
     ''' FELHASZNÁLÓI TARTALOM (%AppData%\MidiBill3, ÍRHATÓ) - minden írás ide
     ''' megy:
@@ -66,7 +69,10 @@ Namespace Modellek
         ''' SoundFont-importtal) - így nem keletkezhet olyan árva fájl, amit a
         ''' program soha nem használna fel.
         ''' </summary>
-        Private ReadOnly gyariListaNevek() As String = {"GM.lst", "GM.drm"}
+        ''' FONTOS: ha új gyári listafájl kerül a projektbe, IDE IS fel kell
+        ''' venni, különben a program az "SF adatok" mappában keresné - ahol
+        ''' nincs -, és a betöltése meghiúsulna.
+        Private ReadOnly gyariListaNevek() As String = {"GM.lst", "GM.drm", "GM2.lst", "GM2.drm"}
 
         ''' <summary>A program saját (telepítési) mappája - CSAK OLVASHATÓNAK tekintjük</summary>
         Public ReadOnly Property ProgramMappa As String
@@ -200,8 +206,8 @@ Namespace Modellek
 
         ''' <summary>
         ''' Igaz, ha a megadott fájlnév a GYÁRI, védett listák egyike
-        ''' (GM.lst / GM.drm). A hívó teljes útvonalat is átadhat, csak a
-        ''' fájlnév részt vizsgáljuk.
+        ''' (GM.lst / GM.drm / GM2.lst / GM2.drm). A hívó teljes útvonalat is
+        ''' átadhat, csak a fájlnév részt vizsgáljuk.
         ''' </summary>
         Public Function GyariListaE(fajlNev As String) As Boolean
             If String.IsNullOrEmpty(fajlNev) Then Return False
@@ -214,7 +220,7 @@ Namespace Modellek
 
         ''' <summary>
         ''' Egy hangszerlista (.lst / .drm) OLVASÁSI útvonala: a gyári listák
-        ''' (GM.lst / GM.drm) MINDIG a program mappájából jönnek, minden más a
+        ''' (GM.lst / GM.drm / GM2.lst / GM2.drm) MINDIG a program mappájából jön, minden más a
         ''' felhasználói "SF adatok" mappából.
         ''' </summary>
         Public Function HangszerListaOlvasasra(fajlNev As String) As String

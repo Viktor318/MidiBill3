@@ -558,8 +558,8 @@
         ''' olvassuk ki: először a felvétel indulásakor készült pillanatképből
         ''' (ott van a legtöbb csatorna hangszíne), és ha ott nincs, a felvett
         ''' anyagból - ez utóbbi akkor számít, ha a csatorna csak MENET KÖZBEN
-        ''' vált aktívvá. A bank meghatározása ugyanaz, mint a beolvasónál
-        ''' (MidiFajlOlvaso): amelyik Bank Select bájt nem nulla, az a bank.
+        ''' vált aktívvá. MINDKÉT bank-bájt számít, ugyanúgy, mint a
+        ''' beolvasónál (MidiFajlOlvaso) - lásd Hangszerkulcs.vb.
         ''' </summary>
         Private Function CsatornaHangszerNeve(csatorna As Integer) As String
             Dim bankMsb As Integer = 0
@@ -580,15 +580,21 @@
 
             If program < 0 Then Return ""
 
-            Dim bank As Integer = If(bankLsb <> 0, bankLsb, bankMsb)
             Dim dobCsatorna As Boolean = (csatorna = DOB_CSATORNA_INDEX)
 
-            Dim nev As String = HangszerNev(bank * 128 + program, dobCsatorna)
+            ' Ugyanaz a KÉT lépcsős visszaesés, mint a jelentésben (lásd
+            ' MidiJelentes.VisszaeseskorNev): pontos hármas -> MSB nélkül ->
+            ' puszta programszám. Itt csak a nevet használjuk, azt nem
+            ' jelezzük, melyik lépcsőn találtunk - a tracknévbe úgysem férne.
+            Dim nev As String = HangszerNev(Hangszerkulcs.Kulcs(bankMsb, bankLsb, program), dobCsatorna)
             If nev.Length > 0 Then Return nev
 
-            ' A pontos bank+program páros nincs a listában - visszaesés a
-            ' puszta programszámra, ugyanúgy, ahogy a jelentés is teszi.
-            Return HangszerNev(program, dobCsatorna)
+            If bankMsb <> 0 AndAlso bankLsb <> 0 Then
+                nev = HangszerNev(Hangszerkulcs.Kulcs(0, bankLsb, program), dobCsatorna)
+                If nev.Length > 0 Then Return nev
+            End If
+
+            Return HangszerNev(Hangszerkulcs.Kulcs(0, 0, program), dobCsatorna)
         End Function
 
         ''' <summary>

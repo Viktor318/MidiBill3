@@ -7,17 +7,17 @@
     ''' konvenció) pedig egy .drm formátumú fájllá alakíthatók legyenek. A
     ''' tényleges hangminta-adatokat (sdta blokk) NEM olvassuk be - csak a
     ''' metaadatokat, ez gyors feldolgozást tesz lehetővé nagy fájloknál is.
-    ''' A hangszereknél a kulcs bank*128+program formában kombinálva (bank=0
-    ''' esetén ez megegyezik a puszta patch-számmal, visszamenőleg
-    ''' kompatibilis marad a GM-only listákkal); a dobkészleteknél a kulcs
-    ''' közvetlenül a Program szám (0-127).
+    ''' A hangszereknél a kulcs kombinált alakban (lásd Hangszerkulcs.vb), a
+    ''' SoundFont bankjával a Bank Select MSB-ben - ezt méréssel támasztottuk
+    ''' alá, lásd a FeldolgozPhdr megjegyzését. A dobkészleteknél a kulcs
+    ''' SZÁNDÉKOSAN a puszta Program szám (0-127), bank nélkül.
     ''' </summary>
     Public Module SoundFontOlvaso
 
         ''' <summary>
         ''' Beolvassa egy .sf2 fájl preset-listáját. A visszaadott Nevek
         ''' Dictionary közvetlenül felhasználható .lst fájl generálásához
-        ''' (a kulcs bank*128+program formában kombinálva, 0-16383). A
+        ''' (a kulcs kombinált alakban, lásd Hangszerkulcs.vb). A
         ''' Dobok Dictionary az ISMERT DOBKÉSZLET-BANKOKBÓL (lásd
         ''' ismertDobBankok: 120 - GM2 szabvány, 128 - SoundFont-szerkesztői
         ''' konvenció) származó preseteket tartalmazza KÜLÖN, a .drm fájlhoz
@@ -120,12 +120,33 @@
                 Dim bank As Integer = BitConverter.ToUInt16(phdrAdat, offset + 22)
 
                 If program >= 0 AndAlso program <= 127 AndAlso Array.IndexOf(ismertDobBankok, bank) >= 0 AndAlso nev.Length > 0 Then
-                    ' Ismert dobkészlet-bank (120 vagy 128) - a .drm fájlhoz
-                    ' gyűjtjük külön, a Program szám itt közvetlenül a
-                    ' dobkészlet-lista kulcsa lesz.
+                    ' Ismert dobkészlet-bank (120, 127 vagy 128) - a .drm
+                    ' fájlhoz gyűjtjük külön, és a kulcs SZÁNDÉKOSAN a puszta
+                    ' programszám marad, BANK NÉLKÜL.
+                    '
+                    ' MIÉRT? A 10. csatornát a lejátszók eleve dobként kezelik,
+                    ' tehát a programszám önmagában kiválasztja a kitet. A 128-as
+                    ' bank amúgy sem küldhető ki (túllépi a 7 bites adatbájt-
+                    ' korlátot), a 120-as pedig a GM2 dob-bankja - ha azt
+                    ' küldenénk, egy SoundFontban jellemzően nem létező bankot
+                    ' kérnénk, és a dob elnémulhatna. (A gyári GM2.drm azért
+                    ' használ mégis "120.0.<program>" alakot, mert az egy GM2
+                    ' hangmodulhoz szól, nem egy SoundFonthoz.)
                     dobEredmeny(program) = nev
                 ElseIf program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
-                    Dim kombinaltKulcs As Integer = bank * 128 + program
+                    ' A SoundFont "wBank" mezője a Bank Select MSB-be kerül.
+                    '
+                    ' MÉRÉSSEL ALÁTÁMASZTVA (2026-09-07): a Tesztek\bank_select_teszt.mid
+                    ' fájl szerint a BASSMIDI-alapú VirtualMIDISynth a CC0-t
+                    ' (MSB) tekinti a SoundFont bankjának, a CC32-t pedig
+                    ' figyelmen kívül hagyja - ugyanígy tesz a FluidSynth is az
+                    ' alapértelmezett "gs" módjában. Korábban az LSB-be írtuk,
+                    ' ezért a nem nulla bankú hangszerek NEM SZÓLALTAK MEG.
+                    '
+                    ' FONTOS: emiatt a korábban importált .lst fájlokat egyszer
+                    ' újra kell generálni - a régi, kéttagú "bank.program"
+                    ' bejegyzések továbbra is LSB-t jelentenek.
+                    Dim kombinaltKulcs As Integer = Hangszerkulcs.Kulcs(bank, 0, program)
                     eredmeny(kombinaltKulcs) = nev
                 Else
                     Dim ok As String

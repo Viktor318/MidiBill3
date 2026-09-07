@@ -70,10 +70,11 @@
         ''' (CC91).
         '''
         ''' A Bank Select párost MINDIG kiküldjük a Program Change előtt, még
-        ''' sima GM (bank = 0) hangszernél is - egyszerű, konzisztens
-        ''' viselkedés, és ez teszi lehetővé a General MIDI-n túli, Bank
-        ''' Select-tel elérhető hangszerek (Roland GS, Yamaha XG, egyedi
-        ''' SoundFont-bankok) használatát.
+        ''' sima GM hangszernél is (ahol mindkét bájt 0) - egyszerű,
+        ''' konzisztens viselkedés, és ez teszi lehetővé a General MIDI-n
+        ''' túli, Bank Select-tel elérhető hangszerek (Roland GS, Yamaha XG,
+        ''' General MIDI 2, egyedi SoundFont-bankok) használatát. A kulcs
+        ''' szétbontását lásd Modellek\Hangszerkulcs.vb.
         ''' </summary>
         ''' <param name="csatornaIndex">A csatorna sorszáma 0-tól (0 = 1. csatorna).</param>
         ''' <param name="adat">A csatorna beállításai.</param>
@@ -85,14 +86,16 @@
             Dim ccStatusz As Integer = CONTROLLER_CHANGE_STATUS Or csatornaIndex
             Dim pcStatusz As Integer = PROGRAM_CHANGE_STATUS Or csatornaIndex
 
-            Dim bank As Integer = adat.Hangszer \ 128
-            Dim program As Integer = adat.Hangszer Mod 128
+            ' A kulcs szétbontása egy helyen történik - lásd Modellek\Hangszerkulcs.vb.
+            Dim bankMsb As Integer = Hangszerkulcs.BankMsb(adat.Hangszer)
+            Dim bankLsb As Integer = Hangszerkulcs.BankLsb(adat.Hangszer)
+            Dim program As Integer = Hangszerkulcs.ProgramSzam(adat.Hangszer)
             Dim hangeroVegso As Integer = CInt(adat.Hangero * (alapHangeroSzazalek / 100.0))
             Dim reverbErtek As Integer = reverbSzazalek * 127 \ 100
 
             Return New List(Of MidiUzenet) From {
-                New MidiUzenet(ccStatusz, BANK_SELECT_MSB, 0, 2),
-                New MidiUzenet(ccStatusz, BANK_SELECT_LSB, Adatbajt(bank), 2),
+                New MidiUzenet(ccStatusz, BANK_SELECT_MSB, Adatbajt(bankMsb), 2),
+                New MidiUzenet(ccStatusz, BANK_SELECT_LSB, Adatbajt(bankLsb), 2),
                 New MidiUzenet(pcStatusz, Adatbajt(program), 0, 1),
                 New MidiUzenet(ccStatusz, MAIN_VOLUME, Adatbajt(hangeroVegso), 2),
                 New MidiUzenet(ccStatusz, PAN, Adatbajt(adat.Ter + 64), 2),
