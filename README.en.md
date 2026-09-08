@@ -1,4 +1,4 @@
-[🇭🇺 Magyar](README.md) | 🇬🇧 English
+﻿[🇭🇺 Magyar](README.md) | 🇬🇧 English
 
 # MidiBill3 (VB.NET)
 
@@ -21,8 +21,12 @@ architecture couldn't support.
 - **NAudio.Midi** - MIDI input/output handling
 - **System.Text.Json** - saving/loading settings (replacing the old,
   position-based `.mb3` file format), with human-readable comments
+- **Dependency-free MIDI file handling** - Standard MIDI File (SMF)
+  reading and writing implemented in-house, without external libraries
 
 ## Main features
+
+### Playing and sound
 
 - **16 MIDI channels**, grouped in fours (1-4 / 5-8 / 9-12 / 13-16),
   one group editable in the UI at a time - all 16 channels (including
@@ -36,19 +40,6 @@ architecture couldn't support.
 - **Per-channel octave transposition** (±2 octaves), with immediate
   (retroactive) effect - stacks with the global transposition
 - **Global Reverb** (MIDI CC91), on a 0-100% user-facing scale
-- **Loadable instrument lists** (`.lst` files): beyond the built-in
-  General MIDI list, custom lists - even sparse ones with non-
-  contiguous indexing - can be loaded or generated
-- **Bank Select-based extended instrument support** (Roland GS / Yamaha
-  XG-compatible): access to bank-stored variations beyond the 128
-  General MIDI instruments, via `bank.program=Name`-formatted `.lst`
-  files
-- **Dedicated drum kit instrument list** (`.drm` files) for channel 10,
-  automatically paired with the active instrument list (matching base
-  file name)
-- **SoundFont (.sf2) import**: automatically generates the matching
-  `.lst` (instruments) and `.drm` (drum kits) files from an `.sf2` file
-  and applies them immediately
 - Note-tracking system for targeted (non-wasteful) note-off handling -
   switching the split point or transposition mid-performance never
   leaves a stuck note
@@ -59,40 +50,104 @@ architecture couldn't support.
   automatic validation
 - Human-readable MIDI message display (e.g. "NoteOn C4 v90"), with a
   throttled refresh rate
+
+### Instrument lists and banks
+
+- **Loadable instrument lists** (`.lst` files): beyond the built-in
+  General MIDI list, custom lists - even sparse ones with non-
+  contiguous indexing - can be loaded or generated
+- **Separately handled Bank Select MSB (CC0) and LSB (CC32)**: an
+  instrument is identified by a triplet, written in list files as
+  `msb.lsb.program=Name` - the shorter `lsb.program=Name` and
+  `program=Name` forms are also valid (missing parts are zero). This
+  makes bank-stored variations beyond the 128 General MIDI instruments
+  reachable under any banking convention (**GM2**: MSB=121 / drums
+  MSB=120, **Roland GS**: variation in the MSB, **Yamaha XG**: variation
+  in the LSB)
+- **Built-in lists**: `GM.lst` / `GM.drm` (General MIDI) and `GM2.lst` /
+  `GM2.drm` (General MIDI Level 2 - 256 melodic instruments + 9 drum kits)
+- **Dedicated drum kit instrument list** (`.drm` files) for channel 10,
+  automatically paired with the active instrument list (matching base
+  file name)
+- **SoundFont (.sf2) import**: automatically generates the matching
+  `.lst` (instruments) and `.drm` (drum kits) files from an `.sf2` file
+  and applies them immediately. The SoundFont's bank goes into the Bank
+  Select **MSB** - this is measurement-backed: BASSMIDI-based
+  VirtualMIDISynth (and FluidSynth in its default `gs` mode) treats CC0
+  as the SoundFont bank and ignores CC32
+- **Importing several SoundFonts at once** (multi-select, overwrite
+  without confirmation, a closing summary of how many files were created
+  and how many were replaced)
+
+### MIDI files
+
+- **MIDI recorder**: records playing into a Standard MIDI File with **one
+  track per channel** (track name in `"NN - Instrument name"` form, NN
+  being the channel number), each channel's initial settings placed at the
+  start of its own track; metronome (BPM, time signature) and an optional
+  key signature
+- **Report alongside the recording**: a `.txt` file with the same name is
+  generated automatically next to the saved `.mid`, describing its
+  contents (channels, instruments, controllers, tempo, key, and the name
+  of the current preset file)
+- **Utilities menu** - directly from the main program, no separate
+  utility programs needed:
+  - Bulk-refreshing preset files
+  - Bulk-converting old `.mb3` files
+  - **Creating a preset from a MIDI file** (from its channel settings)
+  - **Modifying MIDI files with the current settings**
+  - **Saving a MIDI file's settings in readable form** (a `.txt` report
+    for any MIDI file)
+
+### Settings
+
 - Save/load settings to/from JSON files, automatic startup-state
   loading, "Exit without saving" option
+- The preset JSON carries a human-readable comment for the instrument,
+  including the bank (e.g. `"Hangszer": 131096,  // Ukulele (B8.0)`)
 - Import of legacy VB6 `.mb3` presets
-- **Utilities menu**: bulk-refreshing preset files, bulk-converting old
-  `.mb3` files - directly from the main program, no separate utility
-  programs needed
 - Robust error handling for corrupted or hand-edited JSON, `.lst`, and
   `.sf2` files
 
 ## Project structure
 
 ```
-MidiBill3/                    - single project
-├── MainForm.vb                - Main window: MIDI devices, channel
-│                                 selector, split point, transposition,
-│                                 Reverb, Utilities
+MidiBill3/                      - single project
+├── MainForm.vb                 - Main window: MIDI devices, channel selector,
+│                                 split point, transposition, Reverb, Utilities
 ├── HangszerPanel.vb            - A single instrument panel (UserControl),
-│                                 4 physical instances showing the
-│                                 currently selected channel group
+│                                 4 physical instances showing the currently
+│                                 selected channel group
 ├── ApplicationEvents.vb        - Global error logging (HibaNaplo.txt)
 ├── Modellek/                   ("Models")
 │   ├── AppInfo.vb              - Version number lookup
 │   ├── Beallitasok.vb          - Data model (16 channels) + JSON save/load
-│   ├── MidiEngine.vb           - MIDI I/O, fan-out, split point,
-│   │                             transposition, Bank Select-based
-│   │                             instrument switching
+│   ├── Hangszerkulcs.vb        ("Instrument key") - single source of truth for
+│   │                             MSB/LSB/program <-> combined integer key
 │   ├── HangszerLista.vb        - Loadable instrument lists (instruments +
 │   │                             dedicated drum kit list)
 │   ├── SoundFontOlvaso.vb      - Reads .sf2 files to generate .lst/.drm
+│   ├── MidiEngine.vb           - MIDI I/O, fan-out, split point, transposition,
+│   │                             Bank Select-based instrument switching
+│   ├── MidiFelvevo.vb          ("Recorder") - MIDI recording, Standard MIDI
+│   │                             File writing (one track per channel)
+│   ├── MidiFajlOlvaso.vb       - Standard MIDI File reading and analysis
+│   ├── MidiFajlSzerkeszto.vb   - Modifying MIDI files with the current settings
+│   ├── MidiPresetKeszito.vb    - Creating a preset from a MIDI file
+│   ├── MidiJelentes.vb         - Human-readable .txt report about a MIDI file
+│   ├── CsatornaUzenetek.vb     - Builds a channel's initial MIDI messages
 │   ├── Hangnevek.vb            - MIDI note number -> note name conversion
 │   └── Utvonalak.vb            ("Paths") - All file paths in one place
 │                                 (built-in vs. user content separation)
-├── GM.lst                      - BUILT-IN instrument list (shipped)
-└── GM.drm                      - BUILT-IN drum kit list (shipped)
+├── Tesztek/                    ("Tests") - Python verification scripts
+│                                 (independent re-implementation of the VB
+│                                 logic + mutation testing)
+├── GM.lst / GM.drm             - BUILT-IN General MIDI lists (shipped)
+├── GM2.lst / GM2.drm           - BUILT-IN General MIDI Level 2 lists
+├── CHANGELOG.md                - Detailed change log
+├── MidiBill3_VBNET_aktualis_allapot.md  - Current state of the project
+├── MIDI_felvetel_fazisterv.md  - Phase plan for the MIDI recorder
+└── MSB_LSB_GM2_terv.md         - Plan for the MSB/LSB split and GM2
 ```
 
 ### Where is data stored?
@@ -103,13 +158,15 @@ locations are kept separate:
 
 | Location | Contents |
 |---|---|
-| Program folder (read-only) | `GM.lst`, `GM.drm` - the built-in General MIDI lists |
+| Program folder (read-only) | `GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm` - the built-in lists |
 | `%AppData%\MidiBill3\` | `Kezdet.json` (startup settings), `HibaNaplo.txt` (error log) |
 | `%AppData%\MidiBill3\Presetek\` | Saved preset files (`.json`) |
 | `%AppData%\MidiBill3\SF adatok\` | Imported instrument lists (`.lst` / `.drm`) |
+| `%AppData%\MidiBill3\Felvetelek\` | `.mid` files saved by the MIDI recorder (plus the `.txt` reports generated next to them) |
 
-`GM.lst` and `GM.drm` are protected: the built-in copies are always loaded,
-and the program refuses to create user files under those names.
+The built-in list names (`GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm`) are
+protected: the built-in copies are always loaded, and the program refuses
+to create user files under those names.
 
 ## History
 
@@ -119,9 +176,11 @@ note-tracking system, shutdown/device-handling robustness). This
 VB.NET version is a deliberate rewrite of that cleaned-up state, using
 modern tools - and has since significantly outgrown the original VB6
 version's capabilities (16 fully editable channels, split point,
-transposition, Reverb, Bank Select-based GS/XG support, SoundFont
-import, built-in utilities).
+transposition, Reverb, separate MSB/LSB bank handling, GM2, SoundFont
+import, MIDI recording and file handling, built-in utilities).
 
 ## Under active development
 
-This project is currently under active development.
+This project is currently under active development. The MIDI recorder
+engine (`MidiFelvevo.vb`) and its reporting are complete; the recorder
+window and its metronome settings are still being built.

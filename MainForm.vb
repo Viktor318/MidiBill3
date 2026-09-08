@@ -1524,7 +1524,15 @@ Public Class MainForm
             letrehozva += 1
         End If
 
-        If String.Equals(fajlNev, aktualisHangszerListaFajl, StringComparison.OrdinalIgnoreCase) Then
+        ' Az ALAPNEVET hasonlítjuk, nem a teljes fájlnevet: az aktív
+        ' hangszerlistához (pl. "SGM.lst") automatikusan párosul az azonos
+        ' alapnevű dobkészlet-lista ("SGM.drm") is. Ha csak a .drm íródik
+        ' felül - egy CSAK DOBKÉSZLETEKET tartalmazó SoundFontnál ez
+        ' megtörténhet -, a teljes fájlnév nem egyezne, és a memóriában lévő
+        ' dobkészlet-lista csendben elavulna.
+        If String.Equals(IO.Path.GetFileNameWithoutExtension(fajlNev),
+                         IO.Path.GetFileNameWithoutExtension(aktualisHangszerListaFajl),
+                         StringComparison.OrdinalIgnoreCase) Then
             aktivListaFrissult = True
         End If
     End Sub
