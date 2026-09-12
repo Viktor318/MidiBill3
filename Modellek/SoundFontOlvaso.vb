@@ -129,9 +129,10 @@
                     ' bank amúgy sem küldhető ki (túllépi a 7 bites adatbájt-
                     ' korlátot), a 120-as pedig a GM2 dob-bankja - ha azt
                     ' küldenénk, egy SoundFontban jellemzően nem létező bankot
-                    ' kérnénk, és a dob elnémulhatna. (A gyári GM2.drm azért
-                    ' használ mégis "120.0.<program>" alakot, mert az egy GM2
-                    ' hangmodulhoz szól, nem egy SoundFonthoz.)
+                    ' kérnénk, és a dob elnémulhatna. (Volt egy gyári GM2.drm
+                    ' lista, ami "120.0.<program>" alakot használt - az egy GM2
+                    ' hangmodulhoz szólt, nem egy SoundFonthoz, és pontosan
+                    ' ezért némult el vele a dob. 2026-09-12-én kivettük.)
                     dobEredmeny(program) = nev
                 ElseIf program >= 0 AndAlso program <= 127 AndAlso bank >= 0 AndAlso bank <= 127 AndAlso nev.Length > 0 Then
                     ' A SoundFont "wBank" mezője a Bank Select MSB-be kerül.

@@ -63,8 +63,7 @@ architektúrája nem adott lehetőséget.
   bankokban tárolt variációk is, tetszőleges bankolási konvenció szerint
   (**GM2**: MSB=121 / dob MSB=120, **Roland GS**: variáció az MSB-ben,
   **Yamaha XG**: variáció az LSB-ben)
-- **Gyári listák**: `GM.lst` / `GM.drm` (General MIDI) és `GM2.lst` /
-  `GM2.drm` (General MIDI Level 2 - 256 melodikus hangszer + 9 dobkészlet)
+- **Gyári lista**: `GM.lst` / `GM.drm` (General MIDI)
 - **Dedikált dobkészlet-hangszerlista** (`.drm` fájlok) a 10. csatornához,
   automatikusan párosítva az aktív hangszerlistával (azonos alapnév)
 - **SoundFont (.sf2) importálás**: egy `.sf2` fájlból automatikusan
@@ -137,11 +136,10 @@ MidiBill3/                      - egyetlen projekt
 ├── Tesztek/                    - Python ellenőrző szkriptek (a VB-logika
 │                                 független újraimplementálása + mutációs tesztek)
 ├── GM.lst / GM.drm             - GYÁRI General MIDI listák (a telepítő szállítja)
-├── GM2.lst / GM2.drm           - GYÁRI General MIDI Level 2 listák
 ├── CHANGELOG.md                - Részletes változásnapló
 ├── MidiBill3_VBNET_aktualis_allapot.md  - A projekt aktuális állapotának leírása
 ├── MIDI_felvetel_fazisterv.md  - A MIDI felvevő fázisterve
-└── MSB_LSB_GM2_terv.md         - Az MSB/LSB szétválasztás és a GM2 terve
+└── MSB_LSB_GM2_terv.md         - Az MSB/LSB szétválasztás terve
 ```
 
 ### Hol tárolja az adatokat?
@@ -152,15 +150,14 @@ felhasználó nem tud írni. A két hely szétválik:
 
 | Hely | Tartalom |
 |---|---|
-| A program mappája (csak olvasható) | `GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm` - a gyári listák |
+| A program mappája (csak olvasható) | `GM.lst`, `GM.drm` - a gyári General MIDI listák |
 | `%AppData%\MidiBill3\` | `Kezdet.json` (induló beállítások), `HibaNaplo.txt` |
 | `%AppData%\MidiBill3\Presetek\` | A mentett preset fájlok (`.json`) |
 | `%AppData%\MidiBill3\SF adatok\` | Az importált hangszerlisták (`.lst` / `.drm`) |
 | `%AppData%\MidiBill3\Felvetelek\` | A MIDI felvevő által mentett `.mid` fájlok (+ a mellettük készülő `.txt` jelentések) |
 
-A gyári listanevek (`GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm`) védettek:
-mindig a gyári változat töltődik be, és a program nem is enged ilyen néven
-felhasználói fájlt létrehozni.
+A `GM.lst` és a `GM.drm` védett: mindig a gyári változat töltődik be, és a
+program nem is enged ilyen néven felhasználói fájlt létrehozni.
 
 ## Előzmény
 
@@ -170,7 +167,7 @@ rendszer, leállítási/eszközkezelési robusztusság). Ez a VB.NET-es verzió
 ennek a letisztult állapotnak a tudatos újraírása, modern eszközökkel -
 és azóta jelentősen túl is nőtte az eredeti VB6-os verzió képességeit
 (16 teljesen szerkeszthető csatorna, split pont, transzponálás, Reverb,
-külön MSB/LSB bankkezelés, GM2, SoundFont-import, MIDI felvétel és
+külön MSB/LSB bankkezelés, SoundFont-import, MIDI felvétel és
 fájlkezelés, beépített segédprogramok).
 
 ## Fejlesztés alatt

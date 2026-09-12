@@ -102,16 +102,12 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               `mido` visszaolvasás + mutációs teszt)
 │   ├── hangszerkulcs_ellenorzes.py - A kulcs-számítás és a .lst
 │   │                               index-formátum ellenőrzése
-│   ├── gm2_lista.py             - A GM2.lst és GM2.drm előállítása
 │   ├── bank_select_teszt.py     - Diagnosztika: melyik Bank Select bájtot
 │   ├── bank_select_teszt.mid      veszi figyelembe egy adott lejátszó
 │   └── Bankteszt.lst            - Teszt-hangszerlista MSB-s és LSB-s
 │                                  bejegyzésekkel (kézi próbához)
 ├── GM.lst                       - GYÁRI hangszerlista (a telepítő szállítja)
 ├── GM.drm                       - GYÁRI dobkészlet-lista (a telepítő szállítja)
-├── GM2.lst                      - GYÁRI General MIDI 2 lista (256 hang,
-│                                  MSB 121) - a telepítő szállítja
-├── GM2.drm                      - GYÁRI GM2 dobkészletek (MSB 120)
 ├── CHANGELOG.md                 - Verziónkénti fejlesztési történet
 ├── MidiBill3_VBNET_aktualis_allapot.md - EZ a dokumentum
 ├── MIDI_felvetel_fazisterv.md   - A felvétel/lejátszás fázisterve (0-8.)
@@ -359,12 +355,40 @@ lépések" 13. pontja MEGVALÓSULT):
 - A SoundFont-import a `.sf2` bankját az **MSB**-be teszi - ezt MÉRÉS
   alapozza meg (`Tesztek/bank_select_teszt.mid`), nem feltételezés.
   A dobkészletek szándékosan bank nélkül maradnak.
-- Gyári `GM2.lst` (256 hang) és `GM2.drm` (9 dobkészlet).
+- Gyári `GM2.lst` (256 hang) és `GM2.drm` (9 dobkészlet). **2026-09-12-én
+  KIVETTÜK** - lásd alább.
 - Új "Több SoundFont importálása" menüpont a Fájl menüben.
 
 **A felhasználó teendője a frissítés után**: a korábban importált
 SoundFont-listákat egyszer újra kell generálni (a régi, kéttagú
 bejegyzések LSB-t jelentenek). A presetekhez nem kell hozzányúlni.
+
+**A GM2 gyári listák kivétele** (2026-09-12, a felhasználó döntése):
+
+A `GM2.lst` és a `GM2.drm` KIKERÜLT a projektből. Az ok gyakorlati: a
+GM2 a Bank Select MSB 121-es (dallam), illetve 120-as (dob) bankját
+címzi, a felhasználó szintije viszont BASSMIDI-alapú VirtualMIDISynth,
+ami a CC0-t a SoundFont bankjának tekinti - ott ezek a bankok
+jellemzően nem léteznek, tehát a GM2 lista hangszerei (és főleg a
+dobjai) meg sem szólaltak volna. Két konkrét hibát szüntetett meg:
+
+1. A 10. csatornán CC0 = 120 ment ki, amitől a dob elnémulhatott.
+2. A `GM2.drm`-ben egyetlen bank nélküli bejegyzés sem volt, ezért egy
+   hagyományos GM fájl dobcsatornájára a jelentés és a felvett `.mid`
+   tracknév sem talált nevet (a visszaesési lánc utolsó lépcsője a
+   `(0, 0, program)` kulcs, ami abban a listában nincs benne).
+
+**Ami NEM változott**: a külön MSB/LSB kezelés és a háromtagú
+`msb.lsb.program` listaformátum megmarad - az volt a tényleges
+hibajavítás, és a SoundFont-bankokhoz kell. Egy GM2-t címző listát
+ezután is bármikor lehet kézzel írni vagy importálni, csak nem
+gyáriként szállítjuk. A `MSB_LSB_GM2_terv.md` történeti dokumentumként
+marad a repóban.
+
+**Migráció**: nincs teendő. Ha egy preset a `GM2.lst`-re hivatkozik, a
+`HangszerListaAlkalmazasa` figyelmeztet és marad az aktuális lista, a
+`HangszerekErvenyesitese` pedig a listán kívülre eső hangszereket a
+lista első elemére korrigálja - szintén figyelmeztetéssel.
 
 ## Ismert, tudatosan meghozott döntések
 

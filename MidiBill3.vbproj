@@ -61,14 +61,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <None Include="GM2.lst">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
-    <None Include="GM2.drm">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
   </ItemGroup>
 
 <ItemGroup>
@@ -98,7 +90,7 @@
     <ItemGroup>
       <!-- FONTOS: ha új gyári listafájl kerül a projektbe, IDE IS fel kell venni,
            különben a publish mappából hiányozni fog. -->
-      <GyariAdatFajlok Include="$(MSBuildProjectDirectory)\GM.lst;$(MSBuildProjectDirectory)\GM.drm;$(MSBuildProjectDirectory)\GM2.lst;$(MSBuildProjectDirectory)\GM2.drm" />
+      <GyariAdatFajlok Include="$(MSBuildProjectDirectory)\GM.lst;$(MSBuildProjectDirectory)\GM.drm" />
     </ItemGroup>
     <Copy SourceFiles="@(GyariAdatFajlok)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
   </Target>

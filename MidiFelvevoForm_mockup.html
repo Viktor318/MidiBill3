@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="hu">
 <head>
 <meta charset="utf-8">
@@ -7,7 +7,7 @@
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    padding: 40px;
+    padding: 40px 20px;
     background: #e9ecef;
     font-family: "Segoe UI", Tahoma, sans-serif;
     display: flex;
@@ -19,9 +19,11 @@
     color: #555;
     font-size: 13px;
     max-width: 520px;
-    text-align: center;
-    line-height: 1.5;
+    line-height: 1.55;
   }
+  .caption h3 { font-size: 13px; margin: 14px 0 4px 0; color: #333; }
+  .caption ul { margin: 4px 0; padding-left: 20px; }
+  .caption li { margin-bottom: 3px; }
   .window {
     width: 480px;
     background: #f0f0f0;
@@ -61,6 +63,28 @@
     background: #f0f0f0;
   }
   legend { padding: 0 4px; font-weight: 600; color: #222; }
+
+  /* Későbbi fázisokhoz tartozó blokkok: szaggatott keret + halványítás */
+  fieldset.later {
+    border-style: dashed;
+    border-color: #bbb;
+    background: #eaeaea;
+  }
+  fieldset.later .content-dim { opacity: 0.62; }
+
+  .fazis {
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    background: #6b8fb5;
+    border-radius: 8px;
+    padding: 1px 7px;
+    margin-left: 6px;
+    vertical-align: 1px;
+    letter-spacing: 0.2px;
+  }
+  .fazis.most { background: #3d7a3d; }
+  .fazis.kesobb { background: #9a9a9a; }
 
   .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .row:last-child { margin-bottom: 0; }
@@ -177,13 +201,6 @@
   .statuslabel.felfegyverzett { background: #fdf0d5; color: #7a4a00; border: 1px solid #f0ad4e; }
   .statuslabel.aktiv { background: #fdeceb; color: #a1281f; border: 1px solid #d9463b; }
 
-  .filepath {
-    font-size: 11.5px;
-    color: #666;
-    font-style: italic;
-    margin-top: 4px;
-  }
-
   .textbox {
     font-family: inherit;
     font-size: 12.5px;
@@ -201,6 +218,7 @@
     background: #fafafa;
     border: 1px solid #e0e0e0;
     border-radius: 2px;
+    line-height: 1.5;
   }
 
   .divider { border-top: 1px dashed #c6c6c6; margin: 10px 0; }
@@ -210,7 +228,12 @@
     color: #888;
     font-weight: 400;
     font-style: italic;
+    line-height: 1.4;
   }
+
+  /* Letiltott (szürke) vezérlők - a "Hangnem megadása" kikapcsolt állapotához */
+  .tiltott { opacity: 0.45; }
+  select { font-size: 12.5px; padding: 3px; font-family: inherit; }
 
   .metro-row {
     display: flex;
@@ -233,9 +256,27 @@
     50%  { transform: rotate(22deg); }
     100% { transform: rotate(-22deg); }
   }
+
+  .jelmagyarazat {
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: #555;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 520px;
+  }
+  .jelmagyarazat span.fazis { margin-left: 0; }
 </style>
 </head>
 <body>
+
+<div class="jelmagyarazat">
+  <span><span class="fazis most">3. fázis</span> most következik</span>
+  <span><span class="fazis">4-7. fázis</span> ugyanebben a körben, később</span>
+  <span><span class="fazis kesobb">külön kör</span> a felvétel után</span>
+</div>
 
 <div class="window">
   <div class="titlebar">
@@ -246,19 +287,22 @@
 
     <!-- Felvétel vezérlés -->
     <fieldset>
-      <legend>Felvétel</legend>
+      <legend>Felvétel <span class="fazis most">3. fázis</span></legend>
       <div class="row">
         <button class="btn-start">Start</button>
         <button class="btn-stop felfegyverzett">Stop</button>
         <span class="statuslabel felfegyverzett">Várakozás billentyűre...</span>
       </div>
       <div class="row" style="margin-top:2px; margin-bottom:10px;">
-        <span class="tag">(állapot-visszajelzés: nyugalmi → sárga "felfegyverezve" → piros "● FELVÉTEL")</span>
+        <span class="tag">Start = felfegyverzés, a rögzítés az ELSŐ kiküldött üzenetnél indul.
+        Állapotjelző: nyugalmi → sárga „Várakozás billentyűre…” → piros „● FELVÉTEL”.
+        A kézi Stop MINDIG ment, a küszöböktől függetlenül.</span>
       </div>
       <div class="divider"></div>
       <div class="row" style="margin-top:10px;">
         <input type="checkbox" checked>
         <label>Automatikus felvétel</label>
+        <span class="fazis">4. fázis</span>
       </div>
       <div class="row">
         <label>Játékidő-küszöb (mp):</label>
@@ -276,7 +320,7 @@
 
     <!-- Fájlnév / mentés -->
     <fieldset>
-      <legend>Mentés</legend>
+      <legend>Mentés <span class="fazis most">3. fázis</span></legend>
       <div class="row">
         <label style="width:130px;">Mentett fájl neve:</label>
         <input class="textbox" value="Felvetel" style="width:180px;">
@@ -285,88 +329,145 @@
         <input type="checkbox" checked>
         <label>Almappák dátum szerint</label>
       </div>
-      <div class="preview">Felvetelek\2026-08-30\Felvetel_143025.mid<br>
-      <span style="color:#aaa;">(ha "Almappák dátum szerint" ki van kapcsolva: Felvetelek\Felvetel_2026-08-30_143025.mid)</span></div>
+      <div class="preview">Felvetelek\2026-09-12\Felvetel_143025.mid<br>
+      Felvetelek\2026-09-12\Felvetel_143025.txt<br>
+      <span style="color:#aaa;">(ha az „Almappák dátum szerint” ki van kapcsolva:
+      Felvetelek\Felvetel_2026-09-12_143025.mid)</span></div>
       <div class="row" style="margin-top:10px;">
         <input type="checkbox" checked>
-        <label>Mentett fájl automatikus lejátszása (kézzel kell elindítani)</label>
+        <label>Jelentés készítése a felvétel mellé</label>
       </div>
       <div class="row">
-        <span class="tag">(csak a fájlnevet tölti be a Lejátszás mezőbe minden mentés után - a Lejátszás gombot még mindig kézzel kell megnyomni)</span>
+        <span class="tag">ÚJ. A mentett .mid mellé azonos néven egy .txt is készül a fájl tartalmáról
+        (csatornák, hangszerek, vezérlők, tempó, hangnem) – a hangszerlistát és a preset nevét
+        kérdés nélkül az éppen betöltöttből veszi. Alapból bekapcsolva. Ha a jelentés hibára fut,
+        a .mid akkor is megmarad.</span>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <input type="checkbox" checked>
+        <label>Mentett fájl automatikus betöltése lejátszásra</label>
+        <span class="fazis">5. fázis</span>
+      </div>
+      <div class="row">
+        <span class="tag">Csak a fájlnevet tölti be a Lejátszás mezőbe minden mentés után –
+        a Lejátszás gombot továbbra is kézzel kell megnyomni.</span>
       </div>
     </fieldset>
 
     <!-- Lejátszás -->
-    <fieldset>
-      <legend>Lejátszás: <span style="font-weight:400; color:#444;">Felvetel_143025.mid</span></legend>
-      <div class="row">
-        <button>Fájl megnyitása...</button>
-        <button class="btn-play aktiv">Lejátszás</button>
-        <button>Stop</button>
-      </div>
-      <div class="row">
-        <input type="checkbox">
-        <label>A lejátszott hangok rögzítése (overdub)</label>
-      </div>
-      <div class="seekrow">
-        <div class="seekbar">
-          <div class="track">
-            <div class="fill"></div>
-            <div class="thumb"></div>
-          </div>
+    <fieldset class="later">
+      <legend>Lejátszás: <span style="font-weight:400; color:#444;">Felvetel_143025.mid</span>
+        <span class="fazis">5-7. fázis</span></legend>
+      <div class="content-dim">
+        <div class="row">
+          <button>Fájl megnyitása...</button>
+          <button class="btn-play aktiv">Lejátszás</button>
+          <button>Stop</button>
         </div>
-        <span class="timelabel">1:22 / 3:41</span>
-      </div>
-      <div class="row" style="margin-top:6px;">
-        <span class="tag">(a csúszka fogható és húzható = tekerés a fájlon belül; tekerés után automatikus "Csend legyen!"-szerű All Notes Off, hogy ne ragadjanak be hangok)</span>
+        <div class="row">
+          <input type="checkbox">
+          <label>A lejátszott hangok rögzítése (overdub)</label>
+          <span class="fazis">7. fázis</span>
+        </div>
+        <div class="seekrow">
+          <div class="seekbar">
+            <div class="track">
+              <div class="fill"></div>
+              <div class="thumb"></div>
+            </div>
+          </div>
+          <span class="timelabel">1:22 / 3:41</span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span class="tag">A csúszka fogható és húzható (tekerés a fájlon belül);
+          tekerés után automatikus All Notes Off, hogy ne ragadjanak be hangok. <b>6. fázis.</b></span>
+        </div>
       </div>
     </fieldset>
 
     <!-- Metronóm -->
-    <fieldset>
-      <legend>Metronóm</legend>
-      <div class="metro-row">
-        <div class="metro-icon">
-          <svg viewBox="0 0 46 46">
-            <polygon points="10,42 36,42 23,8" fill="none" stroke="#888" stroke-width="2"/>
-            <line class="metro-needle" x1="23" y1="40" x2="23" y2="12" stroke="#2c5488" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="23" cy="40" r="2.5" fill="#2c5488"/>
-          </svg>
-        </div>
-        <div>
-          <div class="row">
-            <button class="btn-start">Start</button>
-            <button class="btn-stop">Stop</button>
+    <fieldset class="later">
+      <legend>Metronóm <span class="fazis kesobb">külön kör</span></legend>
+      <div class="content-dim">
+        <div class="metro-row">
+          <div class="metro-icon">
+            <svg viewBox="0 0 46 46">
+              <polygon points="10,42 36,42 23,8" fill="none" stroke="#888" stroke-width="2"/>
+              <line class="metro-needle" x1="23" y1="40" x2="23" y2="12" stroke="#2c5488" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="23" cy="40" r="2.5" fill="#2c5488"/>
+            </svg>
           </div>
-          <div class="row" style="margin-top:6px;">
-            <input type="checkbox" checked>
-            <label>Metronóm indítása felvételnél</label>
+          <div>
+            <div class="row">
+              <button class="btn-start">Start</button>
+              <button class="btn-stop">Stop</button>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <input type="checkbox" checked>
+              <label>Metronóm indítása felvételnél</label>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="divider"></div>
-      <div class="row" style="margin-top:10px;">
-        <label style="width:80px;">Tempó (BPM):</label>
-        <span class="spinner">
-          <input value="120">
-          <span class="updown"><span>▲</span><span>▼</span></span>
-        </span>
-        <label style="width:44px; margin-left:14px;">Ütem:</label>
-        <span class="spinner"><input value="4" style="width:28px;"><span class="updown"><span>▲</span><span>▼</span></span></span>
-        <span style="font-weight:600;">/</span>
-        <select style="font-size:12.5px; padding:3px;"><option>2</option><option selected>4</option><option>8</option><option>16</option></select>
-      </div>
-      <div class="row" style="margin-top:10px;">
-        <label style="width:110px;">Első ütés hangja:</label>
-        <select style="font-size:12.5px; padding:3px; width:140px;"><option>Claves</option></select>
-        <span class="tag" style="margin-left:8px;">hangerő:</span>
-        <span class="spinner"><input value="90%" style="width:38px;"></span>
-      </div>
-      <div class="row">
-        <label style="width:110px;">Többi ütés hangja:</label>
-        <select style="font-size:12.5px; padding:3px; width:140px;"><option>Side Stick</option></select>
-        <span class="tag" style="margin-left:8px;">hangerő:</span>
-        <span class="spinner"><input value="65%" style="width:38px;"></span>
+        <div class="divider"></div>
+
+        <div class="row" style="margin-top:10px;">
+          <label style="width:80px;">Tempó (BPM):</label>
+          <span class="spinner">
+            <input value="120">
+            <span class="updown"><span>▲</span><span>▼</span></span>
+          </span>
+          <label style="width:44px; margin-left:14px;">Ütem:</label>
+          <span class="spinner"><input value="4" style="width:28px;"><span class="updown"><span>▲</span><span>▼</span></span></span>
+          <span style="font-weight:600;">/</span>
+          <select><option>2</option><option selected>4</option><option>8</option><option>16</option></select>
+        </div>
+
+        <!-- ÚJ: hangnem, a BPM és az ütem UTÁN -->
+        <div class="row" style="margin-top:10px;">
+          <input type="checkbox">
+          <label>Hangnem megadása</label>
+        </div>
+        <div class="row tiltott">
+          <label style="width:80px;">Hangnem:</label>
+          <select style="width:190px;">
+            <option selected>C-dúr (nincs előjegyzés)</option>
+            <option>G-dúr (1 kereszt)</option>
+            <option>D-dúr (2 kereszt)</option>
+            <option>A-dúr (3 kereszt)</option>
+            <option>F-dúr (1 b)</option>
+            <option>B-dúr (2 b)</option>
+            <option>a-moll (nincs előjegyzés)</option>
+            <option>e-moll (1 kereszt)</option>
+            <option>d-moll (1 b)</option>
+            <option>g-moll (2 b)</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="tag">ÚJ. Alapból KIkapcsolva – a hangnem megadása szándékosan nem kötelező,
+          egy rögtönzött felvételnek nem feltétlenül van értelmes hangneme. Kikapcsolva a lista szürke,
+          és <code>FF 59</code> sem kerül a fájlba (a jelentésben „nincs a fájlban”).
+          Bekapcsolva 15 dúr + 15 moll hangnem közül lehet választani.</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="row" style="margin-top:10px;">
+          <label style="width:110px;">Első ütés hangja:</label>
+          <select style="width:140px;"><option>Claves</option></select>
+          <span class="tag" style="margin-left:8px;">hangerő:</span>
+          <span class="spinner"><input value="90%" style="width:38px;"></span>
+        </div>
+        <div class="row">
+          <label style="width:110px;">Többi ütés hangja:</label>
+          <select style="width:140px;"><option>Side Stick</option></select>
+          <span class="tag" style="margin-left:8px;">hangerő:</span>
+          <span class="spinner"><input value="65%" style="width:38px;"></span>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <span class="tag">A metronóm hangja SOHA nem kerül a mentett fájlba
+          (<code>metronomBol</code> jelző – a szűrés már készen van).
+          A metronóm értékei MUNKAMENET-SZINTŰEK: nem kerülnek a Kezdet.json-ba és a presetekbe sem,
+          újraindításkor alapértékre állnak.</span>
+        </div>
       </div>
     </fieldset>
 
@@ -374,13 +475,37 @@
 </div>
 
 <div class="caption">
-  Ez egy gyors, kattintható jellegű vázlat a megbeszélt elemekről (Start/Stop
-  felfegyverzés, Automatikus felvétel + 2 küszöbérték, Lejátszás + overdub
-  checkbox, állapot-visszajelzés). A Tempó/metronóm rész HALVÁNYÍTVA/szaggatott
-  kerettel jelzi, hogy az egy KÉSŐBBI, még meg nem tervezett kiegészítés – csak
-  helykitöltőként szerepel itt, hogy lásd, hova kerülhetne majd. A pontos
-  pixel-koordináták, méretek és a végleges elrendezés a kódolás közben, a te
-  visszajelzéseid alapján fog kialakulni – ahogy eddig is.
+  <h3>Mi változott az előző vázlathoz képest</h3>
+  <ul>
+    <li><b>„Jelentés készítése a felvétel mellé”</b> jelölőnégyzet a Mentés csoportban,
+        alapból bekapcsolva – ez a 3. fázis része, tehát most készül el.</li>
+    <li><b>„Hangnem megadása”</b> jelölőnégyzet + hangnem-lista a Metronóm részben,
+        a BPM és az ütem UTÁN, alapból kikapcsolva. A felvevő motor három property-je
+        (<code>HangnemMegadva</code>, <code>HangnemElojegyzes</code>, <code>HangnemMoll</code>)
+        már készen áll rá.</li>
+    <li>A <b>fájlnév-előnézetben</b> most a <code>.txt</code> is látszik a <code>.mid</code> mellett.</li>
+    <li>Minden blokk megkapta a <b>fázis-címkéjét</b>, és a későbbi körökhöz tartozó részek
+        szaggatott kerettel, halványítva jelennek meg – így látszik, mi az, ami a 3. fázis végén
+        ténylegesen működni fog.</li>
+  </ul>
+
+  <h3>Amit a 3. fázis végén látni fogsz</h3>
+  <p style="margin:4px 0;">Csak a két felső csoport él: Start/Stop felfegyverzéssel és színes
+  állapotjelzéssel, fájlnév + dátum-almappa, és a jelentés-kapcsoló. Az „Automatikus felvétel”
+  sor már ott lesz a helyén, de a működése a 4. fázisban kapcsolódik be. A Lejátszás és a
+  Metronóm csoport ekkor még nem kerül az ablakra.</p>
+
+  <h3>Két nyitott kérdés a kódolás előtt</h3>
+  <ul>
+    <li>A <b>kimeneti eszköz váltása</b> ma 32 vezérlő-üzenetet küld ki, amit a felvevő
+        rögzítene – felfegyverzett állapotban EL IS INDÍTANÁ a felvételt. Ezt a 3. fázis előtt
+        érdemes rendezni.</li>
+    <li>A <b>BPM és az ütemmutató</b> még konstans a felvevőben; ha a metronóm-kör ezekre épül,
+        property-vé kell emelni őket (és a tick-átváltást számítottá tenni).</li>
+  </ul>
+
+  <p style="margin:10px 0 0 0;">A pontos pixel-koordináták, méretek és a végleges elrendezés
+  a kódolás közben, a visszajelzéseid alapján alakul ki – ahogy eddig is.</p>
 </div>
 
 </body>

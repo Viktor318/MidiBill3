@@ -64,8 +64,7 @@ architecture couldn't support.
   reachable under any banking convention (**GM2**: MSB=121 / drums
   MSB=120, **Roland GS**: variation in the MSB, **Yamaha XG**: variation
   in the LSB)
-- **Built-in lists**: `GM.lst` / `GM.drm` (General MIDI) and `GM2.lst` /
-  `GM2.drm` (General MIDI Level 2 - 256 melodic instruments + 9 drum kits)
+- **Built-in list**: `GM.lst` / `GM.drm` (General MIDI)
 - **Dedicated drum kit instrument list** (`.drm` files) for channel 10,
   automatically paired with the active instrument list (matching base
   file name)
@@ -143,11 +142,10 @@ MidiBill3/                      - single project
 │                                 (independent re-implementation of the VB
 │                                 logic + mutation testing)
 ├── GM.lst / GM.drm             - BUILT-IN General MIDI lists (shipped)
-├── GM2.lst / GM2.drm           - BUILT-IN General MIDI Level 2 lists
 ├── CHANGELOG.md                - Detailed change log
 ├── MidiBill3_VBNET_aktualis_allapot.md  - Current state of the project
 ├── MIDI_felvetel_fazisterv.md  - Phase plan for the MIDI recorder
-└── MSB_LSB_GM2_terv.md         - Plan for the MSB/LSB split and GM2
+└── MSB_LSB_GM2_terv.md         - Plan for the MSB/LSB split
 ```
 
 ### Where is data stored?
@@ -158,15 +156,14 @@ locations are kept separate:
 
 | Location | Contents |
 |---|---|
-| Program folder (read-only) | `GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm` - the built-in lists |
+| Program folder (read-only) | `GM.lst`, `GM.drm` - the built-in General MIDI lists |
 | `%AppData%\MidiBill3\` | `Kezdet.json` (startup settings), `HibaNaplo.txt` (error log) |
 | `%AppData%\MidiBill3\Presetek\` | Saved preset files (`.json`) |
 | `%AppData%\MidiBill3\SF adatok\` | Imported instrument lists (`.lst` / `.drm`) |
 | `%AppData%\MidiBill3\Felvetelek\` | `.mid` files saved by the MIDI recorder (plus the `.txt` reports generated next to them) |
 
-The built-in list names (`GM.lst`, `GM.drm`, `GM2.lst`, `GM2.drm`) are
-protected: the built-in copies are always loaded, and the program refuses
-to create user files under those names.
+`GM.lst` and `GM.drm` are protected: the built-in copies are always loaded,
+and the program refuses to create user files under those names.
 
 ## History
 
@@ -176,7 +173,7 @@ note-tracking system, shutdown/device-handling robustness). This
 VB.NET version is a deliberate rewrite of that cleaned-up state, using
 modern tools - and has since significantly outgrown the original VB6
 version's capabilities (16 fully editable channels, split point,
-transposition, Reverb, separate MSB/LSB bank handling, GM2, SoundFont
+transposition, Reverb, separate MSB/LSB bank handling, SoundFont
 import, MIDI recording and file handling, built-in utilities).
 
 ## Under active development

@@ -10,6 +10,83 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [Nem kiadott]
+
+Verziólépés nélküli változások az 1.17.0 kiadása óta.
+
+### Eltávolítva - a gyári GM2 hangszerlisták
+
+A `GM2.lst` és a `GM2.drm` KIKERÜLT a projektből, alig egy kiadással
+azután, hogy bekerültek. Az ok gyakorlati, és pont az, amit az
+1.17.0-s hibajavítás tárt fel: a GM2 a Bank Select **MSB 121-es**
+(dallam), illetve **120-as** (dob) bankját címzi, a felhasználó szintije
+viszont BASSMIDI-alapú VirtualMIDISynth, ami a CC0-t a SoundFont
+bankjának tekinti - ott ezek a bankok jellemzően nem léteznek. A lista
+tehát nem egyszerűen felesleges volt, hanem két konkrét hibát okozott:
+
+1. **Elnémuló dob.** A `GM2.drm` minden bejegyzése `120.0.<program>`
+   alakú, ezért a 10. csatornán `CC0 = 120` ment ki - egy SoundFontban
+   jellemzően nem létező bank. Ez az egyetlen hely volt a programban,
+   ahol nem nulla bank került a dobcsatornára; a SoundFont-import
+   éppen ezért hagyja bank nélkül a dobkészleteket.
+2. **Névtelen dobcsatorna a jelentésben és a tracknévben.** A `GM2.drm`
+   egyetlen bank nélküli bejegyzést sem tartalmazott, a visszaesési lánc
+   utolsó lépcsője viszont a `(0, 0, program)` kulcs - így ha a GM2 volt
+   az aktív lista, egy hagyományos GM fájl dobcsatornájára sem a
+   jelentés, sem a felvett `.mid` tracknév-feloldása nem talált nevet.
+
+**Ami NEM változott**: a Bank Select MSB és LSB külön kezelése, a
+`Hangszerkulcs` modul és a háromtagú `msb.lsb.program` listaformátum
+mind megmarad - az volt az 1.17.0 tényleges hibajavítása, és a
+SoundFont-bankokhoz kell. A `.lst` formátum továbbra is le tud írni GM2
+címzést, csak nem szállítunk ilyen listát gyáriként; kézzel írni vagy
+importálni bármikor lehet. A `MSB_LSB_GM2_terv.md` történeti
+dokumentumként a repóban marad.
+
+- Törölve: `GM2.lst`, `GM2.drm`, `Tesztek/gm2_lista.py` (a generátoruk).
+- `Modellek/Utvonalak.vb`: a `gyariListaNevek` újra csak
+  `{"GM.lst", "GM.drm"}`.
+- `MidiBill3.vbproj`: a két `<None Include="GM2.*">` elem és a GM2 a
+  publish-másoló target `GyariAdatFajlok` listájából is kikerült.
+- `Modellek/SoundFontOlvaso.vb`: a dobbank-kezelés magyarázatából
+  kikerült a már nem létező `GM2.drm`-re hivatkozó zárójeles rész -
+  helyette az áll, hogy pontosan emiatt vettük ki. Az
+  `ismertDobBankok = {120, 127, 128}` VÁLTOZATLAN: az a SoundFontokban
+  előforduló bankszámokról szól, nem a törölt listáról.
+
+**Migráció**: nincs teendő. Ha egy preset a `GM2.lst`-re hivatkozik, a
+`HangszerListaAlkalmazasa` figyelmeztet és marad az aktuális lista, a
+`HangszerekErvenyesitese` pedig a listán kívülre eső hangszereket a
+lista első elemére korrigálja - szintén figyelmeztetéssel.
+
+### Javítva - a több SoundFont importálása és az aktív lista
+
+A `MainForm.ListaMentesSzamlaloval` a TELJES fájlnevet hasonlította az
+aktív hangszerlistáéhoz, pedig a `.lst` és a `.drm` külön fájlnév. Egy
+CSAK dobkészleteket tartalmazó SoundFont, aminek az alapneve megegyezik
+az aktív listáéval, így lecserélte a `<Alapnév>.drm` fájlt anélkül, hogy
+az aktív lista újratöltése elindult volna - a lemezen lévő és a
+memóriában lévő doblista csendben elcsúszott egymástól. Mostantól az
+ALAPNEVEK összehasonlítása dönt.
+
+### Dokumentáció
+
+- **A két README érdemben elavult volt**, most az aktuális állapotot
+  írja le: a háromtagú `msb.lsb.program` listaformátum (a régi kéttagú
+  `bank.program` helyett), a felcserélve megnevezett GS/XG konvenciók
+  javítása (GS = variáció az MSB-ben, XG = az LSB-ben), a MIDI felvevő
+  és a mellé készülő `.txt` jelentés, mind az öt Segédprogramok-menüpont
+  (eddig csak kettő szerepelt), a "Több SoundFont importálása", a
+  `Tesztek` mappa, és a `%AppData%\MidiBill3` elrendezés a már nem
+  létező `Adatok/` helyett. A fő funkciók listája alfejezetekre bontva,
+  a fájlfa hibás dupla `└──` sora javítva.
+- `MidiFelvevoForm_mockup.html` frissítve a 3. fázis előtt: bekerült a
+  "Jelentés készítése a felvétel mellé" és a "Hangnem megadása"
+  jelölőnégyzet, és minden blokk megkapta a fázis-címkéjét (a későbbi
+  körökhöz tartozó részek halványítva).
+
+---
+
 ## [1.17.0] - 2026-09-07
 
 ### Javítva - a Bank Select MSB és LSB külön kezelése

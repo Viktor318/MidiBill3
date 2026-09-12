@@ -69,8 +69,10 @@ Namespace Modellek
         ''' </summary>
         Public Property DobNevek As Dictionary(Of Integer, String) = AlapertelmezettDobKeszlet()
 
-        ''' <summary>Beépített, "gyári" GM2-stílusú dobkészlet-lista,
-        ''' ha a GM.drm hiányzik/sérült</summary>
+        ''' <summary>Beépített, "gyári" dobkészlet-lista, ha a GM.drm
+        ''' hiányzik/sérült. A kit-készlet a GM2 szabványé, de a kulcs
+        ''' SZÁNDÉKOSAN a puszta programszám, bank nélkül - lásd
+        ''' Modellek\SoundFontOlvaso.vb magyarázatát.</summary>
         Public Function AlapertelmezettDobKeszlet() As Dictionary(Of Integer, String)
             Return New Dictionary(Of Integer, String) From {
                 {0, "Standard Kit"},
