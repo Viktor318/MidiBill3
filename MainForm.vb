@@ -1896,7 +1896,9 @@ Public Class MainForm
     ''' GM.lst/GM.drm-re, a csatornák/Split pont/Transzponálás/Reverb/Pedál a
     ''' beépített alapértékekre. A MIDI In/Out kiválasztás SZÁNDÉKOSAN
     ''' változatlan marad (ez nem "beállítás" a felhasználó szemszögéből,
-    ''' hanem eszközkapcsolat). NEM törli a Kezdet.json fájlt a lemezről -
+    ''' hanem eszközkapcsolat). A csatorna-választó visszaáll az 1-4.
+    ''' csoportra, hogy a felület is az alaphelyzetet mutassa. NEM törli a
+    ''' Kezdet.json fájlt a lemezről -
     ''' normál kilépéskor a mostani (alaphelyzetbe állított) állapot
     ''' felülírja majd, ha a felhasználó nem a "Kilépés mentés nélkül"
     ''' opciót választja.
@@ -1918,6 +1920,15 @@ Public Class MainForm
 
         chkPedal.Checked = False
         chkMidiBeallitoUzenetek.Checked = False
+
+        ' Vissza az 1-4. csatorna csoportra, hogy az alaphelyzet a
+        ' FELÜLETEN is látszódjon, ne csak az adatokban. A radCsoport1
+        ' bepipálása magától elindítja a CsoportValtas(0)-t - DE ha épp az
+        ' volt kiválasztva, a CheckedChanged nem tüzel, ezért az
+        ' aktivCsoportIndex-et közvetlenül is beállítjuk. Így mindkét
+        ' esetben helyes az állapot.
+        aktivCsoportIndex = 0
+        radCsoport1.Checked = True
 
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()

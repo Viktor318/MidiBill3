@@ -69,6 +69,35 @@ az aktív lista újratöltése elindult volna - a lemezen lévő és a
 memóriában lévő doblista csendben elcsúszott egymástól. Mostantól az
 ALAPNEVEK összehasonlítása dönt.
 
+### Változtatva - "Alaphelyzetbe állítás" és a csatorna-választó
+
+Az "Alaphelyzetbe állítás" mostantól a csatorna-választót is visszaállítja
+az **1-4. csoportra**, tehát a felület is az alaphelyzetet mutatja, nem csak
+az adatok állnak vissza. Eddig ha pl. a 13-16. csoporton álltál, az
+alaphelyzetbe állítás után is ott maradtál - négy olyan csatornán, ami
+ilyenkor amúgy is mind inaktív.
+
+A megvalósításhoz két sor kell (`aktivCsoportIndex = 0` ÉS
+`radCsoport1.Checked = True`), mert a `CheckedChanged` esemény csak akkor
+tüzel, ha az érték ténylegesen változik: ha a felhasználó már az 1-4.
+csoporton állt, a `Checked = True` önmagában némán nem csinálna semmit.
+
+### Hozzáadva - dobkészlet-váltás diagnosztika
+
+`Tesztek/dob_teszt.py` + `dob_teszt.mid`: a `bank_select_teszt` párja, csak
+a 10. csatornára. Kilenc szakaszban UGYANAZT a dobmintát szólaltatja meg,
+más-más bank/program kombinációval - bank nélküli Program Change, a
+MidiBill3 tényleges `CC0=0 / CC32=0 / PC` hármasa, majd `CC0=127`,
+`CC0=120` és egy LSB-s változat -, így egyetlen meghallgatásból eldönthető,
+hogyan lehet egyáltalán dobkészletet váltani egy adott SoundFonttal. Minden
+szakasz elején MIDI jelölő (`FF 06`) is áll, ezért a program saját "MIDI
+fájl beállításainak mentése olvasható formában" segédprogramja időbélyeggel
+kilistázza a szakaszokat.
+
+Egy bejelentés kapcsán készült ("a dobkészlet-váltás nem hallatszik"), ami
+végül NEM programhiba volt, hanem rosszul beállított MIDI kimenet - a
+diagnosztika viszont általánosan hasznos maradt, ezért bekerült a repóba.
+
 ### Dokumentáció
 
 - **A két README érdemben elavult volt**, most az aktuális állapotot
