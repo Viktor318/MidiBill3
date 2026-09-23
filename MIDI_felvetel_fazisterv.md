@@ -182,6 +182,69 @@ alapnévvel. **Döntések**:
   a jelentést). Ez a 4. fázis miatt fontos: az automatikus mód sok rövid
   fájlt gyárthat, mindegyik mellé egy `.txt` sok lehet.
 
+### 10. A felvételt az első LEÜTÉS indítja (a felhasználó döntése, 2026-09-23)
+
+A 2. fázisban a felfegyverzett felvevőt BÁRMILYEN kiküldött üzenet
+elindította - holott a kódkomment azt állította, hogy ugyanúgy működik,
+mint az "Extra MIDI üzenetek" jelölőnégyzet, ami az első leütésre vár.
+Egy felfegyverzés utáni csúszkamozgatás, hangszerváltás, preset-betöltés
+vagy eszközváltás így már elindította a felvételt, pont azt a néma
+előteret gyártva, amit a felfegyverzés el akart kerülni.
+
+**Döntés**: felfegyverzett állapotban CSAK egy valódi leütés (Note On,
+nullánál nagyobb sebességgel) indít. A többi üzenet nem indít és nem is
+rögzül - ami közülük számít, azt a 7. pont szerinti pillanatkép úgyis
+tartalmazza, mert az a rögzítés INDULÁSÁNAK pillanatában olvassa ki a
+csatorna-beállításokat. Egy felfegyverzés után átállított hangszín tehát
+automatikusan bekerül.
+
+**Kivétel - az előadói vezérlők**: a kitartó pedál (CC64) és a
+modulációs kerék (CC1) a billentyűzetről jön, nem a panelről, ezért a
+pillanatkép nem tudna róluk. A felvevő a felfegyverzés alatt csatornánként
+megjegyzi az UTOLSÓ értéküket, és a pillanatkép UTÁN tick 0-ra írja - így
+az első hang előtt lenyomott pedál is benne lesz a fájlban, a moduláció
+esetén pedig a ténylegesen kiküldött érték írja felül a panelét. A lista
+bővíthető (`MidiFelvevo.eloadoiVezerlok`).
+
+A szűrők SORRENDJE is rögzített: a metronóm, a visszajátszás (overdub
+nélkül) és a rendszer-üzenetek kiszűrése az indítás ELŐTT fut, tehát
+ezek sem indíthatnak.
+
+Mellékhatás: a kimeneti eszközváltás söprése felfegyverzett állapotban
+már nem indítja el a felvételt.
+
+### 11. A program belső karbantartó üzenetei nem kerülnek a felvételbe (2026-09-23)
+
+A kimeneti eszköz váltásakor a program elnémítja a régi eszközt (16
+csatornán All Sound Off + All Notes Off), majd az új eszközre mind a 16
+csatorna beállítását újraküldi. AKTÍV felvétel közben ez eddig mind
+belekerült volna a fájlba - az eredmény 16 track, akkor is, ha csak egy
+csatornán szólt hang.
+
+**Döntés**: az `UzenetKikuldve` esemény új `belsoUzenet` jelzőt kapott
+(a `lejatszasBol` / `metronomBol` mintájára). A `MidiEngine`
+`BelsoKarbantartasKent(muvelet)` metódusa alatt kiküldött minden üzenet
+ezzel megy ki - ide tartozik az `OsszesHangElnemitasa` és a `MainForm`
+kimenetváltó kezelője (a megnyitás + `OsszesCsatornaUjrakuldese`). A
+felvevő ezeket se nem rögzíti, se nem indul el tőlük.
+
+Egy apró, de fontos részlet: a kimenet cseréjekor a motor a saját
+hangnyilvántartását is törli, tehát a billentyű későbbi felengedésekor
+már NEM küld Note Off-ot. Ezért a felvevő a belső elnémításnál maga zárja
+le az épp szóló hangokat, abban a pillanatban - különben a fájlban a
+felvétel végéig szólnának.
+
+A pánikgomb viszont NEM belső: az a felhasználó zenei döntése, rögzül.
+
+### 12. Bemenetváltáskor a lenyomott hangok elengedése (2026-09-23)
+
+Ha egy billentyű lenyomva volt, amikor a felhasználó MIDI bemenetet
+váltott, a felengedése már a lezárt eszközről jött volna, vagyis soha - a
+hang a pánikgombig szólt. A `MidiEngine.BemenetBezaras` mostantól az
+aktív csatornákon felengedi a kitartó pedált, és a nyilvántartás szerint
+szóló minden hangra célzott Note Off-ot küld. Ezek NORMÁL üzenetek: egy
+futó felvételben a hangoknak ott is ezen a ponton kell véget érniük.
+
 ---
 
 ## Fázisok és haladás
@@ -306,18 +369,38 @@ format 1, 1 + N track, 480 PPQ, tempó, 4/4 ütemjelzés, a hangnem
 MINDKÉT esete (nincs megadva / meg van adva), a darab címe, a csatorna-trackek sorrendje, a csatorna-előtag, a
 tracknevek és hangszernevek (a névfeloldás mind a négy esetére), a
 kezdőállapot helye csatornánként, és az ezredmásodperces időzítés
-pontossága. Futtatás: `pip install mido`, majd
+pontossága. 2026-09-23-tól a felvevő ÁLLAPOTGÉPÉT is portolja és
+ellenőrzi (lásd a 10. döntést): indítás csak az első leütésre, a szűrők
+sorrendje, a pillanatkép időpontja, az előadói vezérlők helye és a
+"lógó" hangok lezárása. Futtatás: `pip install mido`, majd
 `python smf_iro_ellenorzes.py`.
 
 **FONTOS**: ez a VB-kód PORTJA, nem a VB futtatása - ha a
 `MidiFelvevo.vb` SMF-író része változik, a szkriptet is frissíteni kell.
 
-A hibafelismerő képessége igazolt: a szkript végén **12 szándékosan
+A hibafelismerő képessége igazolt: a szkript végén **23 szándékosan
 elrontott változat** fut le, és mindegyiknek meg KELL buknia (VLQ
 folytatásbit, Program Change adatbájtjai, trackszám a fejlécben, a
 kezdőállapot rossz trackben, tracknév a track sorszámával, kimaradó
 bank-visszaesés, dobnév a rossz listából, hiányzó csatorna-előtag,
 hosszú ékezetek Latin-1 cseréje, delta-nkénti kerekítés, hangnem akkor
-is beírva, amikor nincs megadva, és a b-s előjegyzés előjel nélkül).
+is beírva, amikor nincs megadva, a b-s előjegyzés előjel nélkül, a
+régi "amelyik nem nulla, az a bank" névfeloldás, és kilenc
+állapotgép-hiba: indítás bármilyen üzenetre, 0 sebességű Note On-ra,
+metronómra/visszajátszásra, pillanatkép felfegyverzéskor, kimaradó,
+rossz helyre kerülő vagy túl sok megjegyzett vezérlő, lezáratlan hang,
+rögzülő belső üzenet, és a belső elnémítás, ami nem zárja le a hangokat).
+
+**A port hűsége ellenőrizve (2026-09-23)**: a `Modellek` fájljait (a
+NAudio-függő `MidiEngine` kivételével) Linuxon, .NET 8 alatt, `Option
+Strict On` mellett lefordítottuk, és a VALÓDI VB `MidiFelvevo`-t
+lefuttattuk ugyanazokon a forgatókönyveken - a kapott `.mid` fájlok
+**bájtra azonosak** a Python-port kimenetével (mindkét hangnem-esetben
+és az állapotgép-forgatókönyvön is). Ugyanez a próba a régi, módosítatlan
+`MidiFelvevo.vb`-n elbukik: ott már egy felfegyverzés utáni hangerő-
+csúszka elindította a felvételt. A `MidiEngine`-t egy NAudio-csonkkal
+szintén lefordítottuk, és a VALÓDI motort a valódi felvevővel együtt,
+a `MainForm`-mal azonos bekötéssel is lefuttattuk (bemenetváltás
+lenyomott billentyűvel, kimenetváltás felvétel közben, pánikgomb).
 Ha egy elrontott változat ÁTMEGY, a teszt nem képes észrevenni azt a
 hibafajtát, és bővíteni kell.

@@ -390,8 +390,14 @@ Public Class MainForm
         End If
 
         Try
-            midiMotor.KimenetMegnyitas(cmbMidiOut.SelectedIndex)
-            OsszesCsatornaUjrakuldese()
+            ' Belső karbantartásként: a régi eszköz elnémítása és a beállítások
+            ' újraküldése nem kerülhet egy futó felvételbe (lásd
+            ' MidiEngine.BelsoKarbantartasKent).
+            midiMotor.BelsoKarbantartasKent(
+                Sub()
+                    midiMotor.KimenetMegnyitas(cmbMidiOut.SelectedIndex)
+                    OsszesCsatornaUjrakuldese()
+                End Sub)
         Catch ex As Exception
             MsgBox("Nem sikerült megnyitni a kiválasztott MIDI kimeneti eszközt." & vbCrLf &
                "Lehet, hogy időközben eltávolították, vagy más program használja." & vbCrLf & vbCrLf &
@@ -1999,10 +2005,11 @@ Public Class MainForm
 
     ''' <summary>IDEIGLENES: a motor kimeneti csapjáról továbbítja az üzeneteket a felvevőnek.</summary>
     Private Sub midiMotor_UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
-                                         idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean) _
+                                         idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
+                                         belsoUzenet As Boolean) _
                                          Handles midiMotor.UzenetKikuldve
 
-        midiFelvevoTeszt.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol)
+        midiFelvevoTeszt.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
 
         ' Csak ÁLLAPOTVÁLTÁSKOR nyúlunk a felülethez (tipikusan egyszer, az
         ' első leütésnél: Felfegyverezve -> Rogzit), nem minden üzenetnél.

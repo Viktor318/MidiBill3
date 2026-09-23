@@ -6,10 +6,20 @@
         Alap = 0
         ''' <summary>
         ''' "Felfegyverezve": a Start gomb megnyomása után várjuk az ELSŐ
-        ''' ténylegesen kiküldött üzenetet - a felvétel csak akkor indul el
-        ''' (ugyanaz a minta, mint az "Extra MIDI üzenetek" checkboxnál).
-        ''' Így a felvétel eleje nem lesz tele üres csenddel amiatt, hogy a
-        ''' felhasználó a Start után még keresgélte a billentyűt.
+        ''' LEÜTÉST (Note On, nullánál nagyobb sebességgel) - a felvétel csak
+        ''' akkor indul el, ugyanúgy, mint az "Extra MIDI üzenetek"
+        ''' jelölőnégyzetnél. Így a felvétel eleje nem lesz tele üres csenddel
+        ''' amiatt, hogy a felhasználó a Start után még a hangszínt kereste
+        ''' vagy a billentyűre várt.
+        '''
+        ''' A közben kiküldött többi üzenet (csúszkák, hangszerváltás,
+        ''' preset-betöltés, eszközváltás) NEM indítja el a felvételt, és nem
+        ''' is rögzül: ami ezekből számít, azt a rögzítés INDULÁSAKOR készülő
+        ''' kezdőállapot-pillanatkép úgyis tartalmazza (lásd
+        ''' MidiFelvevo.kezdoAllapotUzenetek). Kivétel a billentyűzet két
+        ''' előadói vezérlője - lásd MidiFelvevo.eloadoiVezerlok.
+        '''
+        ''' Korábban (2026-09-23 előtt) BÁRMILYEN kiküldött üzenet elindította.
         ''' </summary>
         Felfegyverezve = 1
         ''' <summary>Aktív felvétel - minden ide illő üzenet rögzül.</summary>
@@ -115,6 +125,10 @@
         ''' üzenete magától rögzül a felvételben - ha a fájl elejére a
         ''' MENTÉSKORI (végső) állapotot írnánk, a felvétel eleje már a
         ''' későbbi hangszínnel szólna, ami hibás.
+        '''
+        ''' A pillanatkép UTÁN ide kerül a felfegyverzés alatt kiküldött
+        ''' előadói vezérlők utolsó értéke is (lásd eloadoiVezerlok) - azért
+        ''' UTÁNA, hogy a ténylegesen kiküldött érték írja felül a panelét.
         ''' </summary>
         Private kezdoAllapotUzenetek As New List(Of MidiUzenet)
 
@@ -125,6 +139,38 @@
         ''' leütés között a felhasználó még változtathat a beállításokon.
         ''' </summary>
         Private kezdoAllapotLekerdezo As Func(Of List(Of MidiUzenet)) = Nothing
+
+        ''' <summary>A kitartó (sustain) pedál Controller Change száma.</summary>
+        Private Const SUSTAIN_PEDAL As Integer = 64
+
+        ''' <summary>A "mindent elnémító" Controller Change-ek (lásd MidiEngine.OsszesHangElnemitasa).</summary>
+        Private Const ALL_SOUND_OFF As Integer = 120
+        Private Const ALL_NOTES_OFF As Integer = 123
+
+        ''' <summary>
+        ''' Az ELŐADÓI vezérlők, amelyeknek a felfegyverzés ALATT kiküldött
+        ''' utolsó értékét csatornánként megjegyezzük, és a felvétel
+        ''' indulásakor a kezdőállapot-pillanatkép UTÁN, tick 0-ra írjuk.
+        '''
+        ''' MIÉRT KELL? A felvételt az első leütés indítja, az előtte
+        ''' kiküldött üzenetek nem rögzülnek. A hangszín, hangerő, tér stb.
+        ''' ettől nem vész el, mert azt a pillanatkép a csatorna-
+        ''' beállításokból olvassa ki. Ez a kettő viszont a BILLENTYŰZETRŐL
+        ''' jön, nem a panelről: egy az első hang ELŐTT lenyomott pedál, vagy
+        ''' egy előre felhúzott modulációs kerék nélküle kimaradna a fájlból.
+        ''' (A moduláció a pillanatképben is szerepel, a panel "Vibrato"
+        ''' értékével - de ha a billentyűzet kereke ezt felülírta, a
+        ''' ténylegesen kiküldött érték a helyes.)
+        '''
+        ''' Bővíthető: egy újabb vezérlő (pl. sostenuto, CC66) egyetlen elem.
+        ''' </summary>
+        Private Shared ReadOnly eloadoiVezerlok As Integer() = {CsatornaUzenetek.MOD_WHEEL, SUSTAIN_PEDAL}
+
+        ''' <summary>
+        ''' [csatorna, sorszám az eloadoiVezerlok-ben] -> a felfegyverzés
+        ''' alatt utoljára kiküldött érték, vagy -1, ha nem volt ilyen.
+        ''' </summary>
+        Private felfegyverzesAlattiErtekek As Integer(,) = UresVezerloTabla()
 
         ''' <summary>
         ''' Overdub: rögzüljenek-e a VISSZAJÁTSZÁSBÓL származó üzenetek is?
@@ -196,8 +242,8 @@
 
         ''' <summary>
         ''' "Felfegyverzés": eldobja az esetleges korábbi anyagot, és
-        ''' várakozó állapotba lép. A tényleges rögzítés az ELSŐ ide illő
-        ''' üzenetnél indul el (lásd FelvevoAllapot.Felfegyverezve).
+        ''' várakozó állapotba lép. A tényleges rögzítés az ELSŐ leütésnél
+        ''' indul el (lásd FelvevoAllapot.Felfegyverezve).
         ''' </summary>
         ''' <param name="kezdoAllapotLekerdezo">
         ''' Opcionális függvény, amit a felvevő PONTOSAN a rögzítés
@@ -225,18 +271,46 @@
         ''' - a nem csatorna-üzenetek (rendszer-üzenetek, &amp;HF0 felett):
         '''   sok billentyűzet folyamatosan küld Active Sensing (&amp;HFE) vagy
         '''   MIDI Clock (&amp;HF8) üzenetet, ezek csak feleslegesen hizlalnák a
-        '''   fájlt, és a felvétel szempontjából nincs értelmük.
+        '''   fájlt, és a felvétel szempontjából nincs értelmük,
+        ''' - felfegyverzett állapotban minden, ami NEM leütés - ezek nem is
+        '''   indítják el a felvételt (lásd FelvevoAllapot.Felfegyverezve),
+        ''' - a program BELSŐ karbantartó üzenetei (lásd
+        '''   MidiEngine.BelsoKarbantartasKent): a kimeneti eszköz váltásakor
+        '''   kiküldött elnémító söprés és a beállítások újraküldése. Ezek sem
+        '''   indítanak; felvétel közben csak az általuk elnémított hangok
+        '''   kapnak Note Off-ot (lásd BelsoElnemitasKezelese).
+        '''
+        ''' A szűrők SORRENDJE számít: a metronóm, a visszajátszás és a
+        ''' rendszer-üzenetek kiszűrése az indítás ELŐTT fut, tehát egy
+        ''' metronóm-kattanás vagy egy visszajátszott hang (overdub nélkül)
+        ''' sem indíthatja el a felvételt.
         ''' </summary>
         Public Sub UzenetRogzitese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
-                                   idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean)
+                                   idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
+                                   belsoUzenet As Boolean)
 
             If allapotBelso = FelvevoAllapot.Alap Then Return
             If metronomBol Then Return
             If lejatszasBol AndAlso Not LejatszottHangokRogzitese Then Return
             If statuszBajt < &H80 OrElse statuszBajt >= &HF0 Then Return
 
+            ' Belső karbantartó üzenet: se nem indít, se nem rögzül - felvétel
+            ' közben csak az általa elnémított hangokat zárjuk le.
+            If belsoUzenet Then
+                If allapotBelso = FelvevoAllapot.Rogzit Then BelsoElnemitasKezelese(statuszBajt, adat1, idobelyegMs)
+                Return
+            End If
+
             If allapotBelso = FelvevoAllapot.Felfegyverezve Then
-                ' Ez az első üzenet: innentől számít a felvétel kezdete.
+                ' CSAK egy valódi leütés indítja a felvételt - minden más
+                ' üzenet elmarad, az előadói vezérlők értékét viszont
+                ' megjegyezzük (lásd eloadoiVezerlok).
+                If Not ValodiLeutesE(statuszBajt, adat2) Then
+                    FelfegyverzesAlattiVezerloMegjegyzese(statuszBajt, adat1, adat2)
+                    Return
+                End If
+
+                ' Ez az első leütés: innentől számít a felvétel kezdete.
                 allapotBelso = FelvevoAllapot.Rogzit
                 elsoIdobelyegMs = idobelyegMs
 
@@ -246,6 +320,10 @@
                     Dim pillanatkep As List(Of MidiUzenet) = kezdoAllapotLekerdezo()
                     If pillanatkep IsNot Nothing Then kezdoAllapotUzenetek.AddRange(pillanatkep)
                 End If
+
+                ' A pillanatkép UTÁN, hogy a ténylegesen kiküldött érték
+                ' írja felül a panelét.
+                FelfegyverzesAlattiVezerlokHozzaadasa()
             End If
 
             utolsoIdobelyegMs = idobelyegMs
@@ -276,6 +354,80 @@
             Dim hangIndul As Boolean = (uzenetTipus = &H90 AndAlso adat2 > 0)
             hangSzol(csatorna, adat1) = hangIndul
         End Sub
+
+        ''' <summary>
+        ''' Belső "mindent elnémító" üzenet (All Sound Off / All Notes Off, lásd
+        ''' MidiEngine.OsszesHangElnemitasa) felvétel közben: maga az üzenet NEM
+        ''' kerül a fájlba, az általa elhallgattatott hangok viszont ebben a
+        ''' pillanatban Note Off-ot kapnak. Enélkül a fájlban tovább szólnának:
+        ''' a billentyű felengedésekor a motor már nem küld Note Off-ot, mert
+        ''' a kimenet cseréjekor a saját nyilvántartását is törölte.
+        ''' </summary>
+        Private Sub BelsoElnemitasKezelese(statuszBajt As Integer, adat1 As Integer, idobelyegMs As Long)
+            If (statuszBajt And &HF0) <> &HB0 Then Return
+            If adat1 <> ALL_SOUND_OFF AndAlso adat1 <> ALL_NOTES_OFF Then Return
+
+            Dim csatorna As Integer = statuszBajt And &HF
+            For hang As Integer = 0 To 127
+                If Not hangSzol(csatorna, hang) Then Continue For
+                esemenyek.Add(New FelvettEsemeny With {
+                    .StatuszBajt = &H80 Or csatorna,
+                    .Adat1 = hang,
+                    .Adat2 = 0,
+                    .IdobelyegMs = idobelyegMs
+                })
+                hangSzol(csatorna, hang) = False
+                utolsoIdobelyegMs = idobelyegMs
+            Next
+        End Sub
+
+        ''' <summary>
+        ''' Valódi leütés-e: Note On, nullánál NAGYOBB sebességgel. A 0
+        ''' sebességű Note On a MIDI szabvány szerint hangkikapcsolás - az nem
+        ''' indíthatja el a felvételt.
+        ''' </summary>
+        Private Shared Function ValodiLeutesE(statuszBajt As Integer, adat2 As Integer) As Boolean
+            Return (statuszBajt And &HF0) = &H90 AndAlso adat2 > 0
+        End Function
+
+        ''' <summary>
+        ''' Felfegyverzett állapotban: ha az üzenet valamelyik előadói vezérlő
+        ''' (lásd eloadoiVezerlok), megjegyzi az értékét a csatornájához. Csak
+        ''' az UTOLSÓ érték számít - egy lenyomott, majd felengedett pedál
+        ''' így helyesen felengedettként kerül a felvétel elejére.
+        ''' </summary>
+        Private Sub FelfegyverzesAlattiVezerloMegjegyzese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+            If (statuszBajt And &HF0) <> &HB0 Then Return
+            Dim sorszam As Integer = Array.IndexOf(eloadoiVezerlok, adat1)
+            If sorszam < 0 Then Return
+            felfegyverzesAlattiErtekek(statuszBajt And &HF, sorszam) = adat2
+        End Sub
+
+        ''' <summary>
+        ''' A felfegyverzés alatt megjegyzett előadói vezérlők hozzáfűzése a
+        ''' kezdőállapothoz - csatornánként, az eloadoiVezerlok sorrendjében,
+        ''' és csak azokat, amelyekre ténylegesen érkezett érték.
+        ''' </summary>
+        Private Sub FelfegyverzesAlattiVezerlokHozzaadasa()
+            For csatorna As Integer = 0 To 15
+                For sorszam As Integer = 0 To eloadoiVezerlok.Length - 1
+                    Dim ertek As Integer = felfegyverzesAlattiErtekek(csatorna, sorszam)
+                    If ertek < 0 Then Continue For
+                    kezdoAllapotUzenetek.Add(New MidiUzenet(&HB0 Or csatorna, eloadoiVezerlok(sorszam), ertek, 2))
+                Next
+            Next
+        End Sub
+
+        ''' <summary>Üres (csupa -1) előadóivezérlő-tábla: 16 csatorna × az eloadoiVezerlok elemei.</summary>
+        Private Shared Function UresVezerloTabla() As Integer(,)
+            Dim tabla(15, eloadoiVezerlok.Length - 1) As Integer
+            For csatorna As Integer = 0 To 15
+                For sorszam As Integer = 0 To eloadoiVezerlok.Length - 1
+                    tabla(csatorna, sorszam) = -1
+                Next
+            Next
+            Return tabla
+        End Function
 
         ''' <summary>
         ''' Lezárja a felvételt és elmenti a megadott útvonalra. Lezárás
@@ -320,6 +472,7 @@
             kezdoAllapotUzenetek.Clear()
             kezdoAllapotLekerdezo = Nothing
             Array.Clear(hangSzol, 0, hangSzol.Length)
+            felfegyverzesAlattiErtekek = UresVezerloTabla()
             allapotBelso = FelvevoAllapot.Alap
             elsoIdobelyegMs = 0
             utolsoIdobelyegMs = 0

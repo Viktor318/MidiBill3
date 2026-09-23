@@ -119,9 +119,47 @@ Namespace Modellek
         ''' a mentett .mid fájlba. (A metronóm-funkció maga még nem
         ''' készült el, a paraméter előre bekerült, hogy a szignatúrához
         ''' ne kelljen kétszer hozzányúlni.)
+        ''' - belsoUzenet: True, ha az üzenetet a program SAJÁT karbantartása
+        '''   küldte, nem a felhasználó: a kimeneti eszköz váltásakor, illetve
+        '''   lezárásakor kiküldött elnémító söprés és a csatorna-beállítások
+        '''   újraküldése (lásd BelsoKarbantartasKent). Ezek zenei szempontból
+        '''   semmit nem változtatnak, ezért a felvevő NEM rögzíti őket - csak
+        '''   az általuk elhallgattatott hangokat zárja le.
         ''' </summary>
         Public Event UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
-                                    idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean)
+                                    idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
+                                    belsoUzenet As Boolean)
+
+        ''' <summary>
+        ''' Igaz, amíg egy BelsoKarbantartasKent blokk fut - az ekkor kiküldött
+        ''' üzenetek belsoUzenet = True jelzéssel mennek az UzenetKikuldve
+        ''' eseménybe.
+        ''' </summary>
+        Private belsoUzenetekKuldese As Boolean = False
+
+        ''' <summary>
+        ''' A megadott műveletet BELSŐ KARBANTARTÁSKÉNT futtatja: a közben
+        ''' kiküldött összes üzenet belsoUzenet = True jelzést kap (lásd az
+        ''' UzenetKikuldve eseményt), így a MIDI felvevő nem rögzíti őket.
+        '''
+        ''' MIÉRT KELL? A kimeneti eszköz váltásakor a program elnémítja a régi
+        ''' eszközt (16 csatornán All Sound Off + All Notes Off), majd az új
+        ''' eszközre mind a 16 csatorna beállítását újraküldi. Ha ez egy aktív
+        ''' felvétel közben történik, és a felvevő mindezt rögzítené, a mentett
+        ''' fájl 16 tracket kapna, akkor is, ha csak egy csatornán játszottál.
+        '''
+        ''' Egymásba ágyazható: a végén mindig a korábbi állapot áll vissza,
+        ''' kivétel esetén is.
+        ''' </summary>
+        Public Sub BelsoKarbantartasKent(muvelet As Action)
+            Dim elozo As Boolean = belsoUzenetekKuldese
+            belsoUzenetekKuldese = True
+            Try
+                muvelet()
+            Finally
+                belsoUzenetekKuldese = elozo
+            End Try
+        End Sub
 
         Public Sub New()
             For c As Integer = 0 To 15
@@ -159,6 +197,11 @@ Namespace Modellek
             midiBemenet.Start()
         End Sub
 
+        ''' <summary>
+        ''' A MIDI bemenet lezárása - és a róla lenyomva tartott hangok
+        ''' elengedése (lásd LenyomottHangokElengedese). Bemenetváltáskor a
+        ''' BemenetMegnyitas is ezt hívja.
+        ''' </summary>
         Public Sub BemenetBezaras()
             If midiBemenet IsNot Nothing Then
                 Try
@@ -169,7 +212,38 @@ Namespace Modellek
                 Catch
                 End Try
                 midiBemenet = Nothing
+
+                ' A lezárt bemenetről lenyomva tartott hangok Note Off-ja már
+                ' SOHA nem érkezne meg - lásd LenyomottHangokElengedese.
+                LenyomottHangokElengedese()
             End If
+        End Sub
+
+        ''' <summary>
+        ''' A bemenet lezárásakor elengedi a róla lenyomva tartott hangokat:
+        ''' az aktív csatornákon felengedi a kitartó pedált, majd a
+        ''' nyilvántartás szerint szóló MINDEN hangra célzott Note Off-ot küld.
+        '''
+        ''' MIÉRT KELL? Ha egy billentyű lenyomva van, amikor a felhasználó
+        ''' MIDI bemenetet vált, a felengedése már a lezárt eszközről jönne -
+        ''' vagyis soha. Enélkül a hang a pánikgombig szólt. A pedált
+        ''' ugyanezért engedjük fel: a régi billentyűzet pedáljának
+        ''' felengedése sem érkezne meg.
+        '''
+        ''' Ezek NORMÁL (nem belső) üzenetek: ha közben felvétel fut, a
+        ''' hangoknak a fájlban is ezen a ponton kell véget érniük.
+        ''' </summary>
+        Private Sub LenyomottHangokElengedese()
+            For c As Integer = 0 To 15
+                If csatornaAktivTomb(c) Then KuldesEgyCsatornara(&HB0 + c, 64, 0) ' pedál fel
+                For n As Integer = 0 To 127
+                    If noteOn(c, n) Then
+                        KuldesEgyCsatornara(NOTE_ON_STATUS + c, kimenoHang(c, n), 0)
+                        noteOn(c, n) = False
+                    End If
+                Next
+            Next
+            Array.Clear(heldNotes, 0, heldNotes.Length)
         End Sub
 
         Public Sub KimenetMegnyitas(eszkozIndex As Integer)
@@ -204,12 +278,18 @@ Namespace Modellek
         ''' Off (CC123) pedig a szabvány szerint a "lenyomott hang"
         ''' állapotot törli - a kettőt együtt küldve minden
         ''' szintetizátor/hangkártya helyesen reagál.
+        '''
+        ''' BELSŐ karbantartásként megy ki (lásd BelsoKarbantartasKent): egy
+        ''' futó felvételbe nem kerül bele.
         ''' </summary>
         Private Sub OsszesHangElnemitasa()
-            For c As Integer = 0 To 15
-                KuldesEgyCsatornara(&HB0 + c, 120, 0) ' All Sound Off
-                KuldesEgyCsatornara(&HB0 + c, 123, 0) ' All Notes Off
-            Next
+            BelsoKarbantartasKent(
+                Sub()
+                    For c As Integer = 0 To 15
+                        KuldesEgyCsatornara(&HB0 + c, 120, 0) ' All Sound Off
+                        KuldesEgyCsatornara(&HB0 + c, 123, 0) ' All Notes Off
+                    Next
+                End Sub)
         End Sub
 
         Private Sub Bemenet_UzenetErkezett(sender As Object, e As MidiInMessageEventArgs)
@@ -351,7 +431,7 @@ Namespace Modellek
             End Try
 
             Dim vegsoIdobelyeg As Long = If(idobelyegMs >= 0, idobelyegMs, idozito.ElapsedMilliseconds)
-            RaiseEvent UzenetKikuldve(statuszBajt, adat1, adat2, vegsoIdobelyeg, lejatszasBol, metronomBol)
+            RaiseEvent UzenetKikuldve(statuszBajt, adat1, adat2, vegsoIdobelyeg, lejatszasBol, metronomBol, belsoUzenetekKuldese)
         End Sub
 
         ''' <summary>

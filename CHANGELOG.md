@@ -69,6 +69,77 @@ az aktív lista újratöltése elindult volna - a lemezen lévő és a
 memóriában lévő doblista csendben elcsúszott egymástól. Mostantól az
 ALAPNEVEK összehasonlítása dönt.
 
+### Változtatva - a felvételt az első leütés indítja
+
+A felfegyverzett MIDI felvevőt eddig BÁRMILYEN kiküldött üzenet
+elindította, holott a kódkomment szerint ugyanúgy kellett volna működnie,
+mint az "Extra MIDI üzenetek" jelölőnégyzetnek, ami az első leütésre vár.
+Egy felfegyverzés utáni csúszkamozgatás, hangszerváltás, preset-betöltés
+vagy eszközváltás így már elindította a felvételt - pont azt a néma
+előteret gyártva, amit a felfegyverzés el akart kerülni.
+
+- Felfegyverzett állapotban mostantól CSAK egy valódi leütés (Note On,
+  nullánál nagyobb sebességgel) indít. A többi üzenet nem indít és nem is
+  rögzül; ami közülük számít, azt a kezdőállapot-pillanatkép úgyis
+  tartalmazza, mert az a rögzítés INDULÁSÁNAK pillanatában olvassa ki a
+  csatorna-beállításokat.
+- A kitartó pedál (CC64) és a modulációs kerék (CC1) a billentyűzetről
+  jön, nem a panelről, ezért a felvevő a felfegyverzés alatt megjegyzi az
+  utolsó értéküket, és a pillanatkép UTÁN tick 0-ra írja - így az első hang
+  előtt lenyomott pedál is benne lesz a fájlban.
+- A metronóm, a visszajátszás és a rendszer-üzenetek szűrése az indítás
+  ELŐTT fut, tehát ezek sem indíthatnak.
+- Mellékhatás: a kimeneti eszközváltás söprése felfegyverzett állapotban
+  már nem indítja el a felvételt.
+
+### Javítva - kimeneti eszközváltás felvétel közben
+
+A kimeneti eszköz váltásakor a program elnémítja a régi eszközt (16
+csatornán All Sound Off + All Notes Off), majd az új eszközre mind a 16
+csatorna beállítását újraküldi. Egy AKTÍV felvétel közben ez eddig mind
+belekerült volna a fájlba: 16 track lett volna belőle, akkor is, ha csak
+egy csatornán játszottál.
+
+- Az `UzenetKikuldve` esemény új `belsoUzenet` jelzőt kapott. A
+  `MidiEngine.BelsoKarbantartasKent(muvelet)` alatt kiküldött üzenetek
+  ezzel mennek ki: az `OsszesHangElnemitasa`, és a `MainForm`
+  kimenetváltó kezelője (megnyitás + a beállítások újraküldése).
+- A felvevő ezeket se nem rögzíti, se nem indul el tőlük. A kimenet
+  cseréjekor a motor a saját hangnyilvántartását is törli, így a
+  billentyű felengedésekor már nem küld Note Off-ot - ezért a felvevő a
+  belső elnémításnál maga zárja le az épp szóló hangokat, abban a
+  pillanatban.
+- A pánikgomb NEM belső üzenet: a felhasználó döntése, továbbra is rögzül.
+
+### Javítva - beragadt hang bemeneti eszközváltáskor
+
+Ha egy billentyű lenyomva volt, amikor MIDI bemenetet váltottál, a
+felengedése a már lezárt eszközről jött volna - vagyis soha, és a hang a
+pánikgombig szólt. A `MidiEngine.BemenetBezaras` mostantól az aktív
+csatornákon felengedi a kitartó pedált, és a nyilvántartás szerint szóló
+minden hangra célzott Note Off-ot küld. Ezek normál üzenetek, tehát egy
+futó felvételben a hangok ott is ezen a ponton érnek véget.
+
+### Javítva - a felvevő ellenőrző szkriptje elavult logikát tesztelt
+
+A `Tesztek/smf_iro_ellenorzes.py` hangszernév-feloldása az 1.17.0-s
+MSB/LSB átállás óta a RÉGI "amelyik nem nulla, az a bank" szabályt
+futtatta, miközben a VB kód már a teljes MSB + LSB + program kulcsot
+használja. A teszt csak azért ment át, mert az adatai között nem volt
+MSB-s hangszer. Most a port az új kulcsot és a kétlépcsős visszaesést
+követi, és bekerült egy MSB-s eset (`8.0.24` = Ukulele), amit a régi
+szabály a nylon gitárra ejtene - pontosan az a hiba, amit az 1.17.0 előtt
+hallani lehetett.
+
+A szkript mostantól a felvevő ÁLLAPOTGÉPÉT is portolja és ellenőrzi; a
+szándékosan elrontott változatok száma 12-ről **23**-ra nőtt. A port
+hűségét a VALÓDI VB kóddal is ellenőriztük: a `Modellek` fájljait Linuxon,
+.NET 8 alatt, `Option Strict On` mellett fordítva (a `MidiEngine`-t egy
+NAudio-csonkkal) és futtatva a kapott `.mid` fájlok bájtra azonosak a
+Python-port kimenetével. A valódi motort és felvevőt a `MainForm`-mal
+azonos bekötéssel együtt is lefuttattuk (bemenetváltás lenyomott
+billentyűvel, kimenetváltás felvétel közben, pánikgomb).
+
 ### Változtatva - "Alaphelyzetbe állítás" és a csatorna-választó
 
 Az "Alaphelyzetbe állítás" mostantól a csatorna-választót is visszaállítja
