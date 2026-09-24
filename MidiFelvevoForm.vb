@@ -64,6 +64,7 @@ Public Class MidiFelvevoForm
         Me.pillanatkepLekerdezo = pillanatkepLekerdezo
         Me.jelentesKeszito = jelentesKeszito
 
+        FelvevoBeallitasokBetoltese()
         txtFajlNev.Text = alapFajlNev
         javasoltFajlNev = alapFajlNev
         UtvonalMintaFrissitese()
@@ -71,11 +72,14 @@ Public Class MidiFelvevoForm
     End Sub
 
     ''' <summary>
-    ''' Az ablak a főablak MELLÉ (jobbra) kerül, ha ott elfér a képernyőn,
-    ''' különben a főablak közepére - így nem takarja el a csatornapaneleket.
+    ''' Az ablak a legutóbbi helyén nyílik meg (MidiBill3.ini). Ha nincs
+    ''' mentett hely, vagy az már nem látszik egyik képernyőn sem, a
+    ''' főablak MELLÉ (jobbra) kerül, ha ott elfér a képernyőn, különben a
+    ''' főablak közepére - így nem takarja el a csatornapaneleket.
     ''' </summary>
     Private Sub MidiFelvevoForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-        If Owner IsNot Nothing Then
+        If Not ExtraBeallitasok.AblakHelyzetVisszaallitasa(Me, ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK) AndAlso
+           Owner IsNot Nothing Then
             Dim terulet As Rectangle = Screen.FromControl(Owner).WorkingArea
             Dim x As Integer = Owner.Right + 8
             If x + Width > terulet.Right Then
@@ -331,6 +335,54 @@ Public Class MidiFelvevoForm
     End Sub
 
     ' ============================================================
+    ' A felvevő beállításai és az ablak helye (MidiBill3.ini)
+    ' ============================================================
+
+    Private Const KULCS_DATUM_ALMAPPA As String = "DatumAlmappa"
+    Private Const KULCS_JELENTES As String = "Jelentes"
+    Private Const KULCS_JATEKIDO_KUSZOB As String = "JatekidoKuszob"
+    Private Const KULCS_SZUNET_KUSZOB As String = "SzunetKuszob"
+
+    ''' <summary>
+    ''' A felvevő beállításai a MidiBill3.ini-ből; ami hiányzik, annál a
+    ''' Designerben megadott alapérték marad. Az "Automatikus felvétel"
+    ''' jelölőnégyzet SZÁNDÉKOSAN nincs itt (a felhasználó döntése: minden
+    ''' programindítás után bekapcsolt állapotból indul), és a fájlnév sem
+    ''' (az a betöltött preset nevét követi).
+    ''' </summary>
+    Private Sub FelvevoBeallitasokBetoltese()
+        Dim ini As IniFajl = ExtraBeallitasok.Ini
+        Dim szakasz As String = ExtraBeallitasok.SZAKASZ_FELVEVO
+        chkDatumAlmappa.Checked = ini.Logikai(szakasz, KULCS_DATUM_ALMAPPA, chkDatumAlmappa.Checked)
+        chkJelentes.Checked = ini.Logikai(szakasz, KULCS_JELENTES, chkJelentes.Checked)
+        nudJatekidoKuszob.Value = KorlatokKozott(nudJatekidoKuszob,
+            ini.Egesz(szakasz, KULCS_JATEKIDO_KUSZOB, CInt(nudJatekidoKuszob.Value)))
+        nudSzunetKuszob.Value = KorlatokKozott(nudSzunetKuszob,
+            ini.Egesz(szakasz, KULCS_SZUNET_KUSZOB, CInt(nudSzunetKuszob.Value)))
+    End Sub
+
+    ''' <summary>Egy (akár kézzel elrontott) ini-érték a mező megengedett tartományába szorítva.</summary>
+    Private Shared Function KorlatokKozott(mezo As NumericUpDown, ertek As Integer) As Decimal
+        Return Math.Max(mezo.Minimum, Math.Min(mezo.Maximum, CDec(ertek)))
+    End Function
+
+    ''' <summary>
+    ''' Az ablak helyének és a felvevő beállításainak bejegyzése a
+    ''' MidiBill3.ini memóriabeli példányába (a fájlt az
+    ''' ExtraBeallitasok.Mentes() írja ki). A saját bezáráskor és a
+    ''' főablak bezárásakor is lefut - a kettő sorrendje nem garantált.
+    ''' </summary>
+    Public Sub BeallitasokRogzitese()
+        ExtraBeallitasok.AblakHelyzetRogzitese(Me, ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK)
+        Dim ini As IniFajl = ExtraBeallitasok.Ini
+        Dim szakasz As String = ExtraBeallitasok.SZAKASZ_FELVEVO
+        ini.Beallitas(szakasz, KULCS_DATUM_ALMAPPA, chkDatumAlmappa.Checked)
+        ini.Beallitas(szakasz, KULCS_JELENTES, chkJelentes.Checked)
+        ini.Beallitas(szakasz, KULCS_JATEKIDO_KUSZOB, CInt(nudJatekidoKuszob.Value))
+        ini.Beallitas(szakasz, KULCS_SZUNET_KUSZOB, CInt(nudSzunetKuszob.Value))
+    End Sub
+
+    ' ============================================================
     ' Billentyűzet és bezárás
     ' ============================================================
 
@@ -348,11 +400,25 @@ Public Class MidiFelvevoForm
     ''' (CloseReason.FormOwnerClosing), a WinForms a főablak bezárását is
     ''' megszakítja.
     ''' </summary>
+    ''' <summary>
+    ''' Nyissa-e meg a következő indítás automatikusan az ablakot? Csak
+    ''' akkor NEM, ha a felhasználó maga zárta be (X gomb, Alt+F4) - ha a
+    ''' főablakkal együtt zárult be (vagy a Windows leállítása zárta be),
+    ''' akkor igen.
+    ''' </summary>
+    Private Shared Function NyitvaMaradE(ok As CloseReason) As Boolean
+        Return ok <> CloseReason.UserClosing AndAlso ok <> CloseReason.None
+    End Function
+
     Private Sub MidiFelvevoForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
         If Not BezarasElottiKezeles() Then e.Cancel = True
     End Sub
 
     Private Sub MidiFelvevoForm_FormClosed(sender As Object, e As FormClosedEventArgs) Handles MyBase.FormClosed
+        BeallitasokRogzitese()
+        ExtraBeallitasok.Ini.Beallitas(ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK, ExtraBeallitasok.KULCS_NYITVA,
+                                       NyitvaMaradE(e.CloseReason))
+        ExtraBeallitasok.Mentes()
         kijelzoIdozito.Stop()
         kijelzoIdozito.Dispose()
         tipp.Dispose()

@@ -14,6 +14,60 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.19.0] - 2026-09-24
+
+A 4. fázis előtti önálló lépés: új `MidiBill3.ini` az "extra"
+beállításoknak (ablakpozíciók, a felvevő beállításai, a felvevő ablak
+újranyitása).
+
+### Hozzáadva - ablakpozíciók és a felvevő beállításai a `MidiBill3.ini`-ben
+
+Új, kézzel is szerkeszthető **`%AppData%\MidiBill3\MidiBill3.ini`** fájl
+az "extra" beállításoknak - azoknak, amik NEM preset-adatok:
+
+- **Ablakpozíciók**: a főablak és a felvevő ablak ott nyílik meg, ahol
+  legutóbb bezártad. A fájlba az első bezáráskor kerül a pozíció; addig
+  a régi viselkedés marad (főablak a képernyő közepén, felvevő ablak a
+  főablak mellett). Ha a mentett hely már egyik képernyőn sem látszana
+  (pl. leválasztott második monitor), a program az alapértelmezett helyre
+  teszi az ablakot. Kis méretre tett főablaknál a normál helyzete kerül
+  be. Mindkét ablak fix méretű, ezért csak a pozíció mentődik.
+- **A felvevő beállításai**: dátum szerinti almappa, jelentés készítése,
+  a két küszöb (a küszöbök a 4. fázisban kapcsolódnak be). Az
+  "Automatikus felvétel" jelölőnégyzet szándékosan NEM kerül be (minden
+  programindításkor bekapcsolt állapotból indul), és a fájlnév sem (az a
+  betöltött preset nevét követi).
+- **A felvevő ablak újranyílik**: ha a főablak bezárásakor nyitva volt,
+  a következő indításkor automatikusan megnyílik a mentett helyén
+  (`[FelvevoAblak] Nyitva=1`). Ha a felvevő ablakot külön zárod be, a
+  következő indításkor nem nyílik meg. A fókusz a főablakon marad.
+
+**Miért nem a `Kezdet.json`?** A `Beallitasok` osztályt minden preset
+mentése is használja: ha ide kerülnének, minden `Zongora.json`-ba
+bekerülne egy ablakpozíció és a felvevő beállításai, és preset
+betöltésekor felülírnák az aktuálisat.
+
+A fájl az ablakok bezárásakor íródik (a "Kilépés mentés nélkül" is menti,
+mert az a `Kezdet.json`-ra vonatkozik). Hiányzó vagy sérült fájlnál minden
+az alapértékével indul, hibaüzenet nélkül; a kézzel elrontott számok a
+megengedett tartományba szorulnak, az ismeretlen kulcsok megmaradnak.
+Az írás ideiglenes fájlon át történik, így egy félbeszakadt írás nem
+teszi tönkre a meglévőt.
+
+Új fájlok: `Modellek/IniFajl.vb` (általános INI olvasó-író) és
+`ExtraBeallitasok.vb` (a `MidiBill3.ini` betöltése, mentése és az
+ablakpozíciók kezelése). Új: `Utvonalak.ExtraBeallitasokFajl`,
+`MidiFelvevoForm.BeallitasokRogzitese()`.
+
+**Ellenőrzés** (Linuxon, WinForms-csonkkal): 38 teszteset - INI
+feldolgozás (megjegyzések, kis/nagybetű, hibás és hiányzó értékek,
+ismeretlen szakasz, oda-vissza azonosság, UTF-8 BOM), a láthatósági
+szabály (címsorból legalább 100 x 20 px látsszon; -32000, félig
+képernyőn kívüli helyzetek), a kis méretre tett ablak, és a felvevő
+beállításainak betöltése, tartományba szorítása és visszaírása.
+
+---
+
 ## [1.18.0] - 2026-09-24
 
 A MIDI felvétel **3. fázisa**: elkészült a felvevő ablak kézi felvétellel

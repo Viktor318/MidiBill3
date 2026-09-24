@@ -119,6 +119,8 @@ MidiBill3/                      - single project
 │                                 selected channel group
 ├── MidiFelvevoForm.vb          ("Recorder window") - Start/Stop (F9), elapsed
 │                                 time, save settings, report next to the recording
+├── ExtraBeallitasok.vb         ("Extra settings") - MidiBill3.ini: window
+│                                 positions, recorder settings (non-preset data)
 ├── ApplicationEvents.vb        - Global error logging (HibaNaplo.txt)
 ├── Modellek/                   ("Models")
 │   ├── AppInfo.vb              - Version number lookup
@@ -138,6 +140,7 @@ MidiBill3/                      - single project
 │   ├── MidiJelentes.vb         - Human-readable .txt report about a MIDI file
 │   ├── CsatornaUzenetek.vb     - Builds a channel's initial MIDI messages
 │   ├── Hangnevek.vb            - MIDI note number -> note name conversion
+│   ├── IniFajl.vb              ("INI file") - Simple INI file reading/writing
 │   └── Utvonalak.vb            ("Paths") - All file paths in one place
 │                                 (built-in vs. user content separation)
 ├── Tesztek/                    ("Tests") - Python verification scripts
@@ -159,7 +162,7 @@ locations are kept separate:
 | Location | Contents |
 |---|---|
 | Program folder (read-only) | `GM.lst`, `GM.drm` - the built-in General MIDI lists |
-| `%AppData%\MidiBill3\` | `Kezdet.json` (startup settings), `HibaNaplo.txt` (error log) |
+| `%AppData%\MidiBill3\` | `Kezdet.json` (startup settings), `MidiBill3.ini` (window positions, recorder settings), `HibaNaplo.txt` (error log) |
 | `%AppData%\MidiBill3\Presetek\` | Saved preset files (`.json`) |
 | `%AppData%\MidiBill3\SF adatok\` | Imported instrument lists (`.lst` / `.drm`) |
 | `%AppData%\MidiBill3\Felvetelek\` | `.mid` files saved by the MIDI recorder (plus the `.txt` reports generated next to them) |

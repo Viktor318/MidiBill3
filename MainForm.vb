@@ -96,6 +96,10 @@ Public Class MainForm
         ' nem létező mappában keresne.
         Utvonalak.Elokeszites()
 
+        ' A legutóbbi ablakpozíció a MidiBill3.ini-ből (ha van, és még
+        ' látszik valamelyik képernyőn - különben marad a képernyő közepe).
+        ExtraBeallitasok.AblakHelyzetVisszaallitasa(Me, ExtraBeallitasok.SZAKASZ_FOABLAK)
+
         HangszerListaBetoltese()
         HangszerPanelekLetrehozasa()
         CsatornaAllapotokInicializalasa()
@@ -114,6 +118,19 @@ Public Class MainForm
         ' akkor is ide érkezzen, ha épp egy vezérlőn van a fókusz.
         KeyPreview = True
         FelvetelGombFrissitese()
+    End Sub
+
+    ''' <summary>
+    ''' Ha a legutóbbi kilépéskor nyitva volt a felvevő ablak, most is
+    ''' megnyílik (a mentett helyén). A Shown-ban, nem a Load-ban: így a
+    ''' főablak már látszik és a végleges helyén van, amikor a felvevő a
+    ''' mellé igazodna. A fókusz utána visszakerül a főablakra.
+    ''' </summary>
+    Private Sub MainForm_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
+        If ExtraBeallitasok.Ini.Logikai(ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK, ExtraBeallitasok.KULCS_NYITVA, False) Then
+            FelvevoAblakMegjelenitese()
+            Activate()
+        End If
     End Sub
 
     ''' <summary>
@@ -141,6 +158,21 @@ Public Class MainForm
                 Return
             End If
         End If
+
+        ' Az ablakpozíciók és a felvevő beállításai a MidiBill3.ini-be. A
+        ' "Kilépés mentés nélkül" is menti őket: ezek nem preset-adatok,
+        ' a menüpont a Kezdet.json-ra vonatkozik. A felvevő ablak a saját
+        ' bezárásakor is menti magát - itt azért jegyezzük be külön, mert
+        ' a két ablak bezárási sorrendje nem garantált.
+        ' A "Nyitva" jelzőt itt CSAK igazra állítjuk: ha a felvevő ablak a
+        ' sorrend miatt már bezárult, a saját FormClosed-je jegyezte be
+        ' (a CloseReason alapján) - azt nem szabad hamisra felülírni.
+        ExtraBeallitasok.AblakHelyzetRogzitese(Me, ExtraBeallitasok.SZAKASZ_FOABLAK)
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            felvevoAblak.BeallitasokRogzitese()
+            ExtraBeallitasok.Ini.Beallitas(ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK, ExtraBeallitasok.KULCS_NYITVA, True)
+        End If
+        ExtraBeallitasok.Mentes()
 
         zarasFolyamatban = True
         midiMotor.BemenetBezaras()

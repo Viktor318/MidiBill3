@@ -9,28 +9,30 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.18.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.19.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (új `%AppData%\MidiBill3\MidiBill3.ini` az "extra", nem preset-jellegű
+  beállításoknak: a két ablak pozíciója láthatóság-ellenőrzéssel, a
+  felvevő beállításai - dátum szerinti almappa, jelentés, a két küszöb -,
+  és a felvevő ablak automatikus újranyitása, ha a kilépéskor nyitva
+  volt; új `Modellek/IniFajl.vb` és `ExtraBeallitasok.vb` - lásd
+  `CHANGELOG.md`). A **major** verzióemelés (2.0.0) akkor esedékes, ha
+  a teljes felvevő ablak elkészült.
+- **Előző verzió**: 1.18.0
   (a MIDI felvétel 3. fázisa: a `MidiFelvevoForm` felvevő ablak kézi
   felvétellel, F9, futó idő, állapotjelző főablak-gomb, bezáráskori
   mentés/eldobás; a felvételt az első leütés indítja; a belső
   karbantartó üzenetek kimaradnak a felvételből; a gyári GM2
   hangszerlisták eltávolítva - lásd `CHANGELOG.md` és
-  `MIDI_felvetel_fazisterv.md`). A **major** verzióemelés (2.0.0) akkor
-  esedékes, ha a teljes felvevő ablak elkészült.
-- **Előző verzió**: 1.17.0
+  `MIDI_felvetel_fazisterv.md`)
+- **Korábbi verzió**: 1.17.0
   (a Bank Select MSB és LSB külön kezelése - HIBAJAVÍTÁS, eddig egyetlen
   nem nulla bankú hangszer sem szólalt meg; "Több SoundFont
   importálása" menüpont - lásd `MSB_LSB_GM2_terv.md`)
-- **Korábbi verzió**: 1.16.0
+- **Még korábbi verzió**: 1.16.0
   (a felvett `.mid` szerkezetének átalakítása csatornánkénti trackekre,
   tracknévvel és hangszernévvel; nem kötelező hangnem a fájlban;
   automatikus `.txt` jelentés a felvétel mellé; a Segédprogramok menü
   átrendezése és gyorsbillentyű-javítás)
-- **Még korábbi verzió**: 1.15.0
-  (a közös SMF-beolvasó `MidiFajlOlvaso` és a rá épülő két új
-  segédprogram: "Preset készítése MIDI fájlból" és "MIDI fájl
-  beállításainak mentése olvasható formában"; a `MidiFajlSzerkeszto`
-  átállítása a közös beolvasóra; a riport finomhangolása)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -59,6 +61,10 @@ MidiBill3/                        - EGYETLEN projekt
 │                                   példány, a kiválasztott csatornacsoportot mutatja
 │                                   (magasság 378, keret 408 - Her/Tér/Vib/Chorus/
 │                                   Oktáv csúszkák + Aktív/Alul/Felül checkbox-ok)
+├── ExtraBeallitasok.vb          - A MidiBill3.ini betöltése/mentése: a két
+│                                   ablak pozíciója (láthatóság-ellenőrzéssel)
+│                                   és a felvevő beállításai - ami NEM
+│                                   preset-adat, ezért nem a Beallitasok-ban van
 ├── ApplicationEvents.vb         - Globális hibanaplózás (HibaNaplo.txt)
 ├── Modellek/
 │   ├── AppInfo.vb               - Verziószám lekérdezés
@@ -74,6 +80,9 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               dobkészlet-presetek (Dobok, ISMERT DOBKÉSZLET-
 │   │                               BANKOK: 120, 127, 128) külön
 │   ├── Hangnevek.vb             - MIDI hangszám -> hangnév konverzió
+│   ├── IniFajl.vb               - Általános INI olvasó-író (szakaszok,
+│   │                               kulcs=érték, kis/nagybetű-érzéketlen,
+│   │                               ismeretlen kulcsok megőrzése)
 │   ├── Hangszerkulcs.vb         - A hangszer-azonosító KULCS egy helyen:
 │   │                               MSB * 16384 + LSB * 128 + programszám,
 │   │                               szétbontás és a bank rövid jelölése
@@ -128,9 +137,12 @@ létre) - ide megy MINDEN írás:
 ```
 %AppData%\MidiBill3\
 ├── Kezdet.json                  - induló/kilépéskori beállítások
+├── MidiBill3.ini                - "extra" beállítások (nem preset-adatok):
+│                                  ablakpozíciók, a felvevő beállításai
 ├── HibaNaplo.txt                - globális hibanapló
 ├── Presetek\                    - mentett preset fájlok (.json)
-└── SF adatok\                   - importált hangszerlisták (.lst / .drm)
+├── SF adatok\                   - importált hangszerlisták (.lst / .drm)
+└── Felvetelek\                  - a felvevő által mentett .mid (+ .txt)
 ```
 
 ## Elkészült funkciók

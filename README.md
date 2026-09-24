@@ -114,6 +114,8 @@ MidiBill3/                      - egyetlen projekt
 │                                 példány, a kiválasztott csatornacsoportot mutatja
 ├── MidiFelvevoForm.vb          - A MIDI felvevő ablak: Start/Stop (F9), futó idő,
 │                                 mentési beállítások, jelentés a felvétel mellé
+├── ExtraBeallitasok.vb         - A MidiBill3.ini: ablakpozíciók, a felvevő
+│                                 beállításai (ami nem preset-adat)
 ├── ApplicationEvents.vb        - Globális hibanaplózás (HibaNaplo.txt)
 ├── Modellek/
 │   ├── AppInfo.vb              - Verziószám lekérdezés
@@ -133,6 +135,7 @@ MidiBill3/                      - egyetlen projekt
 │   ├── MidiJelentes.vb         - Olvasható .txt jelentés egy MIDI fájlról
 │   ├── CsatornaUzenetek.vb     - Egy csatorna induló MIDI-üzeneteinek összeállítása
 │   ├── Hangnevek.vb            - MIDI hangszám -> hangnév konverzió
+│   ├── IniFajl.vb              - Egyszerű INI fájl olvasása és írása
 │   └── Utvonalak.vb            - Minden fájl-útvonal egy helyen (gyári vs.
 │                                 felhasználói tartalom szétválasztása)
 ├── Tesztek/                    - Python ellenőrző szkriptek (a VB-logika
@@ -153,7 +156,7 @@ felhasználó nem tud írni. A két hely szétválik:
 | Hely | Tartalom |
 |---|---|
 | A program mappája (csak olvasható) | `GM.lst`, `GM.drm` - a gyári General MIDI listák |
-| `%AppData%\MidiBill3\` | `Kezdet.json` (induló beállítások), `HibaNaplo.txt` |
+| `%AppData%\MidiBill3\` | `Kezdet.json` (induló beállítások), `MidiBill3.ini` (ablakpozíciók, a felvevő beállításai), `HibaNaplo.txt` |
 | `%AppData%\MidiBill3\Presetek\` | A mentett preset fájlok (`.json`) |
 | `%AppData%\MidiBill3\SF adatok\` | Az importált hangszerlisták (`.lst` / `.drm`) |
 | `%AppData%\MidiBill3\Felvetelek\` | A MIDI felvevő által mentett `.mid` fájlok (+ a mellettük készülő `.txt` jelentések) |

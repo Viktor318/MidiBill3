@@ -10,7 +10,9 @@ mondja meg, milyen sorrendben építjük fel, és hol tartunk éppen.
 **Terv elfogadva**: 2026-09-03. **Jelenlegi állapot**: a 0-2. fázis kész
 és a felhasználó által tesztelve (kiadva az 1.14.0 verzióban). A **3.
 fázis** is kész és tesztelve (kiadva az **1.18.0** verzióban,
-2026-09-24). Következik a **4. fázis**. A major verzióemelés (2.0.0) a
+2026-09-24). A felvevő beállításainak és az ablakpozícióknak a
+megőrzése (`MidiBill3.ini`) önálló lépésként elkészült az **1.19.0**
+verzióban. Következik a **4. fázis**. A major verzióemelés (2.0.0) a
 teljes felvevő ablak elkészültekor esedékes.
 
 ---
@@ -367,6 +369,71 @@ ablak ezt hívja a mentés után).
   (játékidő/szünet), a szegmensekre bontás, az automatikus
   újra-felfegyverzés, és hogy a kézi Stop kiveszi a pipát az
   "Automatikus felvétel" checkboxból.
+
+  **Lépések (javaslat, 2026-09-24):**
+  1. A szegmentáló logika felület nélküli osztályba kerül (pl.
+     `Modellek/AutomatikusSzegmentalo.vb` vagy a `MidiFelvevo`
+     bővítése): `Ellenorzes(mostMs)` -> semmi / eldobás / mentés.
+     Időforrás: `ElteltIdoMs`, `UtolsoEsemenyIdobelyegMs`,
+     `RogzitettHosszMs` - ugyanarról az óráról.
+  2. A csend pontos meghatározása (lásd a döntéseket lent).
+  3. A mentett szegmens az utolsó eseménynél ér véget, nem a
+     szünet-küszöbnyi csend után (a kézi Stop-nál is így).
+  4. Bekötés a felvevő ablakba: a meglévő 250 ms-os időzítő hívja az
+     ellenőrzést; mentés = a meglévő `Mentes()`, utána `Inditas()`; a
+     jelölőnégyzet és a két `NumericUpDown` engedélyezése; kézi Stop
+     automatikus módban: mentés + a pipa kivétele.
+  5. Mentési hiba automatikus módban: az automatikus mód leáll, EGY
+     üzenetablak, a szegmens a memóriában marad (kézzel újra menthető).
+  6. Kijelzés: "● AUTO FELVÉTEL 0:42", jelzés, ha a szegmens elérte a
+     játékidő-küszöböt (biztosan mentődik), "N szegmens mentve"
+     számláló; a főablak gombja is mutatja az automatikus módot.
+  7. A jelölőnégyzet és a küszöbök felvétel közben is állíthatók,
+     azonnal érvényesek (a pipa kivétele = a futó szegmens kézi módra
+     vált, csak Stop zárja le).
+  8. Bezárás: mint eddig (felfegyverezve csendben, felvétel közben
+     Igen / Nem / Mégse).
+  9. Ellenőrzés: Python-port + forgatókönyvek (rövid próbálkozás,
+     hosszú játék, kitartott akkord, pedál, több szegmens, kézi Stop)
+     + mutációs teszt; Linuxos fordítás és futtatás szimulált idővel;
+     végül a felhasználó tesztje valódi billentyűzettel.
+  10. Dokumentáció + 1.19.0 (a felhasználó jóváhagyásával).
+
+  **A felhasználó döntései (2026-09-24):**
+  - **Csend = semmi nem szól.** A szünet-küszöb számlálása csak akkor
+    fut, ha EGYETLEN hang sem szól (minden billentyű felengedve) ÉS a
+    kitartó pedál is fel van engedve; az utolsó elengedéstől számít.
+    Így egy hosszan kitartott akkord vagy pedálos lecsengés közepén nem
+    vág a program.
+  - **Az automatikus mód alapállapota.** Programindítás után a felvevő
+    ablak ELSŐ megnyitásakor az "Automatikus felvétel" BE van
+    kapcsolva. Felvétel (automatikus is) csak attól kezdve történhet,
+    hogy a felvevő ablak nyitva van - amíg a felhasználó nem kattint a
+    "MIDI felvétel..." gombra (vagy nem nyom F9-et), addig semmi nem
+    rögzül. Ezért ez a jelölőnégyzet NEM kerül a `Kezdet.json`-ba:
+    minden programindításkor bekapcsolt állapotból indul; a program
+    futása alatt (az ablak bezárása és újranyitása között) megmarad az
+    utolsó állapota.
+  - **Az ablak megnyitása felfegyverez** (a felhasználó döntése,
+    2026-09-24). Ha az "Automatikus felvétel" be van kapcsolva, a
+    felvevő ablak megnyitása (a "MIDI felvétel..." gomb vagy F9)
+    AZONNAL felfegyverzi a felvevőt - a Start gombot nem kell
+    megnyomni, az első leütés indítja a felvételt. Ez az alapértelmezés,
+    de kézzel kikapcsolható: ha a felhasználó kiveszi a pipát, a
+    következő megnyitás már NEM fegyverez fel (kézi mód: Start / F9).
+    A megnyitás előtt, vagyis amíg az ablak nincs nyitva, semmi nem
+    rögzül.
+  - **A felvevő beállításai megmaradnak** - de NEM a `Kezdet.json`-ban,
+    hanem a `MidiBill3.ini`-ben (módosítva 2026-09-24: a `Beallitasok`
+    osztályt minden preset mentése is használja, így a felvevő
+    beállításai minden preset fájlba bekerültek volna). Megmarad: dátum
+    szerinti almappa, jelentés készítése és a két küszöb értéke. (Az
+    "Automatikus felvétel" jelölőnégyzet kivétel - lásd fent. A
+    fájlnév-mező sem kerül be: az a betöltött preset nevét követi, egy
+    elmentett érték ezzel ütközne.) **Elkészült** a 4. fázis előtti
+    önálló lépésben, az 1.19.0 verzióban (az ablakpozíciók mentésével
+    együtt, lásd `CHANGELOG.md`) - a 4. fázisnak már csak használnia
+    kell.
 
 - [ ] **5. fázis - Lejátszás.** `.mid` beolvasása (NAudio), lejátszó
   időzítővel, közvetlen küldés a kimeneti csapra

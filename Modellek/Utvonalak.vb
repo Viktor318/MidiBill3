@@ -26,6 +26,10 @@ Namespace Modellek
     ''' FELHASZNÁLÓI TARTALOM (%AppData%\MidiBill3, ÍRHATÓ) - minden írás ide
     ''' megy:
     '''   - Kezdet.json ............ az induló/kilépéskori beállítások
+    '''   - MidiBill3.ini .......... az "extra" beállítások, amik nem
+    '''                              preset-adatok: ablakpozíciók, a
+    '''                              felvevő beállításai (lásd
+    '''                              ExtraBeallitasok)
     '''   - HibaNaplo.txt .......... a globális hibanapló
     '''   - Presetek\ .............. a mentett preset fájlok (.json)
     '''   - SF adatok\ ............. a SoundFont-ból importált vagy kézzel
@@ -43,6 +47,7 @@ Namespace Modellek
     Public Module Utvonalak
 
         Private Const KEZDET_FAJL_NEV As String = "Kezdet.json"
+        Private Const EXTRA_BEALLITASOK_FAJL_NEV As String = "MidiBill3.ini"
         Private Const HIBANAPLO_FAJL_NEV As String = "HibaNaplo.txt"
         Private Const PRESETEK_MAPPA_NEV As String = "Presetek"
         Private Const SF_ADATOK_MAPPA_NEV As String = "SF adatok"
@@ -112,6 +117,13 @@ Namespace Modellek
         Public ReadOnly Property KezdetFajl As String
             Get
                 Return Path.Combine(FelhasznaloiMappa, KEZDET_FAJL_NEV)
+            End Get
+        End Property
+
+        ''' <summary>A MidiBill3.ini teljes útvonala (a felhasználói mappában) - lásd ExtraBeallitasok</summary>
+        Public ReadOnly Property ExtraBeallitasokFajl As String
+            Get
+                Return Path.Combine(FelhasznaloiMappa, EXTRA_BEALLITASOK_FAJL_NEV)
             End Get
         End Property
 
