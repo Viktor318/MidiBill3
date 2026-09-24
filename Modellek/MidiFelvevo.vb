@@ -229,6 +229,18 @@
         End Property
 
         ''' <summary>
+        ''' A felvétel kezdetének (az első leütésnek) időbélyege a MidiEngine
+        ''' órája szerint, vagy 0, ha a felvétel még nem indult el. A felvevő
+        ''' ablak ebből számolja a futó időt: MidiEngine.ElteltIdoMs -
+        ''' KezdoIdobelyegMs (ugyanarról az óráról, lásd UtolsoEsemenyIdobelyegMs).
+        ''' </summary>
+        Public ReadOnly Property KezdoIdobelyegMs As Long
+            Get
+                Return elsoIdobelyegMs
+            End Get
+        End Property
+
+        ''' <summary>
         ''' A legutóbb rögzített üzenet abszolút időbélyege (a MidiEngine
         ''' órája szerint). Az Automatikus felvétel mód SZÜNET-küszöbét ehhez
         ''' méri majd a felvevő ablak, a MidiEngine.ElteltIdoMs-hez hasonlítva

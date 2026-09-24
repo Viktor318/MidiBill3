@@ -109,6 +109,11 @@ Public Class MainForm
 
         midiKijelzoIdozito.Start()
         csuszkaMidiIdozito.Start()
+
+        ' F9 = felvétel indítása/leállítása - a KeyPreview kell ahhoz, hogy
+        ' akkor is ide érkezzen, ha épp egy vezérlőn van a fókusz.
+        KeyPreview = True
+        FelvetelGombFrissitese()
     End Sub
 
     ''' <summary>
@@ -118,13 +123,25 @@ Public Class MainForm
     ''' nem próbál üzenetet átadni a UI szálnak, amíg az a lezárással
     ''' foglalkozik (lásd a midiMotor_MidiUzenetErkezett megjegyzését).
     '''
-    ''' FIGYELEM a jövőbeli fejlesztéshez: ha ide később bekerül a kilépés
-    ''' MEGSZAKÍTÁSA (pl. a tervezett MIDI felvevő ablak "van aktív felvétel,
-    ''' leállítsuk?" kérdése e.Cancel = True esetén), akkor annak az
-    ''' ellenőrzésnek az EGÉSZ alábbi takarítás ELÉ kell kerülnie - különben a
+    ''' A kilépés MEGSZAKÍTHATÓ: ha felvétel van folyamatban, a felhasználó a
+    ''' Mégse-vel visszaléphet (lásd MidiFelvevoForm.BezarasElottiKezeles). Ez
+    ''' az ellenőrzés ezért az EGÉSZ takarítás ELŐTT fut - különben a
     ''' megszakított kilépés után a MIDI bemenet lezárva maradna.
+    '''
+    ''' Ha a felvevő ablak a saját bezárásakor (a főablak bezárása előtt)
+    ''' már megszakította a kilépést, az e.Cancel itt már igaz: ilyenkor
+    ''' semmihez nem nyúlunk.
     ''' </summary>
     Private Sub MainForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+        If e.Cancel Then Return
+
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            If Not felvevoAblak.BezarasElottiKezeles() Then
+                e.Cancel = True
+                Return
+            End If
+        End If
+
         zarasFolyamatban = True
         midiMotor.BemenetBezaras()
         midiKijelzoIdozito.Stop()
@@ -1193,6 +1210,11 @@ Public Class MainForm
     Private Sub CimsorFrissitese(teljesUtvonal As String)
         aktualisFajlNev = IO.Path.GetFileName(teljesUtvonal)
         CimSorUjrarajzolas()
+        ' Ha a felvevő ablak nyitva van, a fájlnév-javaslata kövesse az
+        ' újonnan betöltött (vagy más néven mentett) presetet.
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            felvevoAblak.AlapFajlNevFrissitese(FelvetelAlapNeve())
+        End If
     End Sub
 
     ''' <summary>A címsor tényleges kirajzolása a jelenlegi aktualisFajlNev és aktualisHangszerListaFajl alapján</summary>
@@ -1978,112 +2000,130 @@ Public Class MainForm
     End Function
 
     ' ================================================================
-    ' ================================================================
-    '  IDEIGLENES TESZT-KÓD - a 3. fázisban TELJES EGÉSZÉBEN TÖRLENDŐ!
-    ' ================================================================
-    '
-    '  Ez a blokk kizárólag azért van itt, hogy a MIDI felvevő motorját
-    '  (Modellek\MidiFelvevo.vb) VALÓDI hardveren, még a felvevő ablak
-    '  megépítése ELŐTT ki lehessen próbálni - így ha az időzítéssel vagy
-    '  a mentett fájllal baj van, az azelőtt kiderül, hogy a teljes
-    '  felületet ráépítenénk.
-    '
-    '  Működés: a btnMidiFelvetel gomb ide-oda kapcsol.
-    '    1. kattintás -> a felvevő FELFEGYVERZŐDIK (még nem rögzít semmit,
-    '       az első ténylegesen kiküldött MIDI üzenetre vár)
-    '    2. kattintás -> lezárás + mentés a Felvetelek mappába, dátum
-    '       szerinti almappába, majd egy összegző üzenetablak
-    '
-    '  A 3. fázisban ennek a gombnak az lesz a dolga, hogy megnyissa a
-    '  MidiFelvevoForm ablakot - AKKOR ez az EGÉSZ blokk (a lenti három
-    '  mezővel és három metódussal együtt) törölhető.
+    '  MIDI FELVÉTEL - a felvevő ablak és a főablak összekötése
     ' ================================================================
 
-    Private ReadOnly midiFelvevoTeszt As New MidiFelvevo()
+    ''' <summary>
+    ''' A felvevő motor. SZÁNDÉKOSAN a főablaké, nem a felvevő ablaké: így a
+    ''' futó felvétel sorsáról a főablak bezárásakor is dönteni lehet,
+    ''' függetlenül attól, hogy a WinForms milyen sorrendben zárja be a két
+    ''' ablakot (lásd MidiFelvevoForm.BezarasElottiKezeles).
+    ''' </summary>
+    Private ReadOnly midiFelvevo As New MidiFelvevo()
+
+    ''' <summary>A megnyitott felvevő ablak, vagy Nothing, ha nincs nyitva.</summary>
+    Private felvevoAblak As MidiFelvevoForm = Nothing
+
+    ''' <summary>Az állapot, amit a kijelzések legutóbb mutattak - csak VÁLTOZÁSKOR nyúlunk a felülethez.</summary>
     Private utolsoJelzettFelvevoAllapot As FelvevoAllapot = FelvevoAllapot.Alap
-    Private ReadOnly felvetelGombEredetiSzovege As String = "MIDI felvétel indítása"
 
-    ''' <summary>IDEIGLENES: a motor kimeneti csapjáról továbbítja az üzeneteket a felvevőnek.</summary>
+    ''' <summary>A "MIDI felvétel" gomb nyugalmi felirata - a három pont jelzi, hogy ablakot nyit.</summary>
+    Private Const FELVETEL_GOMB_SZOVEGE As String = "MIDI felvétel..."
+
+    ''' <summary>
+    ''' A motor kimeneti csapja: MINDEN sikeresen kiküldött üzenet a felvevőhöz
+    ''' megy, és ő dönti el, rögzíti-e (lásd MidiFelvevo.UzenetRogzitese). A
+    ''' felületet csak ÁLLAPOTVÁLTÁSKOR frissítjük - tipikusan egyszer, az első
+    ''' leütésnél (felfegyverzett -> rögzít) -, nem minden üzenetnél.
+    ''' </summary>
     Private Sub midiMotor_UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
                                          idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
                                          belsoUzenet As Boolean) _
                                          Handles midiMotor.UzenetKikuldve
 
-        midiFelvevoTeszt.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
+        midiFelvevo.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
 
-        ' Csak ÁLLAPOTVÁLTÁSKOR nyúlunk a felülethez (tipikusan egyszer, az
-        ' első leütésnél: Felfegyverezve -> Rogzit), nem minden üzenetnél.
-        If midiFelvevoTeszt.Allapot <> utolsoJelzettFelvevoAllapot Then
-            utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
-            FelvetelGombFrissiteseTeszt()
+        If midiFelvevo.Allapot <> utolsoJelzettFelvevoAllapot Then FelvevoAllapotKijelzeseinekFrissitese()
+    End Sub
+
+    ''' <summary>A főablak gombja ÉS (ha nyitva van) a felvevő ablak kijelzése a felvevő aktuális állapota szerint.</summary>
+    Private Sub FelvevoAllapotKijelzeseinekFrissitese()
+        utolsoJelzettFelvevoAllapot = midiFelvevo.Allapot
+        FelvetelGombFrissitese()
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            felvevoAblak.AllapotKijelzesFrissitese()
         End If
     End Sub
 
-    ''' <summary>IDEIGLENES: a gomb felirata és színe a felvevő állapota szerint.</summary>
-    Private Sub FelvetelGombFrissiteseTeszt()
-        Select Case midiFelvevoTeszt.Allapot
+    ''' <summary>
+    ''' A főablak "MIDI felvétel" gombja is mutatja az állapotot (sárga:
+    ''' felfegyverezve, piros: felvétel) - így a felvevő ablak nyugodtan lehet
+    ''' a háttérben.
+    ''' </summary>
+    Private Sub FelvetelGombFrissitese()
+        Select Case midiFelvevo.Allapot
             Case FelvevoAllapot.Felfegyverezve
                 btnMidiFelvetel.Text = "Várakozás billentyűre..."
                 btnMidiFelvetel.UseVisualStyleBackColor = False
                 btnMidiFelvetel.BackColor = Color.Gold
             Case FelvevoAllapot.Rogzit
-                btnMidiFelvetel.Text = "● FELVÉTEL - leállítás"
+                btnMidiFelvetel.Text = "● FELVÉTEL"
                 btnMidiFelvetel.UseVisualStyleBackColor = False
                 btnMidiFelvetel.BackColor = Color.IndianRed
             Case Else
-                btnMidiFelvetel.Text = felvetelGombEredetiSzovege
+                btnMidiFelvetel.Text = FELVETEL_GOMB_SZOVEGE
                 btnMidiFelvetel.UseVisualStyleBackColor = True
         End Select
     End Sub
 
-    ''' <summary>IDEIGLENES: felfegyverzés, illetve lezárás + mentés.</summary>
+    ''' <summary>A gomb megnyitja - vagy ha már nyitva van, előhozza - a felvevő ablakot.</summary>
     Private Sub btnMidiFelvetel_Click(sender As Object, e As EventArgs) Handles btnMidiFelvetel.Click
-        If midiFelvevoTeszt.Allapot = FelvevoAllapot.Alap Then
-            ' A felvevő EZZEL kéri majd le a csatorna-állapotot, pontosan
-            ' a rögzítés indulásának pillanatában (nem most, felfegyverzéskor).
-            midiFelvevoTeszt.Felfegyverzes(AddressOf AktivCsatornakAllapotUzenetei)
-            utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
-            FelvetelGombFrissiteseTeszt()
-            Return
-        End If
-
-        ' A számlálókat a lezárás ELŐTT kell kiolvasni: a LezarasEsMentes a
-        ' végén kiüríti a puffert, utána már 0-t adna vissza.
-        Dim esemenySzam As Integer = midiFelvevoTeszt.EsemenySzam
-        Dim hosszMasodperc As Double = midiFelvevoTeszt.RogzitettHosszMs / 1000.0
-
-        Dim utvonal As String = Utvonalak.UjFelvetelUtvonala(Utvonalak.ALAPERTELMEZETT_FELVETEL_NEV, True)
-
-        Try
-            If midiFelvevoTeszt.LezarasEsMentes(utvonal) Then
-                ' A .mid megvan - a jelentés már csak "ráadás": ha nem sikerül,
-                ' azt csak jelezzük, a felvételt nem érinti. (A 3. fázisban
-                ' ezt a felvevő ablak jelölőnégyzete fogja engedélyezni.)
-                Dim jelentesHiba As String = FelvetelJelentesenekKeszitese(utvonal)
-
-                MsgBox("A felvétel elmentve:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
-                       "Rögzített üzenetek: " & esemenySzam & vbCrLf &
-                       "Hossz: " & hosszMasodperc.ToString("0.0") & " másodperc" & vbCrLf &
-                       If(jelentesHiba.Length = 0,
-                          "Jelentés: elkészült (.txt a felvétel mellett)",
-                          "A jelentés nem készült el: " & jelentesHiba),
-                       MsgBoxStyle.Information, "MidiBill - teszt felvétel")
-            Else
-                MsgBox("Nem rögzült egyetlen üzenet sem, ezért nem készült fájl." & vbCrLf &
-                       "(A felvétel az első lejátszott hangnál indul el.)",
-                       MsgBoxStyle.Information, "MidiBill - teszt felvétel")
-            End If
-        Catch ex As Exception
-            MsgBox("Nem sikerült elmenteni a felvételt ide:" & vbCrLf & utvonal & vbCrLf & vbCrLf &
-                   "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill - teszt felvétel")
-        End Try
-
-        utolsoJelzettFelvevoAllapot = midiFelvevoTeszt.Allapot
-        FelvetelGombFrissiteseTeszt()
+        FelvevoAblakMegjelenitese()
+        ActiveControl = Nothing
     End Sub
 
-    ' ================================================================
-    '  IDEIGLENES TESZT-KÓD VÉGE
-    ' ================================================================
+    ''' <summary>
+    ''' F9 = a felvétel indítása / leállítása, a főablakból is (a KeyPreview
+    ''' miatt akkor is, ha épp egy vezérlőn van a fókusz). Ha a felvevő ablak
+    ''' még nincs nyitva, előbb megnyitja.
+    ''' </summary>
+    Private Sub MainForm_KeyDown(sender As Object, e As KeyEventArgs) Handles MyBase.KeyDown
+        If e.KeyCode <> Keys.F9 Then Return
+        e.Handled = True
+        e.SuppressKeyPress = True
+        FelvevoAblakMegjelenitese().FelvetelValtasa()
+    End Sub
+
+    ''' <summary>
+    ''' A felvevő ablak megnyitása (a főablak a tulajdonosa: nem modális, a
+    ''' főablak előtt marad, de más programok elé nem ugrik), vagy ha már
+    ''' nyitva van, előhozása.
+    ''' </summary>
+    Private Function FelvevoAblakMegjelenitese() As MidiFelvevoForm
+        If felvevoAblak Is Nothing OrElse felvevoAblak.IsDisposed Then
+            felvevoAblak = New MidiFelvevoForm(midiFelvevo, midiMotor,
+                                               AddressOf AktivCsatornakAllapotUzenetei,
+                                               AddressOf FelvetelJelentesenekKeszitese,
+                                               FelvetelAlapNeve())
+            AddHandler felvevoAblak.AllapotValtozott, AddressOf FelvevoAllapotKijelzeseinekFrissitese
+            AddHandler felvevoAblak.FormClosed, AddressOf FelvevoAblak_FormClosed
+            felvevoAblak.Show(Me)
+        Else
+            felvevoAblak.Activate()
+        End If
+        Return felvevoAblak
+    End Function
+
+    Private Sub FelvevoAblak_FormClosed(sender As Object, e As FormClosedEventArgs)
+        Dim ablak As MidiFelvevoForm = TryCast(sender, MidiFelvevoForm)
+        If ablak IsNot Nothing Then
+            RemoveHandler ablak.AllapotValtozott, AddressOf FelvevoAllapotKijelzeseinekFrissitese
+            RemoveHandler ablak.FormClosed, AddressOf FelvevoAblak_FormClosed
+        End If
+        If ablak Is felvevoAblak Then felvevoAblak = Nothing
+        FelvevoAllapotKijelzeseinekFrissitese()
+    End Sub
+
+    ''' <summary>
+    ''' A "Mentett fájl neve" kezdőértéke: a betöltött preset neve (pl.
+    ''' "Zongora.json" -> "Zongora", "Kezdet.json" -> "Kezdet"), hogy a
+    ''' felvételek neve magáért beszéljen. Csak ha egyáltalán nincs név,
+    ''' akkor lép életbe az alapértelmezett "Felvetel".
+    ''' </summary>
+    Private Function FelvetelAlapNeve() As String
+        Dim presetNev As String = IO.Path.GetFileNameWithoutExtension(aktualisFajlNev)
+        If String.IsNullOrWhiteSpace(presetNev) Then Return Utvonalak.ALAPERTELMEZETT_FELVETEL_NEV
+        Return presetNev
+    End Function
 
 End Class

@@ -145,23 +145,38 @@ Namespace Modellek
         ''' <param name="alapNev">A felhasználó által megadott fájlnév-alap (a fájlnévben tiltott karakterek automatikusan aláhúzásra cserélődnek; üres név esetén az ALAPERTELMEZETT_FELVETEL_NEV lép életbe).</param>
         ''' <param name="datumSzerintiAlmappa">Igaz esetén dátum szerinti almappába rendez, lásd fent.</param>
         Public Function UjFelvetelUtvonala(alapNev As String, datumSzerintiAlmappa As Boolean) As String
-            Dim most As DateTime = DateTime.Now
+            Dim hely As (Mappa As String, FajlNevAlap As String) = FelvetelHelye(alapNev, datumSzerintiAlmappa, DateTime.Now)
+            Directory.CreateDirectory(hely.Mappa)
+            Return UtkozesmentesUtvonal(hely.Mappa, hely.FajlNevAlap, ".mid")
+        End Function
+
+        ''' <summary>
+        ''' Egy felvétel útvonalának MINTÁJA a felvevő ablak előnézetéhez, a
+        ''' felhasználói mappához képest (pl. "Felvetelek\2026-09-24\Zongora_143025.mid").
+        ''' Ugyanazzal a névképzéssel készül, mint a valódi mentés (lásd
+        ''' FelvetelHelye), de mellékhatás NÉLKÜL: nem hoz létre mappát, és nem
+        ''' keres ütközésmentes nevet.
+        ''' </summary>
+        Public Function FelvetelUtvonalMintaja(alapNev As String, datumSzerintiAlmappa As Boolean, idopont As DateTime) As String
+            Dim hely As (Mappa As String, FajlNevAlap As String) = FelvetelHelye(alapNev, datumSzerintiAlmappa, idopont)
+            Return Path.Combine(Path.GetRelativePath(FelhasznaloiMappa, hely.Mappa), hely.FajlNevAlap & ".mid")
+        End Function
+
+        ''' <summary>
+        ''' A felvétel mappája és fájlnév-alapja (kiterjesztés és ütközés-
+        ''' feloldás nélkül) - a névképzés EGYETLEN helye, a mentés és az
+        ''' előnézet is ezt használja, hogy a kettő sose térhessen el.
+        ''' </summary>
+        Private Function FelvetelHelye(alapNev As String, datumSzerintiAlmappa As Boolean, idopont As DateTime) As (Mappa As String, FajlNevAlap As String)
             Dim tisztaAlapNev As String = FajlnevAlapTisztitasa(alapNev)
 
-            Dim celMappa As String
-            Dim fajlNevAlap As String
-
             If datumSzerintiAlmappa Then
-                celMappa = Path.Combine(FelvetelekMappa, most.ToString("yyyy-MM-dd", Globalization.CultureInfo.InvariantCulture))
-                fajlNevAlap = tisztaAlapNev & "_" & most.ToString("HHmmss", Globalization.CultureInfo.InvariantCulture)
-            Else
-                celMappa = FelvetelekMappa
-                fajlNevAlap = tisztaAlapNev & "_" & most.ToString("yyyy-MM-dd_HHmmss", Globalization.CultureInfo.InvariantCulture)
+                Return (Path.Combine(FelvetelekMappa, idopont.ToString("yyyy-MM-dd", Globalization.CultureInfo.InvariantCulture)),
+                        tisztaAlapNev & "_" & idopont.ToString("HHmmss", Globalization.CultureInfo.InvariantCulture))
             End If
 
-            Directory.CreateDirectory(celMappa)
-
-            Return UtkozesmentesUtvonal(celMappa, fajlNevAlap, ".mid")
+            Return (FelvetelekMappa,
+                    tisztaAlapNev & "_" & idopont.ToString("yyyy-MM-dd_HHmmss", Globalization.CultureInfo.InvariantCulture))
         End Function
 
         ''' <summary>

@@ -617,7 +617,7 @@ Partial Class MainForm
         btnMidiFelvetel.Name = "btnMidiFelvetel"
         btnMidiFelvetel.Size = New Size(134, 50)
         btnMidiFelvetel.TabIndex = 17
-        btnMidiFelvetel.Text = "MIDI felvétel indítása"
+        btnMidiFelvetel.Text = "MIDI felvétel..."
         btnMidiFelvetel.UseVisualStyleBackColor = True
         ' 
         ' MainForm

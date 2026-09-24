@@ -268,6 +268,19 @@
     max-width: 520px;
   }
   .jelmagyarazat span.fazis { margin-left: 0; }
+
+  /* Javaslatok: lila szaggatott keret + lila címke */
+  .fazis.javaslat { background: #7a5bb5; }
+  .javaslat-keret { outline: 2px dashed #9b7fd4; outline-offset: 2px; border-radius: 3px; }
+  .ido { font-family: Consolas, monospace; margin-left: 6px; padding: 0 2px; }
+  .gyorsbill {
+    font-size: 11px; color: #444; font-family: Consolas, monospace;
+    background: #fff; border: 1px solid #bbb; border-radius: 3px; padding: 1px 6px;
+  }
+  .foablak-gomb {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: center; max-width: 520px;
+  }
 </style>
 </head>
 <body>
@@ -290,13 +303,20 @@
       <legend>Felvétel <span class="fazis most">3. fázis</span></legend>
       <div class="row">
         <button class="btn-start">Start</button>
-        <button class="btn-stop felfegyverzett">Stop</button>
-        <span class="statuslabel felfegyverzett">Várakozás billentyűre...</span>
+        <button class="btn-stop aktiv">Stop</button>
+        <span class="statuslabel aktiv">● FELVÉTEL<span class="ido">0:42</span></span>
+        <span class="fazis most">3. fázis</span>
+      </div>
+      <div class="row">
+        <span class="gyorsbill">F9 = Start / Stop</span>
+        <span class="fazis most">3. fázis</span>
       </div>
       <div class="row" style="margin-top:2px; margin-bottom:10px;">
-        <span class="tag">Start = felfegyverzés, a rögzítés az ELSŐ kiküldött üzenetnél indul.
-        Állapotjelző: nyugalmi → sárga „Várakozás billentyűre…” → piros „● FELVÉTEL”.
-        A kézi Stop MINDIG ment, a küszöböktől függetlenül.</span>
+        <span class="tag">Start = felfegyverzés; a felvételt az ELSŐ LEÜTÉS indítja. A közbeni
+        csúszkák, hangszerváltás, preset-betöltés, eszközváltás nem indítanak – ami ezekből számít,
+        azt az induláskori pillanatkép tartalmazza, a lenyomott pedál és a modulációs kerék pedig
+        külön bekerül. Állapotjelző: nyugalmi → sárga „Várakozás billentyűre…” → piros
+        „● FELVÉTEL” (a képen ez látszik). A kézi Stop MINDIG ment, a küszöböktől függetlenül.</span>
       </div>
       <div class="divider"></div>
       <div class="row" style="margin-top:10px;">
@@ -342,6 +362,16 @@
         (csatornák, hangszerek, vezérlők, tempó, hangnem) – a hangszerlistát és a preset nevét
         kérdés nélkül az éppen betöltöttből veszi. Alapból bekapcsolva. Ha a jelentés hibára fut,
         a .mid akkor is megmarad.</span>
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="margin-top:10px; padding:4px 6px;">
+        <span style="font-size:12px;">Utoljára mentve: <b>Felvetel_143025.mid</b></span>
+        <button style="padding:3px 10px; margin-left:auto;">Mappa megnyitása</button>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <span class="fazis most">3. fázis</span>
+        <span class="tag">Az %AppData% mappa a Windows Intézőben alapból rejtett – a gomb egy
+        kattintással megnyitja a mappát, a mentett fájlt kijelölve.</span>
       </div>
       <div class="row" style="margin-top:10px;">
         <input type="checkbox" checked>
@@ -474,35 +504,58 @@
   </div>
 </div>
 
+<div class="foablak-gomb">
+  <span class="tag">A FŐABLAK „MIDI felvétel” gombja felvétel közben:</span>
+  <button class="btn-stop aktiv">● FELVÉTEL – ablak előhozása</button>
+  <span class="fazis most">3. fázis</span>
+</div>
+
 <div class="caption">
   <h3>Mi változott az előző vázlathoz képest</h3>
   <ul>
-    <li><b>„Jelentés készítése a felvétel mellé”</b> jelölőnégyzet a Mentés csoportban,
-        alapból bekapcsolva – ez a 3. fázis része, tehát most készül el.</li>
-    <li><b>„Hangnem megadása”</b> jelölőnégyzet + hangnem-lista a Metronóm részben,
-        a BPM és az ütem UTÁN, alapból kikapcsolva. A felvevő motor három property-je
-        (<code>HangnemMegadva</code>, <code>HangnemElojegyzes</code>, <code>HangnemMoll</code>)
-        már készen áll rá.</li>
-    <li>A <b>fájlnév-előnézetben</b> most a <code>.txt</code> is látszik a <code>.mid</code> mellett.</li>
-    <li>Minden blokk megkapta a <b>fázis-címkéjét</b>, és a későbbi körökhöz tartozó részek
-        szaggatott kerettel, halványítva jelennek meg – így látszik, mi az, ami a 3. fázis végén
-        ténylegesen működni fog.</li>
+    <li>A felvételt most már az <b>első leütés</b> indítja – a Felvétel csoport magyarázata
+        ezt írja le. A kép a <b>felvétel közbeni</b> (piros) állapotot mutatja.</li>
+    <li>A két nyitott kérdés rendeződött: a kimeneti eszközváltás <b>belső üzenetként</b> megy ki,
+        nem kerül a felvételbe; a BPM és az ütemmutató pedig csak a metronóm-körhöz kell,
+        a 3. fázishoz nem.</li>
+    <li>A javaslatokat és a viselkedési kérdéseket a felhasználó mind elfogadta; a 3. fázis kódja ezek szerint készült.</li>
+  </ul>
+
+  <h3>Elfogadott javaslatok (2026-09-24) – a 3. fázisban elkészültek</h3>
+  <ul>
+    <li><b>Futó időkijelzés</b> a piros állapotjelzőben („● FELVÉTEL 0:42”). Játék közben ebből
+        látszik egy pillantással, hogy tényleg rögzít – a felvevő motor ezt már most is tudja.</li>
+    <li><b>A főablak gombja is mutassa az állapotot</b> (sárga / piros), ahogy a mostani
+        teszt-gomb teszi. A felvevő ablak így nyugodtan lehet a háttérben, és a gombbal
+        előhozható.</li>
+    <li><b>Gyorsbillentyű a Start/Stop-ra</b> (javaslat: F9). Játék közben a kezed a
+        billentyűzeten van – egy funkcióbillentyű gyorsabb, mint az egér. (Ellenőriztem: a
+        program jelenleg egyetlen gyorsbillentyűt sem használ, az F9 szabad.)</li>
+    <li><b>„Utoljára mentve” sor + „Mappa megnyitása” gomb.</b> A felvételek az %AppData%
+        alatt vannak, ami a Windows Intézőben alapból rejtett – enélkül elég körülményes
+        megtalálni őket.</li>
+    <li>(Kisebb súlyú) A <b>fájlnév alapértéke a betöltött preset neve</b> lehetne
+        („Felvetel” helyett pl. „Zongora”), így a felvételek neve magáért beszél. A jelentésben
+        a preset neve amúgy is benne van – ez inkább kényelmi kérdés.</li>
+  </ul>
+
+  <h3>Elfogadott viselkedés</h3>
+  <ul>
+    <li><b>Nem modális ablak</b>, a főablakhoz tartozva: felvétel közben a főablakban
+        szabadon válthatsz hangszínt, és a felvevő ablak mindig a főablak előtt marad, de
+        más programok elé nem ugrik. Javaslom így.</li>
+    <li><b>A felvevő ablak bezárása felvétel közben</b>: kérdezzen rá (Mentés / Eldobás / Mégse)?
+        A főablak bezárására ez már el van tervezve – a felvevő ablaknál ugyanezt javaslom.</li>
+    <li><b>Stop felfegyverzett, de el nem indult állapotban</b> (még egyetlen hang sem szólt):
+        nincs mit menteni. Javaslat: csendben álljon vissza nyugalmi állapotba, üzenetablak
+        nélkül – az állapotjelző úgyis mutatja.</li>
   </ul>
 
   <h3>Amit a 3. fázis végén látni fogsz</h3>
   <p style="margin:4px 0;">Csak a két felső csoport él: Start/Stop felfegyverzéssel és színes
-  állapotjelzéssel, fájlnév + dátum-almappa, és a jelentés-kapcsoló. Az „Automatikus felvétel”
-  sor már ott lesz a helyén, de a működése a 4. fázisban kapcsolódik be. A Lejátszás és a
-  Metronóm csoport ekkor még nem kerül az ablakra.</p>
-
-  <h3>Két nyitott kérdés a kódolás előtt</h3>
-  <ul>
-    <li>A <b>kimeneti eszköz váltása</b> ma 32 vezérlő-üzenetet küld ki, amit a felvevő
-        rögzítene – felfegyverzett állapotban EL IS INDÍTANÁ a felvételt. Ezt a 3. fázis előtt
-        érdemes rendezni.</li>
-    <li>A <b>BPM és az ütemmutató</b> még konstans a felvevőben; ha a metronóm-kör ezekre épül,
-        property-vé kell emelni őket (és a tick-átváltást számítottá tenni).</li>
-  </ul>
+  állapotjelzéssel, fájlnév + dátum-almappa, és a jelentés-kapcsoló – plusz amit a javaslatokból
+  elfogadsz. Az „Automatikus felvétel” sor már ott lesz a helyén, de a működése a 4. fázisban
+  kapcsolódik be. A Lejátszás és a Metronóm csoport ekkor még nem kerül az ablakra.</p>
 
   <p style="margin:10px 0 0 0;">A pontos pixel-koordináták, méretek és a végleges elrendezés
   a kódolás közben, a visszajelzéseid alapján alakul ki – ahogy eddig is.</p>

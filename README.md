@@ -112,6 +112,8 @@ MidiBill3/                      - egyetlen projekt
 │                                 split pont, transzponálás, Reverb, Segédprogramok
 ├── HangszerPanel.vb            - Egy hangszerpanel (UserControl), 4 fizikai
 │                                 példány, a kiválasztott csatornacsoportot mutatja
+├── MidiFelvevoForm.vb          - A MIDI felvevő ablak: Start/Stop (F9), futó idő,
+│                                 mentési beállítások, jelentés a felvétel mellé
 ├── ApplicationEvents.vb        - Globális hibanaplózás (HibaNaplo.txt)
 ├── Modellek/
 │   ├── AppInfo.vb              - Verziószám lekérdezés
@@ -172,6 +174,7 @@ fájlkezelés, beépített segédprogramok).
 
 ## Fejlesztés alatt
 
-A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvevő motorja
-(`MidiFelvevo.vb`) és a hozzá tartozó jelentéskészítés kész, a felvevő
-ablak és a hozzá kapcsolódó metronóm-beállítások fejlesztése folyamatban van.
+A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kézi módja
+kész (felvevő ablak, indítás az első leütésre, mentés és jelentés); az
+automatikus felvétel mód, a visszajátszás és a metronóm fejlesztése
+folyamatban van.

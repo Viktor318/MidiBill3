@@ -9,29 +9,28 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.17.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.18.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a MIDI felvétel 3. fázisa: a `MidiFelvevoForm` felvevő ablak kézi
+  felvétellel, F9, futó idő, állapotjelző főablak-gomb, bezáráskori
+  mentés/eldobás; a felvételt az első leütés indítja; a belső
+  karbantartó üzenetek kimaradnak a felvételből; a gyári GM2
+  hangszerlisták eltávolítva - lásd `CHANGELOG.md` és
+  `MIDI_felvetel_fazisterv.md`). A **major** verzióemelés (2.0.0) akkor
+  esedékes, ha a teljes felvevő ablak elkészült.
+- **Előző verzió**: 1.17.0
   (a Bank Select MSB és LSB külön kezelése - HIBAJAVÍTÁS, eddig egyetlen
-  nem nulla bankú hangszer sem szólalt meg; új gyári GM2 hangszerlista
-  256 hanggal; "Több SoundFont importálása" menüpont - lásd
-  `CHANGELOG.md` és `MSB_LSB_GM2_terv.md`)
-- **Előző verzió**: 1.16.0
+  nem nulla bankú hangszer sem szólalt meg; "Több SoundFont
+  importálása" menüpont - lásd `MSB_LSB_GM2_terv.md`)
+- **Korábbi verzió**: 1.16.0
   (a felvett `.mid` szerkezetének átalakítása csatornánkénti trackekre,
   tracknévvel és hangszernévvel; nem kötelező hangnem a fájlban;
   automatikus `.txt` jelentés a felvétel mellé; a Segédprogramok menü
   átrendezése és gyorsbillentyű-javítás)
-- **Korábbi verzió**: 1.15.0
+- **Még korábbi verzió**: 1.15.0
   (a közös SMF-beolvasó `MidiFajlOlvaso` és a rá épülő két új
   segédprogram: "Preset készítése MIDI fájlból" és "MIDI fájl
   beállításainak mentése olvasható formában"; a `MidiFajlSzerkeszto`
   átállítása a közös beolvasóra; a riport finomhangolása)
-- **Még korábbi verzió**: 1.14.0
-  (a MIDI felvétel 0-2. fázisa: `Felvetelek` mappa és fájlnév-képzés, a
-  MIDI-motor kimeneti "csapja", a `MidiFelvevo` motor `.mid` mentéssel;
-  a csatorna-állapot és az ütemjelzés beírása a felvett fájlba; a
-  "csatornaállapot -> MIDI üzenetek" logika egységesítése a közös
-  `CsatornaUzenetek` modulba; valamint két hibajavítás - a menet közben
-  aktivált csatorna beállításai és az "Alaphelyzetbe állítás"
-  hangszerlista-neve - lásd `CHANGELOG.md`)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -54,6 +53,8 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ```
 MidiBill3/                        - EGYETLEN projekt
 ├── MainForm.vb / .Designer.vb   - Fő ablak
+├── MidiFelvevoForm.vb / .Designer.vb - A MIDI felvevő ablak (a felvétel 3. fázisa):
+│                                   Start/Stop (F9), futó idő, mentési beállítások
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
 │                                   példány, a kiválasztott csatornacsoportot mutatja
 │                                   (magasság 378, keret 408 - Her/Tér/Vib/Chorus/
@@ -690,11 +691,6 @@ munkalista is a további javításokhoz.
       jelzésre szánt megjegyzés volt
 
 ## Következő lépések / nyitott témák
-
-> **FIGYELEM - eltávolítandó**: a `MainForm.vb` VÉGÉN van egy
-> "IDEIGLENES TESZT-KÓD" blokk, ami a felvétel élesben való
-> kipróbálására szolgál, amíg a felvevő ablak nincs kész. A felvétel
-> **3. fázisában** (a `MidiFelvevoForm` megépítésekor) törlendő.
 
 1. **GS-támogatás további tesztelése** - folyamatban, a felhasználó
    több különböző SoundFont-tal teszteli (JJazzLab, SGM-v2_02 eddig)

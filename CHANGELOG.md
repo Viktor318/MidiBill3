@@ -12,7 +12,15 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ## [Nem kiadott]
 
-Verziólépés nélküli változások az 1.17.0 kiadása óta.
+---
+
+## [1.18.0] - 2026-09-24
+
+A MIDI felvétel **3. fázisa**: elkészült a felvevő ablak kézi felvétellel
+(lásd "Hozzáadva - a MIDI felvevő ablak" lent), a felvételt mostantól az
+első leütés indítja, és a gyári GM2 hangszerlisták kikerültek. Minor
+verzióemelés; a major verzióemelés akkor esedékes, ha a teljes felvevő
+ablak (automatikus mód, visszajátszás, metronóm) elkészült.
 
 ### Eltávolítva - a gyári GM2 hangszerlisták
 
@@ -68,6 +76,36 @@ az aktív listáéval, így lecserélte a `<Alapnév>.drm` fájlt anélkül, hog
 az aktív lista újratöltése elindult volna - a lemezen lévő és a
 memóriában lévő doblista csendben elcsúszott egymástól. Mostantól az
 ALAPNEVEK összehasonlítása dönt.
+
+### Hozzáadva - a MIDI felvevő ablak (a felvétel 3. fázisa)
+
+A "MIDI felvétel..." gomb mostantól a felvevő ablakot nyitja meg (az
+ideiglenes teszt-kezelő kikerült a `MainForm`-ból):
+
+- **Felvétel**: Start / Stop, színes állapotjelző (nyugalmi -> sárga
+  "Várakozás billentyűre..." -> piros "● FELVÉTEL"), a piros állapotban
+  **futó idővel** ("● FELVÉTEL 0:42"). **F9** = Start / Stop, a felvevő
+  ablakban és a főablakban is.
+- **Mentés**: a fájlnév (alapértéke a betöltött preset neve - induláskor
+  és alaphelyzet után "Kezdet" -, és ha nyitott
+  felvevő ablak mellett másik presetet töltesz be, a mező is átveszi az
+  újat, hacsak nem írtál bele saját nevet), dátum
+  szerinti almappa, a mentett fájl(ok) helyének előnézete, "Jelentés
+  készítése a felvétel mellé", és egy **"Utoljára mentve" sor "Mappa
+  megnyitása" gombbal** - az %AppData% mappa az Intézőben alapból rejtett.
+- A **főablak gombja is mutatja az állapotot** (sárga / piros), így a
+  felvevő ablak lehet a háttérben.
+- **Bezárás felvétel közben** - akár a felvevő ablakot, akár a főablakot
+  zárod be -: Igen = mentés, Nem = eldobás, Mégse = vissza. Hang nélküli
+  Stop csendben visszaáll, üzenetablak nélkül.
+- Nem modális ablak, a főablak a tulajdonosa, és a főablak mellé nyílik.
+- Az "Automatikus felvétel" sor a helyén van, de a 4. fázisig letiltva.
+
+Tervezési döntés: a felvevő motor (`MidiFelvevo`) a FŐABLAKÉ, nem a
+felvevő ablaké, hogy a futó felvétel sorsáról a két ablak bezárási
+sorrendjétől függetlenül lehessen dönteni. Új: `MidiFelvevo.KezdoIdobelyegMs`
+(a futó időhöz) és `Utvonalak.FelvetelUtvonalMintaja()` (az előnézethez,
+ugyanazzal a névképzéssel, mint a mentés).
 
 ### Változtatva - a felvételt az első leütés indítja
 

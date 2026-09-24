@@ -8,8 +8,10 @@ a `MidiBill3_VBNET_aktualis_allapot.md` "Következő lépések" 4. pontjában
 mondja meg, milyen sorrendben építjük fel, és hol tartunk éppen.
 
 **Terv elfogadva**: 2026-09-03. **Jelenlegi állapot**: a 0-2. fázis kész
-és a felhasználó által tesztelve (kiadva az 1.14.0 verzióban), a
-következő lépés a **3. fázis**.
+és a felhasználó által tesztelve (kiadva az 1.14.0 verzióban). A **3.
+fázis** is kész és tesztelve (kiadva az **1.18.0** verzióban,
+2026-09-24). Következik a **4. fázis**. A major verzióemelés (2.0.0) a
+teljes felvevő ablak elkészültekor esedékes.
 
 ---
 
@@ -301,33 +303,65 @@ FONTOS: mindkét oldalnak UGYANARRÓL az óráról kell olvasnia - egy másik
 időforrás (pl. `DateTime.Now`) keverése lassú, nehezen észrevehető
 csúszást okozna.
 
-### FIGYELEM: ideiglenes teszt-kód a MainForm végén
+### Az ideiglenes teszt-kód a 3. fázisban KIKERÜLT
 
-Hogy a felvevőt a felvevő ablak megépítése ELŐTT is ki lehessen próbálni
-valódi hardveren, a `btnMidiFelvetel` gomb kapott egy IDEIGLENES,
-ide-oda kapcsoló kezelőt (felfegyverzés -> sárga; első leütésre piros;
-második kattintás = mentés + összegző üzenetablak). A kód a `MainForm.vb`
-VÉGÉN van, egyértelműen megjelölt blokkban, három mezővel és három
-metódussal. **A 3. fázisban ez az EGÉSZ blokk törlendő**, mert a gomb
-dolga akkor a `MidiFelvevoForm` megnyitása lesz.
-
-FONTOS: a blokkon KÍVÜL, tőle FÜGGETLENÜL áll a
-`MainForm.FelvetelJelentesenekKeszitese()` - az VÉGLEGES kód, nem
-törlendő, a 3. és 4. fázis is hívni fogja.
+A 2. fázisban a `btnMidiFelvetel` gomb egy IDEIGLENES, ide-oda kapcsoló
+kezelőt kapott, hogy a felvevőt az ablak megépítése előtt is ki lehessen
+próbálni valódi hardveren. A 3. fázisban ez a blokk törlődött; a helyén a
+végleges "MIDI FELVÉTEL" szakasz áll a `MainForm.vb` végén. A
+`MainForm.FelvetelJelentesenekKeszitese()` továbbra is ott van (a felvevő
+ablak ezt hívja a mentés után).
 
 ---
 
-- [ ] **3. fázis - `MidiFelvevoForm` váz + kézi felvétel.** Az ablak, a
+- [x] **3. fázis - `MidiFelvevoForm` váz + kézi felvétel.** *(Kész és
+  a felhasználó által tesztelve, 2026-09-24 - kiadva az 1.18.0
+  verzióban.)* Az ablak, a
   "Felvétel" és "Mentés" csoport, a felfegyverzés-logika, a színes
   állapotjelzés (nyugalmi / sárga "Várakozás billentyűre..." / piros
   "● FELVÉTEL"), a meglévő `btnMidiFelvetel` bekötése (az ideiglenes
-  teszt-blokk törlésével együtt), és a `MainForm_FormClosing`
-  kiegészítése. **FIGYELEM**: az "aktív felvétel van, leállítsuk?"
-  kérdésnek az EGÉSZ takarítás ELÉ kell kerülnie, különben megszakított
-  kilépés után a MIDI bemenet lezárva maradna (erről már van
-  figyelmeztető komment a `MainForm`-ban).
-  Ide tartozik még a **"Jelentés készítése a felvétel mellé"
-  jelölőnégyzet** (alapból bekapcsolva, lásd 9. döntés).
+  teszt-blokk törlésével együtt), a `MainForm_FormClosing` kiegészítése
+  és a **"Jelentés készítése a felvétel mellé" jelölőnégyzet**.
+
+  **A felhasználó által 2026-09-24-én elfogadott kiegészítések:**
+  - futó idő az állapotjelzőben ("● FELVÉTEL 0:42"), a `MidiEngine`
+    órája szerint (új: `MidiFelvevo.KezdoIdobelyegMs`);
+  - a főablak gombja is mutatja az állapotot (sárga / piros), és
+    megnyitja / előhozza a felvevő ablakot ("MIDI felvétel...");
+  - **F9** = Start / Stop, a felvevő ablakban ÉS a főablakban is (ha az
+    ablak még nincs nyitva, az F9 megnyitja);
+  - "Utoljára mentve" sor + "Mappa megnyitása" gomb (az Intézőben a
+    mentett fájlt kijelölve - az %AppData% alapból rejtett);
+  - a fájlnév alapértéke a betöltött preset neve (a `Kezdet.json`
+    esetén "Kezdet"; a "Felvetel" csak akkor, ha nincs név), és nyitott
+    ablaknál preset-betöltéskor is frissül, ha nem írtál bele kézzel;
+  - nem modális ablak, a főablak a tulajdonosa, és a főablak mellé
+    (jobbra) nyílik, ha ott elfér;
+  - bezárás felvétel közben: Igen = mentés, Nem = eldobás, Mégse =
+    vissza - a felvevő ablaknál ÉS a főablaknál is;
+  - Stop, mielőtt egyetlen hang szólt volna: csendben visszaáll,
+    üzenetablak nélkül.
+
+  **Tervezési döntés - ki birtokolja a felvevőt?** A `MidiFelvevo`
+  példány a FŐABLAKÉ, nem a felvevő ablaké, és a kimeneti csapra is a
+  főablak iratkozik fel. Oka a bezárás: a WinForms a főablak bezárásakor
+  a hozzá tartozó ablakokat is bezárja, és a sorrendre nem jó építeni. A
+  `MidiFelvevoForm.BezarasElottiKezeles()` ezért IDEMPOTENS - a felvevő
+  ablak és a főablak is hívja a saját bezárásakor, és bármelyik jön előbb,
+  a felhasználó pontosan egyszer kap kérdést. A `MainForm_FormClosing` az
+  elején megnézi az `e.Cancel`-t is: ha a felvevő ablak már megszakította
+  a kilépést, semmihez nem nyúl.
+
+  Az "Automatikus felvétel" sor a helyén van, de letiltva - a 4. fázis
+  kapcsolja be.
+
+  **Ellenőrzés**: a `MidiFelvevoForm` (kód + Designer) és a `MainForm` új
+  része egy szűk WinForms-csonkkal Linuxon, `Option Strict On` mellett
+  lefordult, és a felvevő ablak logikája a VALÓDI felvevővel együtt
+  lefutott (F9 felfegyverez; hang nélküli Stop csendben visszaáll; futó
+  idő; mentés + jelentés; bezárás nyugalmi és felfegyverzett állapotban).
+  Amit ott NEM lehetett kipróbálni: a valódi megjelenést, a bezárás
+  kérdését felvétel közben, és a két ablak bezárási sorrendjét.
 
 - [ ] **4. fázis - Automatikus felvétel mód.** A két küszöb
   (játékidő/szünet), a szegmensekre bontás, az automatikus

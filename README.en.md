@@ -117,6 +117,8 @@ MidiBill3/                      - single project
 ├── HangszerPanel.vb            - A single instrument panel (UserControl),
 │                                 4 physical instances showing the currently
 │                                 selected channel group
+├── MidiFelvevoForm.vb          ("Recorder window") - Start/Stop (F9), elapsed
+│                                 time, save settings, report next to the recording
 ├── ApplicationEvents.vb        - Global error logging (HibaNaplo.txt)
 ├── Modellek/                   ("Models")
 │   ├── AppInfo.vb              - Version number lookup
@@ -178,6 +180,7 @@ import, MIDI recording and file handling, built-in utilities).
 
 ## Under active development
 
-This project is currently under active development. The MIDI recorder
-engine (`MidiFelvevo.vb`) and its reporting are complete; the recorder
-window and its metronome settings are still being built.
+This project is currently under active development. Manual MIDI recording
+is complete (recorder window, recording starts on the first key press,
+saving and reporting); automatic recording mode, playback and the
+metronome are still being built.
