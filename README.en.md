@@ -83,8 +83,24 @@ architecture couldn't support.
 - **MIDI recorder**: records playing into a Standard MIDI File with **one
   track per channel** (track name in `"NN - Instrument name"` form, NN
   being the channel number), each channel's initial settings placed at the
-  start of its own track; metronome (BPM, time signature) and an optional
-  key signature
+  start of its own track
+  - A separate, non-modal **recorder window**, **F9** = Start / Stop (in
+    the main window too); recording starts on the **first key press**, so
+    it never begins with silence; a pedal or modulation set while armed
+    is included as well
+  - Colour-coded status with elapsed time ("Waiting for a key..." / "●
+    RECORDING 0:42"); the main window's button shows the state too
+  - **Automatic recording mode**: the recorder splits playing into
+    segments at silences - after the pause threshold (3 s by default) an
+    attempt shorter than the play-time threshold (5 s by default) is
+    discarded, a longer one is saved to its own file, and the recorder
+    immediately waits for the next one. Silence only begins once every
+    key is released **and** the sustain pedal is up, so a held chord or
+    a pedalled decay is never cut
+  - Automatic saving into the `Felvetelek` folder (file names based on
+    the loaded preset's name, optional date subfolder), a "Last saved"
+    line and an "Open folder" button; closing during a recording asks
+    what to do (save / discard / cancel)
 - **Report alongside the recording**: a `.txt` file with the same name is
   generated automatically next to the saved `.mid`, describing its
   contents (channels, instruments, controllers, tempo, key, and the name
@@ -105,6 +121,11 @@ architecture couldn't support.
 - The preset JSON carries a human-readable comment for the instrument,
   including the bank (e.g. `"Hangszer": 131096,  // Ukulele (B8.0)`)
 - Import of legacy VB6 `.mb3` presets
+- **`MidiBill3.ini`** for settings that aren't part of a preset: the
+  position of both windows (moved to the default place if the saved one
+  is no longer visible, e.g. after unplugging a monitor), reopening the
+  recorder window if it was open on exit, and the recorder's settings
+  (automatic mode, the two thresholds, date subfolder, report)
 - Robust error handling for corrupted or hand-edited JSON, `.lst`, and
   `.sf2` files
 

@@ -80,8 +80,23 @@ architektúrája nem adott lehetőséget.
 
 - **MIDI felvevő**: a játék rögzítése Standard MIDI File-ba, **csatornánként
   külön track**-kel (a tracknév `"NN - Hangszernév"` alakú, NN a
-  csatornaszám), a csatorna induló beállításaival a saját trackje elején;
-  metronóm (BPM, ütemmutató) és opcionálisan megadható hangnem
+  csatornaszám), a csatorna induló beállításaival a saját trackje elején
+  - Külön, nem modális **felvevő ablak**, **F9** = Start / Stop (a
+    főablakban is); a felvétel az **első leütéssel** indul, így az eleje
+    nem néma; a felfegyverzés alatt lenyomott pedál és moduláció is bekerül
+  - Színes állapotjelzés futó idővel ("Várakozás billentyűre..." / "●
+    FELVÉTEL 0:42"), a főablak gombja is mutatja az állapotot
+  - **Automatikus felvétel mód**: a felvevő a csendek mentén szegmensekre
+    bontja a játékot - a szünet-küszöb (alapból 3 mp) után a
+    játékidő-küszöbnél (alapból 5 mp) rövidebb próbálkozást eldobja, a
+    hosszabbat külön fájlba menti, és azonnal várja a következőt. A csend
+    csak akkor kezdődik, ha minden billentyű fel van engedve **és** a
+    kitartó pedál is fent van, így kitartott akkord vagy pedálos
+    lecsengés közben nem vág
+  - Automatikus mentés a `Felvetelek` mappába (a fájlnév alapja a
+    betöltött preset neve, dátum szerinti almappa választható), "Utoljára
+    mentve" sor és "Mappa megnyitása" gomb; bezáráskor felvétel közben
+    rákérdez (mentés / eldobás / mégse)
 - **Jelentés a felvétel mellé**: a mentett `.mid` mellé automatikusan
   készül egy azonos nevű `.txt` a fájl tartalmáról (csatornák, hangszerek,
   vezérlők, tempó, hangnem, az aktuális preset fájl neve)
@@ -101,6 +116,11 @@ architektúrája nem adott lehetőséget.
 - A preset JSON-ban a hangszerhez emberi olvasásra szánt megjegyzés kerül,
   a bank jelölésével (pl. `"Hangszer": 131096,  // Ukulele (B8.0)`)
 - Régi, VB6-os `.mb3` presetek importálása
+- **`MidiBill3.ini`** a nem preset-jellegű beállításoknak: a két ablak
+  pozíciója (ha a mentett hely már nem látszik, pl. leválasztott monitor
+  miatt, az alapértelmezett helyre kerül), a felvevő ablak újranyitása, ha
+  kilépéskor nyitva volt, és a felvevő beállításai (automatikus mód, a
+  két küszöb, dátum szerinti almappa, jelentés)
 - Robusztus hibakezelés sérült/kézzel szerkesztett JSON és `.lst`/`.sf2`
   fájlokra
 
