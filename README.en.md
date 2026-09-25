@@ -118,7 +118,8 @@ MidiBill3/                      - single project
 │                                 4 physical instances showing the currently
 │                                 selected channel group
 ├── MidiFelvevoForm.vb          ("Recorder window") - Start/Stop (F9), elapsed
-│                                 time, save settings, report next to the recording
+│                                 time, automatic recording (segments split at
+│                                 silences), save settings, report
 ├── ExtraBeallitasok.vb         ("Extra settings") - MidiBill3.ini: window
 │                                 positions, recorder settings (non-preset data)
 ├── ApplicationEvents.vb        - Global error logging (HibaNaplo.txt)
@@ -134,6 +135,8 @@ MidiBill3/                      - single project
 │   │                             Bank Select-based instrument switching
 │   ├── MidiFelvevo.vb          ("Recorder") - MIDI recording, Standard MIDI
 │   │                             File writing (one track per channel)
+│   ├── AutomatikusSzegmentalo.vb ("Automatic segmenter") - the automatic
+│   │                             recording decision (save / discard after silence)
 │   ├── MidiFajlOlvaso.vb       - Standard MIDI File reading and analysis
 │   ├── MidiFajlSzerkeszto.vb   - Modifying MIDI files with the current settings
 │   ├── MidiPresetKeszito.vb    - Creating a preset from a MIDI file
@@ -183,7 +186,7 @@ import, MIDI recording and file handling, built-in utilities).
 
 ## Under active development
 
-This project is currently under active development. Manual MIDI recording
-is complete (recorder window, recording starts on the first key press,
-saving and reporting); automatic recording mode, playback and the
-metronome are still being built.
+This project is currently under active development. MIDI recording is
+complete in both manual and automatic mode (recorder window, recording
+starts on the first key press, splitting into segments at silences,
+saving and reporting); playback and the metronome are still being built.

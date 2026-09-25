@@ -2057,11 +2057,20 @@ Public Class MainForm
     ''' megy, és ő dönti el, rögzíti-e (lásd MidiFelvevo.UzenetRogzitese). A
     ''' felületet csak ÁLLAPOTVÁLTÁSKOR frissítjük - tipikusan egyszer, az első
     ''' leütésnél (felfegyverzett -> rögzít) -, nem minden üzenetnél.
+    '''
+    ''' Automatikus felvétel módban az üzenet ELŐTT a felvevő ablak megnézi,
+    ''' letelt-e már a szünet-küszöb: ha igen, a régi szegmens még ez előtt
+    ''' lezárul, és ez az üzenet már az újba kerül (lásd
+    ''' MidiFelvevoForm.UzenetElottiEllenorzes).
     ''' </summary>
     Private Sub midiMotor_UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
                                          idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
                                          belsoUzenet As Boolean) _
                                          Handles midiMotor.UzenetKikuldve
+
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            felvevoAblak.UzenetElottiEllenorzes(statuszBajt, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
+        End If
 
         midiFelvevo.UzenetRogzitese(statuszBajt, adat1, adat2, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
 
@@ -2085,11 +2094,11 @@ Public Class MainForm
     Private Sub FelvetelGombFrissitese()
         Select Case midiFelvevo.Allapot
             Case FelvevoAllapot.Felfegyverezve
-                btnMidiFelvetel.Text = "Várakozás billentyűre..."
+                btnMidiFelvetel.Text = If(MidiFelvevoForm.AutomatikusMod, "Várakozás (AUTO)", "Várakozás billentyűre...")
                 btnMidiFelvetel.UseVisualStyleBackColor = False
                 btnMidiFelvetel.BackColor = Color.Gold
             Case FelvevoAllapot.Rogzit
-                btnMidiFelvetel.Text = "● FELVÉTEL"
+                btnMidiFelvetel.Text = If(MidiFelvevoForm.AutomatikusMod, "● AUTO FELVÉTEL", "● FELVÉTEL")
                 btnMidiFelvetel.UseVisualStyleBackColor = False
                 btnMidiFelvetel.BackColor = Color.IndianRed
             Case Else
@@ -2107,13 +2116,17 @@ Public Class MainForm
     ''' <summary>
     ''' F9 = a felvétel indítása / leállítása, a főablakból is (a KeyPreview
     ''' miatt akkor is, ha épp egy vezérlőn van a fókusz). Ha a felvevő ablak
-    ''' még nincs nyitva, előbb megnyitja.
+    ''' még nincs nyitva, előbb megnyitja - automatikus módban a megnyitás
+    ''' már maga felfegyverez, ilyenkor az F9 nem vált tovább (különben
+    ''' rögtön le is állítaná).
     ''' </summary>
     Private Sub MainForm_KeyDown(sender As Object, e As KeyEventArgs) Handles MyBase.KeyDown
         If e.KeyCode <> Keys.F9 Then Return
         e.Handled = True
         e.SuppressKeyPress = True
-        FelvevoAblakMegjelenitese().FelvetelValtasa()
+        Dim marNyitva As Boolean = felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed
+        Dim ablak As MidiFelvevoForm = FelvevoAblakMegjelenitese()
+        If marNyitva OrElse midiFelvevo.Allapot = FelvevoAllapot.Alap Then ablak.FelvetelValtasa()
     End Sub
 
     ''' <summary>

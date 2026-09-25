@@ -29,7 +29,7 @@ Partial Class MidiFelvevoForm
         lblGyorsbillentyu = New Label()
         lblElvalaszto1 = New Label()
         chkAutomatikus = New CheckBox()
-        lblAutomatikusMegjegyzes = New Label()
+        lblSzegmensSzamlalo = New Label()
         lblJatekidoKuszob = New Label()
         nudJatekidoKuszob = New NumericUpDown()
         lblSzunetKuszob = New Label()
@@ -57,7 +57,7 @@ Partial Class MidiFelvevoForm
         grpFelvetel.Controls.Add(lblGyorsbillentyu)
         grpFelvetel.Controls.Add(lblElvalaszto1)
         grpFelvetel.Controls.Add(chkAutomatikus)
-        grpFelvetel.Controls.Add(lblAutomatikusMegjegyzes)
+        grpFelvetel.Controls.Add(lblSzegmensSzamlalo)
         grpFelvetel.Controls.Add(lblJatekidoKuszob)
         grpFelvetel.Controls.Add(nudJatekidoKuszob)
         grpFelvetel.Controls.Add(lblSzunetKuszob)
@@ -119,7 +119,6 @@ Partial Class MidiFelvevoForm
         ' chkAutomatikus
         ' 
         chkAutomatikus.AutoSize = True
-        chkAutomatikus.Enabled = False
         chkAutomatikus.Location = New Point(18, 124)
         chkAutomatikus.Name = "chkAutomatikus"
         chkAutomatikus.Size = New Size(172, 24)
@@ -127,20 +126,19 @@ Partial Class MidiFelvevoForm
         chkAutomatikus.Text = "Automatikus felvétel"
         chkAutomatikus.UseVisualStyleBackColor = True
         ' 
-        ' lblAutomatikusMegjegyzes
+        ' lblSzegmensSzamlalo
         ' 
-        lblAutomatikusMegjegyzes.AutoSize = True
-        lblAutomatikusMegjegyzes.ForeColor = SystemColors.GrayText
-        lblAutomatikusMegjegyzes.Location = New Point(200, 125)
-        lblAutomatikusMegjegyzes.Name = "lblAutomatikusMegjegyzes"
-        lblAutomatikusMegjegyzes.Size = New Size(203, 20)
-        lblAutomatikusMegjegyzes.TabIndex = 6
-        lblAutomatikusMegjegyzes.Text = "(a 4. fázisban kapcsolódik be)"
+        lblSzegmensSzamlalo.AutoSize = True
+        lblSzegmensSzamlalo.ForeColor = SystemColors.GrayText
+        lblSzegmensSzamlalo.Location = New Point(200, 125)
+        lblSzegmensSzamlalo.Name = "lblSzegmensSzamlalo"
+        lblSzegmensSzamlalo.Size = New Size(203, 20)
+        lblSzegmensSzamlalo.TabIndex = 6
+        lblSzegmensSzamlalo.Text = ""
         ' 
         ' lblJatekidoKuszob
         ' 
         lblJatekidoKuszob.AutoSize = True
-        lblJatekidoKuszob.Enabled = False
         lblJatekidoKuszob.Location = New Point(18, 163)
         lblJatekidoKuszob.Name = "lblJatekidoKuszob"
         lblJatekidoKuszob.Size = New Size(152, 20)
@@ -149,7 +147,6 @@ Partial Class MidiFelvevoForm
         ' 
         ' nudJatekidoKuszob
         ' 
-        nudJatekidoKuszob.Enabled = False
         nudJatekidoKuszob.Location = New Point(180, 160)
         nudJatekidoKuszob.Maximum = New Decimal(New Integer() {600, 0, 0, 0})
         nudJatekidoKuszob.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
@@ -161,7 +158,6 @@ Partial Class MidiFelvevoForm
         ' lblSzunetKuszob
         ' 
         lblSzunetKuszob.AutoSize = True
-        lblSzunetKuszob.Enabled = False
         lblSzunetKuszob.Location = New Point(276, 163)
         lblSzunetKuszob.Name = "lblSzunetKuszob"
         lblSzunetKuszob.Size = New Size(143, 20)
@@ -170,14 +166,13 @@ Partial Class MidiFelvevoForm
         ' 
         ' nudSzunetKuszob
         ' 
-        nudSzunetKuszob.Enabled = False
         nudSzunetKuszob.Location = New Point(430, 160)
         nudSzunetKuszob.Maximum = New Decimal(New Integer() {600, 0, 0, 0})
         nudSzunetKuszob.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
         nudSzunetKuszob.Name = "nudSzunetKuszob"
         nudSzunetKuszob.Size = New Size(66, 27)
         nudSzunetKuszob.TabIndex = 10
-        nudSzunetKuszob.Value = New Decimal(New Integer() {5, 0, 0, 0})
+        nudSzunetKuszob.Value = New Decimal(New Integer() {3, 0, 0, 0})
         ' 
         ' grpMentes
         ' 
@@ -307,7 +302,7 @@ Partial Class MidiFelvevoForm
     Friend WithEvents lblGyorsbillentyu As Label
     Friend WithEvents lblElvalaszto1 As Label
     Friend WithEvents chkAutomatikus As CheckBox
-    Friend WithEvents lblAutomatikusMegjegyzes As Label
+    Friend WithEvents lblSzegmensSzamlalo As Label
     Friend WithEvents lblJatekidoKuszob As Label
     Friend WithEvents nudJatekidoKuszob As NumericUpDown
     Friend WithEvents lblSzunetKuszob As Label

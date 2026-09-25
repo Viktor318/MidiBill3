@@ -113,7 +113,8 @@ MidiBill3/                      - egyetlen projekt
 ├── HangszerPanel.vb            - Egy hangszerpanel (UserControl), 4 fizikai
 │                                 példány, a kiválasztott csatornacsoportot mutatja
 ├── MidiFelvevoForm.vb          - A MIDI felvevő ablak: Start/Stop (F9), futó idő,
-│                                 mentési beállítások, jelentés a felvétel mellé
+│                                 automatikus felvétel (szegmensek a csendek
+│                                 mentén), mentési beállítások, jelentés
 ├── ExtraBeallitasok.vb         - A MidiBill3.ini: ablakpozíciók, a felvevő
 │                                 beállításai (ami nem preset-adat)
 ├── ApplicationEvents.vb        - Globális hibanaplózás (HibaNaplo.txt)
@@ -129,6 +130,8 @@ MidiBill3/                      - egyetlen projekt
 │   │                             transzponálás, Bank Select-alapú hangszerváltás
 │   ├── MidiFelvevo.vb          - MIDI felvétel, Standard MIDI File írása
 │   │                             (csatornánként külön track)
+│   ├── AutomatikusSzegmentalo.vb - Az automatikus felvétel döntése
+│   │                             (mentés / eldobás a csend után)
 │   ├── MidiFajlOlvaso.vb       - Standard MIDI File beolvasása és elemzése
 │   ├── MidiFajlSzerkeszto.vb   - MIDI fájlok módosítása az aktuális beállításokkal
 │   ├── MidiPresetKeszito.vb    - Preset készítése egy MIDI fájl alapján
@@ -177,7 +180,7 @@ fájlkezelés, beépített segédprogramok).
 
 ## Fejlesztés alatt
 
-A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kézi módja
-kész (felvevő ablak, indítás az első leütésre, mentés és jelentés); az
-automatikus felvétel mód, a visszajátszás és a metronóm fejlesztése
-folyamatban van.
+A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kész, kézi
+és automatikus módban is (felvevő ablak, indítás az első leütésre,
+szegmensekre bontás a csendek mentén, mentés és jelentés); a
+visszajátszás és a metronóm fejlesztése folyamatban van.

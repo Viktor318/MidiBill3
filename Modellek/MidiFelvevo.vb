@@ -104,6 +104,24 @@
         ''' </summary>
         Private hangSzol(15, 127) As Boolean
 
+        ''' <summary>Hány hang szól éppen (a hangSzol igaz elemeinek száma) - hogy ne kelljen minden üzenetnél végignézni.</summary>
+        Private szoloHangokSzama As Integer = 0
+
+        ''' <summary>
+        ''' Csatornánként: le van-e nyomva a kitartó pedál (CC64 >= 64). Az
+        ''' Automatikus felvétel mód csendfigyeléséhez kell: amíg a pedál
+        ''' lent van, a felengedett billentyűk hangja még lecseng, tehát
+        ''' "szól valami".
+        ''' </summary>
+        Private pedalLent(15) As Boolean
+
+        ''' <summary>
+        ''' Annak az eseménynek az időbélyege, amely után már SEMMI nem szól
+        ''' (az utolsó billentyű felengedése, illetve a pedál felengedése),
+        ''' vagy -1, ha valami szól. Lásd CsendKezdeteMs.
+        ''' </summary>
+        Private csendKezdeteBelso As Long = -1
+
         Private allapotBelso As FelvevoAllapot = FelvevoAllapot.Alap
         Private elsoIdobelyegMs As Long = 0
         Private utolsoIdobelyegMs As Long = 0
@@ -142,6 +160,9 @@
 
         ''' <summary>A kitartó (sustain) pedál Controller Change száma.</summary>
         Private Const SUSTAIN_PEDAL As Integer = 64
+
+        ''' <summary>A pedál 64-es és afölötti értéke számít lenyomottnak (a MIDI szabvány szerint).</summary>
+        Private Const PEDAL_LENT_HATAR As Integer = 64
 
         ''' <summary>A "mindent elnémító" Controller Change-ek (lásd MidiEngine.OsszesHangElnemitasa).</summary>
         Private Const ALL_SOUND_OFF As Integer = 120
@@ -253,6 +274,56 @@
         End Property
 
         ''' <summary>
+        ''' Szól-e éppen valami: van-e lenyomott billentyű, vagy lenyomott
+        ''' kitartó pedál bármelyik csatornán. (Csak a felvétel indulása óta
+        ''' kiküldött üzenetek alapján - plusz a felfegyverzés alatt
+        ''' lenyomott pedál, ami a fájl elejére is bekerül.)
+        ''' </summary>
+        Public ReadOnly Property SzolValami As Boolean
+            Get
+                If szoloHangokSzama > 0 Then Return True
+                For csatorna As Integer = 0 To 15
+                    If pedalLent(csatorna) Then Return True
+                Next
+                Return False
+            End Get
+        End Property
+
+        ''' <summary>
+        ''' A CSEND kezdete a MidiEngine órája szerint: annak az eseménynek az
+        ''' időbélyege, amely után már semmi nem szól (minden billentyű fel
+        ''' van engedve ÉS a kitartó pedál is fent van) - vagy -1, ha valami
+        ''' szól, illetve ha nincs aktív felvétel.
+        '''
+        ''' Az Automatikus felvétel mód SZÜNET-küszöbét ehhez méri (lásd
+        ''' AutomatikusSzegmentalo): MidiEngine.ElteltIdoMs - CsendKezdeteMs.
+        ''' A felhasználó döntése (2026-09-24): a szünet NEM az utolsó
+        ''' leütéstől számít, hanem attól, hogy semmi sem szól - így egy
+        ''' hosszan kitartott akkord vagy egy pedálos lecsengés közepén nem
+        ''' vág a program. A csend alatt kiküldött egyéb üzenet (pl. egy
+        ''' csúszka) nem indítja újra a számlálást.
+        ''' </summary>
+        Public ReadOnly Property CsendKezdeteMs As Long
+            Get
+                Return csendKezdeteBelso
+            End Get
+        End Property
+
+        ''' <summary>
+        ''' Olyan üzenet-e, amit a felvevő egyáltalán figyelembe vesz: nem a
+        ''' program belső karbantartó üzenete, nem metronóm, nem (overdub
+        ''' nélkül) visszajátszás, és csatorna-üzenet. Az Automatikus
+        ''' felvétel mód ezek ELŐTT végzi el a szegmens-ellenőrzést, hogy a
+        ''' küszöb letelte után érkező üzenet már az ÚJ szegmensbe kerüljön.
+        ''' </summary>
+        Public Function FigyelembeVettUzenetE(statuszBajt As Integer, lejatszasBol As Boolean,
+                                              metronomBol As Boolean, belsoUzenet As Boolean) As Boolean
+            If belsoUzenet OrElse metronomBol Then Return False
+            If lejatszasBol AndAlso Not LejatszottHangokRogzitese Then Return False
+            Return statuszBajt >= &H80 AndAlso statuszBajt < &HF0
+        End Function
+
+        ''' <summary>
         ''' "Felfegyverzés": eldobja az esetleges korábbi anyagot, és
         ''' várakozó állapotba lép. A tényleges rögzítés az ELSŐ leütésnél
         ''' indul el (lásd FelvevoAllapot.Felfegyverezve).
@@ -336,6 +407,10 @@
                 ' A pillanatkép UTÁN, hogy a ténylegesen kiküldött érték
                 ' írja felül a panelét.
                 FelfegyverzesAlattiVezerlokHozzaadasa()
+
+                ' A felfegyverzés alatt lenyomva hagyott pedál a fájl elején
+                ' is lenyomott - a csendfigyelés szempontjából is.
+                FelfegyverzesAlattiPedalAtvetele()
             End If
 
             utolsoIdobelyegMs = idobelyegMs
@@ -348,6 +423,40 @@
             })
 
             HangNyilvantartasFrissitese(statuszBajt, adat1, adat2)
+            PedalNyilvantartasFrissitese(statuszBajt, adat1, adat2)
+            CsendFrissitese(idobelyegMs)
+        End Sub
+
+        ''' <summary>A kitartó pedál állapotának követése (CC64: 64-től lenyomva).</summary>
+        Private Sub PedalNyilvantartasFrissitese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
+            If (statuszBajt And &HF0) <> &HB0 OrElse adat1 <> SUSTAIN_PEDAL Then Return
+            pedalLent(statuszBajt And &HF) = (adat2 >= PEDAL_LENT_HATAR)
+        End Sub
+
+        ''' <summary>
+        ''' A csend kezdetének karbantartása egy rögzített esemény után: ha
+        ''' valami szól, nincs csend; ha most lett csend (ez az esemény
+        ''' hallgattatta el az utolsó hangot / pedált), itt kezdődik; ha már
+        ''' eddig is csend volt, marad a korábbi kezdete.
+        ''' </summary>
+        Private Sub CsendFrissitese(idobelyegMs As Long)
+            If SzolValami Then
+                csendKezdeteBelso = -1
+            ElseIf csendKezdeteBelso < 0 Then
+                csendKezdeteBelso = idobelyegMs
+            End If
+        End Sub
+
+        ''' <summary>
+        ''' A felvétel indulásakor: a felfegyverzés alatt utoljára kiküldött
+        ''' pedál-érték csatornánként (lásd felfegyverzesAlattiErtekek).
+        ''' </summary>
+        Private Sub FelfegyverzesAlattiPedalAtvetele()
+            Dim sorszam As Integer = Array.IndexOf(eloadoiVezerlok, SUSTAIN_PEDAL)
+            For csatorna As Integer = 0 To 15
+                Dim ertek As Integer = felfegyverzesAlattiErtekek(csatorna, sorszam)
+                If ertek >= 0 Then pedalLent(csatorna) = (ertek >= PEDAL_LENT_HATAR)
+            Next
         End Sub
 
         ''' <summary>
@@ -364,7 +473,9 @@
             If adat1 < 0 OrElse adat1 > 127 Then Return
 
             Dim hangIndul As Boolean = (uzenetTipus = &H90 AndAlso adat2 > 0)
+            If hangSzol(csatorna, adat1) = hangIndul Then Return
             hangSzol(csatorna, adat1) = hangIndul
+            szoloHangokSzama += If(hangIndul, 1, -1)
         End Sub
 
         ''' <summary>
@@ -389,8 +500,10 @@
                     .IdobelyegMs = idobelyegMs
                 })
                 hangSzol(csatorna, hang) = False
+                szoloHangokSzama -= 1
                 utolsoIdobelyegMs = idobelyegMs
             Next
+            CsendFrissitese(idobelyegMs)
         End Sub
 
         ''' <summary>
@@ -484,6 +597,9 @@
             kezdoAllapotUzenetek.Clear()
             kezdoAllapotLekerdezo = Nothing
             Array.Clear(hangSzol, 0, hangSzol.Length)
+            szoloHangokSzama = 0
+            Array.Clear(pedalLent, 0, pedalLent.Length)
+            csendKezdeteBelso = -1
             felfegyverzesAlattiErtekek = UresVezerloTabla()
             allapotBelso = FelvevoAllapot.Alap
             elsoIdobelyegMs = 0
@@ -513,6 +629,7 @@
                     hangSzol(csatorna, hang) = False
                 Next
             Next
+            szoloHangokSzama = 0
         End Sub
 
         ' ============================================================

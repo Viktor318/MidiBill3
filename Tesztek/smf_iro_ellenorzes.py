@@ -77,6 +77,13 @@ Bovitve: 2026-09-23, az allapotgeppel (inditas az elso leutesre), es a
          a port addig meg a regi "amelyik nem nulla, az a bank" szabalyt
          futtatta, es csak azert ment at, mert a tesztadatban nem volt
          MSB-s hangszer.
+Bovitve: 2026-09-25, az AUTOMATIKUS FELVETEL moddal (4. fazis): a csend-
+         figyeles (a kitarto pedal is "szol"), a szegmens-dontes a
+         hatarokon, es egy teljes forgatokonyv a felvevo ablak logikajanak
+         portjan (mentes / eldobas / ujra-felfegyverzes, a kuszob utan az
+         idozito elott erkezo hang, kezi Stop, a pipa ki-be). A VALODI VB kod
+         (MidiFelvevoForm + MidiFelvevo) ugyanerre a forgatokonyvre bajtra
+         azonos fajlokat ment.
 Ellenorzo konyvtar: mido 1.3.3
 """
 
@@ -722,10 +729,38 @@ class Felvevo:
         self.lekerdezo = None
         self.korai_pillanatkep = []
         self.hang_szol = set()
+        self.pedal_lent = set()            # csatornak, ahol a kitarto pedal lent van
+        self.csend_kezdete = -1            # MidiFelvevo.CsendKezdeteMs
         self.allapot = ALAP
         self.elso_ms = 0
         self.utolso_ms = 0
         self.vezerlo_ertekek = {}          # (csatorna, vezerlo) -> utolso ertek
+
+    # --- A 4. fazis csendfigyelese (MidiFelvevo.SzolValami / CsendKezdeteMs) ---
+
+    def szol_valami(self):
+        if HIBA.get("pedal_figyelmen_kivul"):
+            return bool(self.hang_szol)
+        return bool(self.hang_szol) or bool(self.pedal_lent)
+
+    def _csend_frissitese(self, ido_ms, statusz=None, d2=None):
+        if HIBA.get("csend_barmely_elengedesre") and statusz is not None:
+            tipus = statusz & 0xF0
+            if tipus == 0x80 or (tipus == 0x90 and d2 == 0):
+                self.csend_kezdete = ido_ms
+                return
+        if self.szol_valami():
+            self.csend_kezdete = -1
+        elif self.csend_kezdete < 0 or HIBA.get("csend_ujraindul_minden_uzenetre"):
+            self.csend_kezdete = ido_ms
+
+    def figyelembe_vett(self, statusz, lejatszasbol, metronombol, belso):
+        """MidiFelvevo.FigyelembeVettUzenetE."""
+        if belso or metronombol:
+            return False
+        if lejatszasbol and not self.lejatszott_hangok_rogzitese:
+            return False
+        return 0x80 <= statusz < 0xF0
 
     def felfegyverzes(self, lekerdezo=None):
         self.alaphelyzet()
@@ -776,12 +811,28 @@ class Felvevo:
             else:
                 self.kezdo_uzenetek += pillanatkep + vezerlok
 
+            # A felfegyverzes alatt lenyomva hagyott pedal a csendfigyelesnek is lent van.
+            if not HIBA.get("felfegyverzes_alatti_pedal_nem_szamit"):
+                for csatorna in range(16):
+                    ertek = self.vezerlo_ertekek.get((csatorna, SUSTAIN_PEDAL))
+                    if ertek is not None:
+                        if ertek >= 64:
+                            self.pedal_lent.add(csatorna)
+                        else:
+                            self.pedal_lent.discard(csatorna)
+
         if not szurok_elol and self._kiszurendo(statusz, lejatszasbol, metronombol):
             return
 
         self.utolso_ms = ido_ms
         self.esemenyek.append((statusz, d1, d2, ido_ms))
         self._hang_nyilvantartas(statusz, d1, d2)
+        if (statusz & 0xF0) == 0xB0 and d1 == SUSTAIN_PEDAL:
+            if d2 >= 64:
+                self.pedal_lent.add(statusz & 0x0F)
+            else:
+                self.pedal_lent.discard(statusz & 0x0F)
+        self._csend_frissitese(ido_ms, statusz, d2)
 
     def _belso_elnemitas(self, statusz, d1, ido_ms):
         """A MidiFelvevo.BelsoElnemitasKezelese: All Sound/Notes Off -> Note Off a szolo hangokra."""
@@ -794,6 +845,8 @@ class Felvevo:
             self.esemenyek.append((0x80 | csatorna, hang, 0, ido_ms))
             self.hang_szol.discard((csatorna, hang))
             self.utolso_ms = ido_ms
+        if not HIBA.get("belso_elnemitas_csend_nelkul"):
+            self._csend_frissitese(ido_ms)
 
     def _vezerlo_megjegyzese(self, statusz, d1, d2):
         if (statusz & 0xF0) != 0xB0:
@@ -992,6 +1045,242 @@ def felfegyverzes_ellenorzese(mido, reszletes=False):
 
 
 # ---------------------------------------------------------------------
+# A 4. fazis: Automatikus felvetel (AutomatikusSzegmentalo + a felvevo
+# ablak vezerlese)
+# ---------------------------------------------------------------------
+SEMMI, ELDOBAS, MENTES = 0, 1, 2
+
+
+def szegmens_dontes(allapot, csend_kezdete, hossz_ms, most_ms, szunet_ms, jatekido_ms):
+    """Az AutomatikusSzegmentalo.Dontes hu portja."""
+    if allapot != ROGZIT or csend_kezdete < 0:
+        return SEMMI
+    if HIBA.get("kuszob_szigoru"):
+        if most_ms - csend_kezdete <= szunet_ms:
+            return SEMMI
+    elif most_ms - csend_kezdete < szunet_ms:
+        return SEMMI
+    if HIBA.get("jatekido_forditva"):
+        return MENTES if hossz_ms < jatekido_ms else ELDOBAS
+    return MENTES if hossz_ms >= jatekido_ms else ELDOBAS
+
+
+class AutoVezerlo:
+    """A MidiFelvevoForm automatikus-mod logikajanak portja (a feluleti
+    reszek nelkul): megnyitaskor felfegyverez, a szunet-kuszob utan
+    ment/eldob es azonnal ujra felfegyverez, a Stop mindig ment es kiveszi
+    a pipat, a pipa visszatetele nyugalmi allapotban felfegyverez."""
+
+    def __init__(self, lekerdezo, szunet_ms=5000, jatekido_ms=5000):
+        self.felvevo = Felvevo()
+        self.lekerdezo = lekerdezo
+        self.szunet_ms, self.jatekido_ms = szunet_ms, jatekido_ms
+        self.automatikus = True
+        self.mentett = []          # a mentett .mid fajlok bajtjai, sorrendben
+        self.eldobott = 0
+        self.felvevo.felfegyverzes(lekerdezo)          # megnyitas = felfegyverzes
+
+    def _mentes(self):
+        esemenyek, kezdo = self.felvevo.lezaras()
+        if esemenyek:
+            self.mentett.append(smf_fajl_epitese(esemenyek, kezdo))
+        self.felvevo.alaphelyzet()
+
+    def ellenorzes(self, most_ms):
+        if not self.automatikus:
+            return
+        f = self.felvevo
+        hossz = f.utolso_ms - f.elso_ms if f.esemenyek else 0
+        dontes = szegmens_dontes(f.allapot, f.csend_kezdete, hossz, most_ms, self.szunet_ms, self.jatekido_ms)
+        if dontes == SEMMI:
+            return
+        if dontes == MENTES:
+            self._mentes()
+        else:
+            self.eldobott += 1
+            f.alaphelyzet()
+        if not HIBA.get("nincs_ujrafelfegyverzes"):
+            f.felfegyverzes(self.lekerdezo)
+
+    def uzenet(self, statusz, d1, d2, ido_ms, lejatszasbol=False, metronombol=False, belso=False):
+        if not HIBA.get("nincs_uzenet_elotti_ellenorzes") and \
+                self.felvevo.figyelembe_vett(statusz, lejatszasbol, metronombol, belso):
+            self.ellenorzes(ido_ms)
+        self.felvevo.uzenet_rogzitese(statusz, d1, d2, ido_ms, lejatszasbol, metronombol, belso)
+
+    def stop(self):
+        f = self.felvevo
+        if f.allapot == ROGZIT:
+            if HIBA.get("stop_rovidet_eldobja") and f.utolso_ms - f.elso_ms < self.jatekido_ms:
+                f.alaphelyzet()
+            else:
+                self._mentes()
+        elif f.allapot == FELFEGYVEREZVE:
+            f.alaphelyzet()
+        self.automatikus = False
+
+    def pipa(self, ertek):
+        self.automatikus = ertek
+        if ertek and self.felvevo.allapot == ALAP:
+            self.felvevo.felfegyverzes(self.lekerdezo)
+        elif not ertek and self.felvevo.allapot == FELFEGYVEREZVE \
+                and not HIBA.get("pipa_kivetel_nem_szerel"):
+            self.felvevo.alaphelyzet()        # felfegyverezve: a pipa kivetele leszerel
+
+
+AUTO_PILLANATKEP = [(0xB0, 7, 100, 2)]      # hangero az 1. csatornan - nincs Program Change, igy nev sem
+
+# A forgatokonyv lepesei: ("MSG", statusz, d1, d2, ido), ("STOP", ido),
+# ("PIPA", 0/1, ido). A 250 ms-os idozito "TICK"-jeit az
+# auto_forgatokonyv() szurja be. Mindket kuszob 5 mp.
+AUTO_LEPESEK = [
+    # 1. szegmens: a FELFEGYVERZES ALATT lenyomott pedal tartja a csendet -
+    #    a billentyu 1 mp utan fent van, de a pedal csak 8 mp-nel.
+    ("MSG", 0xB0, 64, 127, 99500),
+    ("MSG", 0x90, 60, 100, 100000),
+    ("MSG", 0x80, 60, 0, 101000),
+    ("MSG", 0xB0, 64, 0, 108000),          # itt kezdodik a csend -> 113 000-nel MENTES (8 mp)
+    # 2. szegmens: egy 7 mp-ig kitartott hang, mellette egy rovid, mar
+    #    felengedett - a csend a KITARTOTT hang felengedesetol szamit.
+    ("MSG", 0x90, 64, 100, 120000),
+    ("MSG", 0x90, 67, 100, 120100),
+    ("MSG", 0x80, 67, 0, 120200),
+    ("MSG", 0x80, 64, 0, 127000),          # csend -> 132 000-nel MENTES (7 mp)
+    # 3. szegmens: rovid probalkozas -> ELDOBAS; a csend alatti csuszka nem
+    #    inditja ujra a szunetet.
+    ("MSG", 0x90, 69, 100, 140000),
+    ("MSG", 0x80, 69, 0, 141000),
+    ("MSG", 0xB0, 7, 90, 143000),
+    # 4. szegmens: a csend alatt kiment modulacio a SZEGMENSHEZ tartozik
+    #    (8 mp lesz), de a szunetet nem inditja ujra: a 161 100-as hang
+    #    mar az 5. szegmens.
+    ("MSG", 0x90, 72, 100, 150000),
+    ("MSG", 0x80, 72, 0, 156000),
+    ("MSG", 0xB0, 1, 40, 158000),
+    # 5. szegmens: a kuszob KET IDOZITO-UTES KOZOTT jar le (172 100), es a
+    #    hang 172 200-nal erkezik - mar a 6. szegmensbe kell kerulnie.
+    ("MSG", 0x90, 74, 100, 161100),
+    ("MSG", 0x80, 74, 0, 167100),
+    # 6. szegmens: rovid, a hang LENYOMVA van, amikor Stop jon -> a Stop
+    #    MINDIG ment, a logo hang lezarul, a pipa kikerul.
+    ("MSG", 0x90, 76, 100, 172200),
+    ("MSG", 0xB0, 64, 127, 172500),
+    ("STOP", 174000),
+    # 7. szegmens: a pipa visszatetele azonnal felfegyverez; felvetel kozben
+    #    kiveve kezi modra valt - a 9 mp-es csend sem zarja le, csak a Stop.
+    ("MSG", 0x90, 70, 100, 176000),        # pipa nelkul: nem indit (Alap)
+    ("MSG", 0x80, 70, 0, 176500),
+    ("PIPA", 1, 177000),
+    ("MSG", 0x90, 78, 100, 180000),
+    ("PIPA", 0, 180500),
+    ("MSG", 0x80, 78, 0, 181000),
+    ("STOP", 190000),
+    # A pipa kivetele FELFEGYVERZETT allapotban leszerel: az utana jovo
+    # hang mar nem indithat felvetelt.
+    ("PIPA", 1, 191000),
+    ("PIPA", 0, 191500),
+    ("MSG", 0x90, 80, 100, 191800),
+    ("MSG", 0x80, 80, 0, 191900),
+]
+
+# A mentett fajlok vart tartalma: (a hangok, a fajl hossza mp-ben)
+AUTO_VART = [
+    ({60}, 8.0),
+    ({64, 67}, 7.0),
+    ({72}, 8.0),
+    ({74}, 6.0),
+    ({76}, 0.3),
+    ({78}, 1.0),
+]
+AUTO_VART_ELDOBOTT = 1
+
+
+def auto_forgatokonyv():
+    """A lepesek + a 250 ms-os idozito-utesek, idorendben (az utes AZONOS
+    idonel az uzenet UTAN jon - a VB tesztfuttato is igy jatssza le)."""
+    lepesek = []
+    utes = 99000
+    for lepes in AUTO_LEPESEK:
+        ido = lepes[-1]
+        while utes < ido:
+            lepesek.append(("TICK", utes))
+            utes += 250
+        lepesek.append(lepes)
+    while utes <= 192000:
+        lepesek.append(("TICK", utes))
+        utes += 250
+    return lepesek
+
+
+def auto_futtatas():
+    v = AutoVezerlo(lambda: list(AUTO_PILLANATKEP))
+    for lepes in auto_forgatokonyv():
+        if lepes[0] == "MSG":
+            v.uzenet(*lepes[1:])
+        elif lepes[0] == "TICK":
+            v.ellenorzes(lepes[1])
+        elif lepes[0] == "STOP":
+            v.stop()
+        elif lepes[0] == "PIPA":
+            v.pipa(bool(lepes[1]))
+    return v
+
+
+def automatikus_ellenorzese(mido, reszletes=False):
+    def kiir(*a):
+        if reszletes:
+            print(*a)
+
+    # A dontes kozvetlenul, a hatarokon (mindket kuszob "elerte" = >=).
+    assert szegmens_dontes(ROGZIT, 1000, 5000, 6000, 5000, 5000) == MENTES, \
+        "pontosan 5 mp csend es pontosan 5 mp jatek mar lezar es ment"
+    assert szegmens_dontes(ROGZIT, 1000, 4999, 6000, 5000, 5000) == ELDOBAS, \
+        "a jatekido-kuszob alatt eldobas"
+    assert szegmens_dontes(ROGZIT, 1000, 9000, 5999, 5000, 5000) == SEMMI, \
+        "a szunet-kuszob elott nincs dontes"
+    assert szegmens_dontes(ROGZIT, -1, 9000, 99999, 5000, 5000) == SEMMI, \
+        "amig valami szol, nincs dontes"
+    assert szegmens_dontes(FELFEGYVEREZVE, 1000, 9000, 99999, 5000, 5000) == SEMMI, \
+        "csak felvetel kozben van dontes"
+    kiir("OK  a szegmens-dontes a hatarokon")
+
+    v = auto_futtatas()
+    assert len(v.mentett) == len(AUTO_VART), \
+        f"{len(AUTO_VART)} mentett szegmens kell, ez {len(v.mentett)}"
+    assert v.eldobott == AUTO_VART_ELDOBOTT, \
+        f"{AUTO_VART_ELDOBOTT} eldobott szegmens kell, ez {v.eldobott}"
+    assert not v.automatikus and v.felvevo.allapot == ALAP, \
+        ("a vegen a pipa kint van, es a felvevo nyugalomban (a Stop nem fegyverez ujra, "
+         f"a pipa kivetele leszerel) - allapot: {v.felvevo.allapot}")
+
+    konyvtar = tempfile.mkdtemp()
+    for sorszam, (adat, (hangok, hossz)) in enumerate(zip(v.mentett, AUTO_VART), start=1):
+        utvonal = os.path.join(konyvtar, f"auto_{sorszam}.mid")
+        with open(utvonal, "wb") as f:
+            f.write(adat)
+        mf = mido.MidiFile(utvonal)
+        ido, utolso, lathato, szol = 0.0, 0.0, set(), set()
+        for m in mf:
+            ido += m.time
+            if m.is_meta:
+                continue
+            utolso = ido
+            if m.type == "note_on" and m.velocity > 0:
+                lathato.add(m.note)
+                szol.add(m.note)
+            elif m.type in ("note_on", "note_off"):
+                szol.discard(m.note)
+        assert lathato == hangok, f"a {sorszam}. szegmens hangjai {sorted(hangok)} kellenek, ezek {sorted(lathato)}"
+        assert abs(utolso - hossz) <= IDO_TURES_MP, \
+            (f"a {sorszam}. szegmensnek {hossz} mp hosszunak kell lennie (az utolso esemenynel "
+             f"er veget, a csend nem kerul bele), ez {utolso:.3f}")
+        assert not szol, f"logo hang a {sorszam}. szegmensben: {sorted(szol)}"
+    kiir(f"OK  automatikus mod: {len(v.mentett)} mentett, {v.eldobott} eldobott szegmens, "
+         "a hosszak es a hangok stimmelnek")
+    return v
+
+
+# ---------------------------------------------------------------------
 # Mutacios teszt: minden szandekosan elrontott valtozatnak MEG KELL BUKNIA
 # ---------------------------------------------------------------------
 
@@ -1042,6 +1331,27 @@ MUTACIOK = [
      "a belso karbantarto uzenetek (eszkozvaltas) normal uzenetkent rogzulnek"),
     ("belso_elnemitas_nem_zar",
      "a felvetel kozbeni belso elnemitas nem zarja le a szolo hangokat"),
+    # --- 4. fazis: automatikus felvetel ---
+    ("pedal_figyelmen_kivul",
+     "a csendfigyeles nem veszi figyelembe a lenyomott pedalt"),
+    ("felfegyverzes_alatti_pedal_nem_szamit",
+     "a felfegyverzes alatt lenyomott pedal nem szamit lenyomottnak"),
+    ("csend_barmely_elengedesre",
+     "a csend barmely hang felengedesevel indul, akkor is, ha mas hang meg szol"),
+    ("csend_ujraindul_minden_uzenetre",
+     "a csend alatt kikuldott barmely uzenet (csuszka) ujrainditja a szunetet"),
+    ("kuszob_szigoru",
+     'a szunet-kuszob "elerte" helyett "meghaladta" jelentesu'),
+    ("jatekido_forditva",
+     "a jatekido-kuszob forditva dont (a rovidet menti, a hosszut eldobja)"),
+    ("nincs_uzenet_elotti_ellenorzes",
+     "a kuszob utan, de az idozito elott erkezo hang a regi szegmensbe kerul"),
+    ("nincs_ujrafelfegyverzes",
+     "a szegmens lezarasa utan nincs ujra-felfegyverzes"),
+    ("stop_rovidet_eldobja",
+     "a kezi Stop a jatekido-kuszobnel rovidebb felvetelt eldobja"),
+    ("pipa_kivetel_nem_szerel",
+     "a pipa kivetele felfegyverzett allapotban nem szunteti meg a felfegyverzest"),
 ]
 
 
@@ -1066,6 +1376,13 @@ def minden_eset(mido, reszletes=False):
         print("ALLAPOTGEP: inditas az elso leutesre")
         print("=" * 52)
     felfegyverzes_ellenorzese(mido, reszletes=reszletes)
+
+    if reszletes:
+        print()
+        print("=" * 52)
+        print("AUTOMATIKUS FELVETEL (4. fazis)")
+        print("=" * 52)
+    automatikus_ellenorzese(mido, reszletes=reszletes)
 
 
 def mutacios_teszt(mido):

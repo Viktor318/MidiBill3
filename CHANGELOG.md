@@ -14,6 +14,82 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.20.0] - 2026-09-25
+
+A MIDI felvétel **4. fázisa**: az automatikus felvétel mód - a felvevő a
+csendek mentén szegmensekre bontja a játékot, a rövid próbálkozásokat
+eldobja, a hosszabbakat külön fájlba menti.
+
+### Hozzáadva - automatikus felvétel mód (a felvétel 4. fázisa)
+
+Az "Automatikus felvétel" jelölőnégyzet (és a két küszöb) működik: a
+felvevő a csendek mentén **szegmensekre bontja** a játékot, a rövid
+próbálkozásokat eldobja, a hosszabbakat külön fájlba menti, és utána
+**azonnal újra felfegyverez**.
+
+- **Csend = semmi nem szól**: a szünet-küszöb nem az utolsó leütéstől
+  számít, hanem attól, hogy minden billentyű fel van engedve ÉS a
+  kitartó pedál is fent van. Egy hosszan kitartott akkord vagy egy
+  pedálos lecsengés közepén így nem vág a program; a felfegyverzés alatt
+  lenyomott pedál is lenyomottnak számít. A csend alatt kiküldött egyéb
+  üzenet (pl. csúszka) nem indítja újra a szünetet.
+- **Döntés a szünet-küszöb leteltekor**: ha a játék (az első és az utolsó
+  esemény között) elérte a játékidő-küszöböt, **mentés** (jelentéssel,
+  ha kérted), ha rövidebb, **eldobás**. A küszöbök "elérte" jelentésűek.
+- **A mentett szegmens az utolsó eseménynél ér véget**, a csend nem kerül
+  bele; a következő fájl az első leütéssel kezdődik.
+- **Pontos vágás**: a döntés MINDEN beérkező üzenet előtt is lefut, nem
+  csak a negyedmásodperces időzítőből - a küszöb letelte után érkező hang
+  (vagy egy új szakasz előtt lenyomott pedál) így már az ÚJ szegmensbe
+  kerül.
+- **Kezelés** (a felhasználó döntései):
+  - a jelölőnégyzet állapota a `MidiBill3.ini`-be kerül (`Automatikus=1/0`),
+    és a program az utoljára elmentett értékkel indul; csak ha még nincs
+    mentett érték, akkor bekapcsolt (ez módosítja az 1.19.0-s leírást,
+    amely szerint a jelölőnégyzet nem kerül az ini-be);
+  - automatikus módban **már az ablak megnyitása felfegyverez** (a
+    Startot nem kell megnyomni), és **a pipa visszatétele is azonnal
+    felfegyverez**;
+  - a **kézi Stop** felvétel közben MINDIG ment (a küszöböktől
+    függetlenül), és **kiveszi a pipát** - nincs újra-felfegyverzés;
+  - a pipa kivétele **felfegyverzett állapotban megszünteti a
+    felfegyverzést**; felvétel közben viszont kézi módra vált: a futó
+    szegmenst már csak a Stop zárja le (egy véletlen kattintás nem vágja
+    el a játékot);
+  - mentési hiba automatikus módban: egy üzenetablak, az automatikus mód
+    kikapcsol, a szegmens megmarad (Stoppal újra menthető);
+  - beragadt hangra nincs külön védelem: a szegmens ilyenkor nem zárul le
+    magától, a Stop lezárja.
+- **A szünet-küszöb alapértéke 3 mp** (5 helyett). Ahol a `MidiBill3.ini`
+  már tartalmaz mentett értéket, ott az marad érvényben.
+- **Kijelzés**: "Várakozás billentyűre (AUTO)", "● AUTO FELVÉTEL 0:42",
+  és egy ✓, ha a szegmens már elérte a játékidő-küszöböt (biztosan
+  mentésre kerül); a jelölőnégyzet mellett "(N szegmens mentve)"; a
+  főablak gombja is jelzi az automatikus módot.
+- A főablak F9-e: ha a felvevő ablak még nincs nyitva, automatikus
+  módban csak megnyitja (az már felfegyverez) - különben rögtön le is
+  állítaná.
+
+Új: `Modellek/AutomatikusSzegmentalo.vb` (a döntés, felület nélkül),
+`MidiFelvevo.SzolValami`, `.CsendKezdeteMs`, `.FigyelembeVettUzenetE()`,
+`MidiFelvevoForm.UzenetElottiEllenorzes()`.
+
+**Ellenőrzés**: a `Tesztek/smf_iro_ellenorzes.py` új része a
+csendfigyelést, a döntést a határokon, és egy teljes forgatókönyvet
+futtat a felvevő ablak logikájának portján (pedállal tartott hang,
+kitartott akkord, rövid próbálkozás, csend alatti csúszka és moduláció,
+két időzítő-ütés között lejáró küszöb, kézi Stop lenyomott hanggal, a
+pipa ki-be felvétel közben és felfegyverezve) - 6 mentett és 1 eldobott
+szegmens, a hosszak és a hangok `mido`-val visszaolvasva. **10 új
+mutáció** (összesen 33), mind
+fennakad. A VALÓDI VB kód (`MidiFelvevoForm` + `MidiFelvevo` +
+`AutomatikusSzegmentalo`) Linuxon, WinForms-csonkkal és szimulált órával
+ugyanerre a forgatókönyvre **bájtra azonos** fájlokat ment; a VB oldalon
+az üzenet előtti ellenőrzést vagy a pedálfigyelést kikapcsolva a próba
+elbukik.
+
+---
+
 ## [1.19.0] - 2026-09-24
 
 A 4. fázis előtti önálló lépés: új `MidiBill3.ini` az "extra"

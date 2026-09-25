@@ -2,10 +2,13 @@
 Imports System.Diagnostics
 
 ''' <summary>
-''' A MIDI felvevő ablak (3. fázis): Start/Stop felfegyverzéssel, színes
-''' állapotjelző futó idővel, F9 gyorsbillentyű, a mentés beállításai
-''' (fájlnév, dátum szerinti almappa, jelentés a felvétel mellé), és az
-''' utoljára mentett fájl mappájának megnyitása.
+''' A MIDI felvevő ablak: Start/Stop felfegyverzéssel, színes állapotjelző
+''' futó idővel, F9 gyorsbillentyű, a mentés beállításai (fájlnév, dátum
+''' szerinti almappa, jelentés a felvétel mellé), az utoljára mentett fájl
+''' mappájának megnyitása (3. fázis), és az AUTOMATIKUS FELVÉTEL mód (4.
+''' fázis): a csendek mentén szegmensekre bontja a játékot, a rövid
+''' próbálkozásokat eldobja, a hosszabbakat külön fájlba menti, és utána
+''' azonnal újra felfegyverez - lásd SzegmensEllenorzese.
 '''
 ''' SZÁNDÉKOSAN NEM ez az ablak birtokolja a felvevő motort (MidiFelvevo),
 ''' hanem a főablak - lásd MainForm.midiFelvevo. Ennek oka a bezárás: a
@@ -41,6 +44,49 @@ Public Class MidiFelvevoForm
     Private javasoltFajlNev As String = ""
 
     ''' <summary>
+    ''' Az "Automatikus felvétel" jelölőnégyzet aktuális állapota, Shared
+    ''' másolatban - a főablak gombja ebből olvassa (lásd AutomatikusMod).
+    ''' Maga az állapot a MidiBill3.ini-ben él (lásd
+    ''' FelvevoBeallitasokBetoltese / BeallitasokRogzitese): a program az
+    ''' utoljára elmentett értékkel indul, és csak ha még nincs mentett
+    ''' érték, akkor BEKAPCSOLT (a felhasználó döntése, 2026-09-25 - a
+    ''' korábbi "mindig bekapcsoltan indul" helyett).
+    ''' </summary>
+    Private Shared automatikusModAllapot As Boolean = True
+
+    ''' <summary>
+    ''' Be van-e kapcsolva az Automatikus felvétel mód - a főablak gombjának
+    ''' feliratához ("● AUTO FELVÉTEL").
+    ''' </summary>
+    Public Shared ReadOnly Property AutomatikusMod As Boolean
+        Get
+            Return automatikusModAllapot
+        End Get
+    End Property
+
+    ''' <summary>Igaz, amíg a konstruktor tölti a vezérlőket - ilyenkor a CheckedChanged nem fegyverezhet fel.</summary>
+    Private betoltesAlatt As Boolean = True
+
+    ''' <summary>
+    ''' Véd az újrabelépés ellen: egy mentési hiba üzenetablaka alatt az
+    ''' időzítő és a beérkező MIDI üzenetek tovább futnak, és nem indíthatnak
+    ''' újabb szegmens-lezárást.
+    ''' </summary>
+    Private szegmensLezarasFolyamatban As Boolean = False
+
+    ''' <summary>A legutóbbi (felhasználói) indítás óta mentett szegmensek száma.</summary>
+    Private mentettSzegmensek As Integer = 0
+
+    ''' <summary>
+    ''' Az óra, amihez a futó időt és a szünetet mérjük: alapból a MidiEngine
+    ''' órája (ugyanarról az óráról, mint a felvett időbélyegek). A Friend
+    ''' hozzáférés a tesztek szimulált órájáért van. SZÁNDÉKOSAN mező, nem
+    ''' property: egy ablak publikus/Friend property-jét a WinForms tervező
+    ''' szerializálni próbálná (WFO1000 build-hiba), egy mezőt nem.
+    ''' </summary>
+    Friend Ora As Func(Of Long)
+
+    ''' <summary>
     ''' Kiváltódik, ha a felvevő állapota a FELÜLETRŐL indított művelet miatt
     ''' változott (Start, Stop, eldobás) - a főablak ebből frissíti a saját
     ''' "MIDI felvétel" gombját. Az első leütés okozta váltást (felfegyverzett
@@ -63,12 +109,15 @@ Public Class MidiFelvevoForm
         Me.motor = motor
         Me.pillanatkepLekerdezo = pillanatkepLekerdezo
         Me.jelentesKeszito = jelentesKeszito
+        Ora = Function() motor.ElteltIdoMs
 
         FelvevoBeallitasokBetoltese()
+        automatikusModAllapot = chkAutomatikus.Checked
         txtFajlNev.Text = alapFajlNev
         javasoltFajlNev = alapFajlNev
         UtvonalMintaFrissitese()
         AllapotKijelzesFrissitese()
+        betoltesAlatt = False
     End Sub
 
     ''' <summary>
@@ -90,6 +139,10 @@ Public Class MidiFelvevoForm
         End If
 
         kijelzoIdozito.Start()
+
+        ' Automatikus módban már a megnyitás felfegyverez (a felhasználó
+        ' döntése, 2026-09-24) - a Startot nem kell külön megnyomni.
+        If chkAutomatikus.Checked Then Inditas()
     End Sub
 
     ' ============================================================
@@ -117,11 +170,15 @@ Public Class MidiFelvevoForm
     End Sub
 
     ''' <summary>
-    ''' Felfegyverzés: a felvétel az első LEÜTÉSSEL indul el (lásd
-    ''' FelvevoAllapot.Felfegyverezve).
+    ''' Felfegyverzés a FELHASZNÁLÓ kérésére (Start, F9, az ablak megnyitása
+    ''' vagy a pipa visszatétele automatikus módban): a felvétel az első
+    ''' LEÜTÉSSEL indul el (lásd FelvevoAllapot.Felfegyverezve). Itt indul
+    ''' újra a mentett szegmensek számlálója is - az automatikus
+    ''' újra-felfegyverzés (lásd SzegmensEllenorzese) nem nullázza.
     ''' </summary>
     Private Sub Inditas()
         If felvevo.Allapot <> FelvevoAllapot.Alap Then Return
+        mentettSzegmensek = 0
         felvevo.Felfegyverzes(pillanatkepLekerdezo)
         AllapotValtozasJelzese()
     End Sub
@@ -129,7 +186,12 @@ Public Class MidiFelvevoForm
     ''' <summary>
     ''' Leállítás. Felfegyverzett, de még el nem indult állapotban nincs mit
     ''' menteni: csendben visszaáll, üzenetablak nélkül (a felhasználóval
-    ''' egyeztetett viselkedés). Felvétel közben a kézi Stop MINDIG ment.
+    ''' egyeztetett viselkedés). Felvétel közben a kézi Stop MINDIG ment -
+    ''' automatikus módban is, a küszöböktől függetlenül (az a felhasználó
+    ''' kifejezett szándéka).
+    '''
+    ''' Automatikus módban a Stop a pipát is kiveszi: a rendszer láthatóan
+    ''' "kézi" módra vált, és nincs újra-felfegyverzés.
     ''' </summary>
     Private Sub Leallitas()
         Select Case felvevo.Allapot
@@ -142,6 +204,92 @@ Public Class MidiFelvevoForm
             Case Else
                 Return
         End Select
+        chkAutomatikus.Checked = False
+        AllapotValtozasJelzese()
+    End Sub
+
+    ' ============================================================
+    ' Automatikus felvétel (4. fázis)
+    ' ============================================================
+
+    ''' <summary>
+    ''' A főablak hívja MINDEN kiküldött üzenet előtt, mielőtt a felvevőnek
+    ''' továbbadná. Ha a szünet-küszöb már letelt, a régi szegmens ITT zárul
+    ''' le - így a küszöb után érkező üzenet (egy új leütés, vagy egy új
+    ''' szakasz előtt lenyomott pedál) már az ÚJ szegmensbe kerül, akkor is,
+    ''' ha az időzítő még nem ért oda. Az időzítő csak negyedmásodpercenként
+    ''' néz rá - enélkül a határon érkező hang a régi szegmens végére
+    ''' kerülhetne.
+    ''' </summary>
+    Public Sub UzenetElottiEllenorzes(statuszBajt As Integer, idobelyegMs As Long,
+                                      lejatszasBol As Boolean, metronomBol As Boolean, belsoUzenet As Boolean)
+        If Not felvevo.FigyelembeVettUzenetE(statuszBajt, lejatszasBol, metronomBol, belsoUzenet) Then Return
+        SzegmensEllenorzese(idobelyegMs)
+    End Sub
+
+    ''' <summary>
+    ''' Az Automatikus felvétel mód lényege: ha a szünet-küszöb letelt (lásd
+    ''' AutomatikusSzegmentalo), a szegmens mentésre vagy eldobásra kerül, és
+    ''' a felvevő AZONNAL újra felfegyverez a következő szegmenshez.
+    '''
+    ''' Mentési hiba esetén az automatikus mód kikapcsol (EGY üzenetablak),
+    ''' és a szegmens megmarad - a Stop gombbal újra menthető.
+    ''' </summary>
+    Friend Sub SzegmensEllenorzese(mostMs As Long)
+        If szegmensLezarasFolyamatban OrElse Not chkAutomatikus.Checked Then Return
+
+        Dim dontes As SzegmensDontes = AutomatikusSzegmentalo.Dontes(felvevo, mostMs, SzunetKuszobMs, JatekidoKuszobMs)
+        If dontes = SzegmensDontes.Semmi Then Return
+
+        szegmensLezarasFolyamatban = True
+        Try
+            If dontes = SzegmensDontes.Mentes Then
+                If Not Mentes(automatikusMentes:=True) Then
+                    AllapotValtozasJelzese()
+                    Return
+                End If
+            Else
+                felvevo.Eldobas()
+            End If
+
+            felvevo.Felfegyverzes(pillanatkepLekerdezo)
+            AllapotValtozasJelzese()
+        Finally
+            szegmensLezarasFolyamatban = False
+        End Try
+    End Sub
+
+    Private ReadOnly Property SzunetKuszobMs As Long
+        Get
+            Return CLng(nudSzunetKuszob.Value) * 1000L
+        End Get
+    End Property
+
+    Private ReadOnly Property JatekidoKuszobMs As Long
+        Get
+            Return CLng(nudJatekidoKuszob.Value) * 1000L
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' A pipa KIVÉTELE felfegyverzett állapotban megszünteti a
+    ''' felfegyverzést; felvétel közben viszont kézi módra vált - a futó
+    ''' felvétel megy tovább, csak a Stop zárja le (egy véletlen kattintás
+    ''' így nem vágja el a játékot). A pipa VISSZATÉTELE nyugalmi állapotban
+    ''' azonnal felfegyverez: ha be van pipálva, nem kell Startot nyomni -
+    ''' ettől automatikus. (A felhasználó döntései, 2026-09-25.)
+    ''' </summary>
+    Private Sub chkAutomatikus_CheckedChanged(sender As Object, e As EventArgs) Handles chkAutomatikus.CheckedChanged
+        If betoltesAlatt Then Return
+        automatikusModAllapot = chkAutomatikus.Checked
+        If chkAutomatikus.Checked Then
+            If felvevo.Allapot = FelvevoAllapot.Alap Then
+                Inditas()
+                Return
+            End If
+        ElseIf felvevo.Allapot = FelvevoAllapot.Felfegyverezve Then
+            felvevo.Eldobas()
+        End If
         AllapotValtozasJelzese()
     End Sub
 
@@ -150,21 +298,29 @@ Public Class MidiFelvevoForm
     ''' jelentés elkészítése mellé. A jelentés hibája a felvételt NEM
     ''' veszélyezteti: a .mid ilyenkor is megvan, csak jelezzük.
     ''' </summary>
+    ''' <param name="automatikusMentes">
+    ''' Az Automatikus felvétel mód mentése: hiba esetén a mód KIKAPCSOL (a
+    ''' pipa kikerül), hogy a következő szegmensek ne ütközzenek újra és újra
+    ''' ugyanabba a hibába - és ezt az üzenet is megmondja.
+    ''' </param>
     ''' <returns>True, ha a mentés sikerült; False, ha nem (a felvett anyag ilyenkor megmarad).</returns>
-    Private Function Mentes() As Boolean
+    Private Function Mentes(Optional automatikusMentes As Boolean = False) As Boolean
         Dim utvonal As String
         Try
             utvonal = Utvonalak.UjFelvetelUtvonala(txtFajlNev.Text, chkDatumAlmappa.Checked)
             If Not felvevo.LezarasEsMentes(utvonal) Then Return True   ' nem volt mit menteni
         Catch ex As Exception
+            If automatikusMentes Then chkAutomatikus.Checked = False
             MsgBox("Nem sikerült elmenteni a felvételt." & vbCrLf & vbCrLf &
                    "Hiba: " & ex.Message & vbCrLf & vbCrLf &
+                   If(automatikusMentes, "Az automatikus felvétel kikapcsolt. ", "") &
                    "A felvett anyag megmaradt - a Stop gombbal újra megpróbálhatod.",
                    MsgBoxStyle.Exclamation, "MidiBill - felvétel")
             Return False
         End Try
 
         utoljaraMentettFajl = utvonal
+        mentettSzegmensek += 1
 
         Dim sor As String = "Utoljára mentve: " & IO.Path.GetFileName(utvonal)
         If chkJelentes.Checked Then
@@ -236,7 +392,8 @@ Public Class MidiFelvevoForm
     Public Sub AllapotKijelzesFrissitese()
         Select Case felvevo.Allapot
             Case FelvevoAllapot.Felfegyverezve
-                AllapotSzinezese("Várakozás billentyűre...", Color.FromArgb(253, 240, 213), Color.FromArgb(122, 74, 0), Color.Gold)
+                AllapotSzinezese(If(chkAutomatikus.Checked, "Várakozás billentyűre (AUTO)", "Várakozás billentyűre..."),
+                                 Color.FromArgb(253, 240, 213), Color.FromArgb(122, 74, 0), Color.Gold)
             Case FelvevoAllapot.Rogzit
                 AllapotSzinezese(FelvetelFelirata(), Color.FromArgb(253, 236, 235), Color.FromArgb(161, 40, 31), Color.IndianRed)
             Case Else
@@ -248,6 +405,10 @@ Public Class MidiFelvevoForm
 
         btnStart.Enabled = (felvevo.Allapot = FelvevoAllapot.Alap)
         btnStop.Enabled = (felvevo.Allapot <> FelvevoAllapot.Alap)
+
+        lblSzegmensSzamlalo.Text = If(chkAutomatikus.Checked AndAlso mentettSzegmensek > 0,
+                                      "(" & mentettSzegmensek.ToString(Globalization.CultureInfo.InvariantCulture) & " szegmens mentve)",
+                                      "")
     End Sub
 
     Private Sub AllapotSzinezese(szoveg As String, hatter As Color, betu As Color, stopGombSzine As Color)
@@ -261,17 +422,27 @@ Public Class MidiFelvevoForm
     ''' <summary>
     ''' "● FELVÉTEL 0:42" - a futó idő az első leütés óta, a MidiEngine
     ''' órája szerint (ugyanarról az óráról, mint a felvett időbélyegek).
+    ''' Automatikus módban "● AUTO FELVÉTEL 0:42", és ha a szegmens már
+    ''' elérte a játékidő-küszöböt (tehát biztosan mentésre kerül), egy ✓.
     ''' </summary>
     Private Function FelvetelFelirata() As String
-        Dim eltelt As Long = Math.Max(0L, motor.ElteltIdoMs - felvevo.KezdoIdobelyegMs)
+        Dim eltelt As Long = Math.Max(0L, Ora.Invoke() - felvevo.KezdoIdobelyegMs)
         Dim ido As TimeSpan = TimeSpan.FromMilliseconds(eltelt)
         Dim idoSzoveg As String = If(ido.TotalHours >= 1,
                                      ido.ToString("h\:mm\:ss", Globalization.CultureInfo.InvariantCulture),
                                      ido.ToString("m\:ss", Globalization.CultureInfo.InvariantCulture))
-        Return "● FELVÉTEL  " & idoSzoveg
+        If Not chkAutomatikus.Checked Then Return "● FELVÉTEL  " & idoSzoveg
+        Dim biztosMentes As Boolean = felvevo.RogzitettHosszMs >= JatekidoKuszobMs
+        Return "● AUTO FELVÉTEL  " & idoSzoveg & If(biztosMentes, "  ✓", "")
     End Function
 
+    ''' <summary>
+    ''' Negyedmásodpercenként: az Automatikus felvétel mód szünet-figyelése
+    ''' (hogy csendben, üzenet nélkül is lezáruljon a szegmens), és a futó
+    ''' idő kijelzése.
+    ''' </summary>
     Private Sub kijelzoIdozito_Tick(sender As Object, e As EventArgs) Handles kijelzoIdozito.Tick
+        SzegmensEllenorzese(Ora.Invoke())
         If felvevo.Allapot = FelvevoAllapot.Rogzit Then lblAllapot.Text = FelvetelFelirata()
     End Sub
 
@@ -342,17 +513,20 @@ Public Class MidiFelvevoForm
     Private Const KULCS_JELENTES As String = "Jelentes"
     Private Const KULCS_JATEKIDO_KUSZOB As String = "JatekidoKuszob"
     Private Const KULCS_SZUNET_KUSZOB As String = "SzunetKuszob"
+    Private Const KULCS_AUTOMATIKUS As String = "Automatikus"
 
     ''' <summary>
     ''' A felvevő beállításai a MidiBill3.ini-ből; ami hiányzik, annál a
-    ''' Designerben megadott alapérték marad. Az "Automatikus felvétel"
-    ''' jelölőnégyzet SZÁNDÉKOSAN nincs itt (a felhasználó döntése: minden
-    ''' programindítás után bekapcsolt állapotból indul), és a fájlnév sem
-    ''' (az a betöltött preset nevét követi).
+    ''' Designerben megadott alapérték marad - az "Automatikus felvétel"
+    ''' jelölőnégyzetnél a BEKAPCSOLT (a felhasználó döntése, 2026-09-25:
+    ''' a program az utoljára elmentett állapottal indul, és csak mentett
+    ''' érték híján automatikus). A fájlnév SZÁNDÉKOSAN nincs itt: az a
+    ''' betöltött preset nevét követi.
     ''' </summary>
     Private Sub FelvevoBeallitasokBetoltese()
         Dim ini As IniFajl = ExtraBeallitasok.Ini
         Dim szakasz As String = ExtraBeallitasok.SZAKASZ_FELVEVO
+        chkAutomatikus.Checked = ini.Logikai(szakasz, KULCS_AUTOMATIKUS, True)
         chkDatumAlmappa.Checked = ini.Logikai(szakasz, KULCS_DATUM_ALMAPPA, chkDatumAlmappa.Checked)
         chkJelentes.Checked = ini.Logikai(szakasz, KULCS_JELENTES, chkJelentes.Checked)
         nudJatekidoKuszob.Value = KorlatokKozott(nudJatekidoKuszob,
@@ -380,6 +554,7 @@ Public Class MidiFelvevoForm
         ini.Beallitas(szakasz, KULCS_JELENTES, chkJelentes.Checked)
         ini.Beallitas(szakasz, KULCS_JATEKIDO_KUSZOB, CInt(nudJatekidoKuszob.Value))
         ini.Beallitas(szakasz, KULCS_SZUNET_KUSZOB, CInt(nudSzunetKuszob.Value))
+        ini.Beallitas(szakasz, KULCS_AUTOMATIKUS, chkAutomatikus.Checked)
     End Sub
 
     ' ============================================================

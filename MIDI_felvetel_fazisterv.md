@@ -12,8 +12,9 @@ mondja meg, milyen sorrendben építjük fel, és hol tartunk éppen.
 fázis** is kész és tesztelve (kiadva az **1.18.0** verzióban,
 2026-09-24). A felvevő beállításainak és az ablakpozícióknak a
 megőrzése (`MidiBill3.ini`) önálló lépésként elkészült az **1.19.0**
-verzióban. Következik a **4. fázis**. A major verzióemelés (2.0.0) a
-teljes felvevő ablak elkészültekor esedékes.
+verzióban. A **4. fázis** is kész és tesztelve (kiadva az **1.20.0**
+verzióban, 2026-09-25). Következik az **5. fázis** (lejátszás). A major
+verzióemelés (2.0.0) a teljes felvevő ablak elkészültekor esedékes.
 
 ---
 
@@ -297,7 +298,10 @@ futó felvételben a hangoknak ott is ezen a ponton kell véget érniük.
   A név a felhasználó kérésére `EltelIdoMs`-ről lett javítva
   `ElteltIdoMs`-re (magyarosabb alak).
 - `MidiFelvevo.UtolsoEsemenyIdobelyegMs` - a legutóbb rögzített üzenet
-  ideje. **Szünet-küszöb** = `ElteltIdoMs - UtolsoEsemenyIdobelyegMs`.
+  ideje. **Módosítva (2026-09-25)**: a szünet-küszöb végül NEM ehhez
+  mér, hanem az új `MidiFelvevo.CsendKezdeteMs`-hez (attól számít, hogy
+  semmi sem szól - billentyű és pedál sem): **Szünet-küszöb** =
+  `ElteltIdoMs - CsendKezdeteMs`.
 - `MidiFelvevo.RogzitettHosszMs` - az első és utolsó rögzített üzenet
   közt eltelt idő = **játékidő-küszöb**.
 
@@ -365,39 +369,79 @@ ablak ezt hívja a mentés után).
   Amit ott NEM lehetett kipróbálni: a valódi megjelenést, a bezárás
   kérdését felvétel közben, és a két ablak bezárási sorrendjét.
 
-- [ ] **4. fázis - Automatikus felvétel mód.** A két küszöb
+- [x] **4. fázis - Automatikus felvétel mód.** *(Kész és a felhasználó
+  által tesztelve, 2026-09-25 - kiadva az 1.20.0 verzióban. A
+  megvalósítás a lenti teendőlistát követi; részletek: `CHANGELOG.md`
+  1.20.0.)* A két küszöb
   (játékidő/szünet), a szegmensekre bontás, az automatikus
   újra-felfegyverzés, és hogy a kézi Stop kiveszi a pipát az
   "Automatikus felvétel" checkboxból.
 
-  **Lépések (javaslat, 2026-09-24):**
-  1. A szegmentáló logika felület nélküli osztályba kerül (pl.
-     `Modellek/AutomatikusSzegmentalo.vb` vagy a `MidiFelvevo`
-     bővítése): `Ellenorzes(mostMs)` -> semmi / eldobás / mentés.
-     Időforrás: `ElteltIdoMs`, `UtolsoEsemenyIdobelyegMs`,
-     `RogzitettHosszMs` - ugyanarról az óráról.
-  2. A csend pontos meghatározása (lásd a döntéseket lent).
-  3. A mentett szegmens az utolsó eseménynél ér véget, nem a
-     szünet-küszöbnyi csend után (a kézi Stop-nál is így).
-  4. Bekötés a felvevő ablakba: a meglévő 250 ms-os időzítő hívja az
-     ellenőrzést; mentés = a meglévő `Mentes()`, utána `Inditas()`; a
-     jelölőnégyzet és a két `NumericUpDown` engedélyezése; kézi Stop
-     automatikus módban: mentés + a pipa kivétele.
-  5. Mentési hiba automatikus módban: az automatikus mód leáll, EGY
-     üzenetablak, a szegmens a memóriában marad (kézzel újra menthető).
-  6. Kijelzés: "● AUTO FELVÉTEL 0:42", jelzés, ha a szegmens elérte a
-     játékidő-küszöböt (biztosan mentődik), "N szegmens mentve"
-     számláló; a főablak gombja is mutatja az automatikus módot.
-  7. A jelölőnégyzet és a küszöbök felvétel közben is állíthatók,
-     azonnal érvényesek (a pipa kivétele = a futó szegmens kézi módra
-     vált, csak Stop zárja le).
-  8. Bezárás: mint eddig (felfegyverezve csendben, felvétel közben
-     Igen / Nem / Mégse).
-  9. Ellenőrzés: Python-port + forgatókönyvek (rövid próbálkozás,
-     hosszú játék, kitartott akkord, pedál, több szegmens, kézi Stop)
-     + mutációs teszt; Linuxos fordítás és futtatás szimulált idővel;
-     végül a felhasználó tesztje valódi billentyűzettel.
-  10. Dokumentáció + 1.19.0 (a felhasználó jóváhagyásával).
+  **Részletes teendőlista (2026-09-25, a kód átnézése után):**
+
+  *A. A felvevő motor bővítése (`MidiFelvevo.vb`, felület nélkül)*
+  1. A kitartó pedál követése csatornánként (CC64 >= 64 = lenyomva). A
+     felfegyverzés alatt lenyomott pedál is lenyomottként induljon (az
+     a fájl elejére is bekerül).
+  2. "Szól-e valami?": van-e lenyomott billentyű (a meglévő `hangSzol`
+     nyilvántartás) VAGY lenyomott pedál bármelyik csatornán.
+  3. Új `CsendKezdeteMs`: annak az eseménynek az ideje, amely után már
+     semmi sem szól (utolsó elengedés / pedál felengedése); ha valami
+     szól, nincs csend. Szünet = `ElteltIdoMs - CsendKezdeteMs`.
+  4. A szegmens vége: NINCS teendő - a mentett fájl már most is az
+     utolsó rögzített eseménynél ér véget (a csend nem kerül bele).
+     Teszttel ellenőrizendő.
+
+  *B. A szegmentáló döntés (új, felület nélküli osztály)*
+  5. `Modellek/AutomatikusSzegmentalo.vb`, `Dontes(mostMs)` -> semmi /
+     eldobás / mentés: nincs csend, vagy rövidebb a szünet-küszöbnél ->
+     semmi; letelt, és a játékidő (`RogzitettHosszMs`) kisebb a
+     játékidő-küszöbnél -> eldobás; letelt, és elérte -> mentés.
+  6. Pontos vágás: a döntés MINDEN beérkező leütés ELŐTT is lefut (nem
+     csak a 250 ms-os időzítőből) - ha a küszöb már letelt, előbb a régi
+     szegmens zárul le, és az új hang már az új szegmenst indítja.
+
+  *C. Bekötés*
+  7. Az automatikus mód állapota a FŐABLAKBAN él (az ablak bezárása és
+     újranyitása között is megmarad); programindításkor bekapcsolt.
+  8. Megnyitáskor felfegyverzés, ha az automatikus mód be van kapcsolva
+     (az indításkori automatikus újranyitásnál is).
+  9. Mentés -> a meglévő mentés (jelentéssel), majd azonnali
+     újra-felfegyverzés; eldobás -> csendben, majd újra-felfegyverzés.
+  10. Kézi Stop automatikus módban: felvétel közben MINDIG ment (a
+      küszöböktől függetlenül), felfegyverezve csak leáll; mindkét
+      esetben kiveszi a pipát, nincs újra-felfegyverzés.
+  11. Mentési hiba automatikus módban: EGY üzenetablak, az automatikus
+      mód kikapcsol, a szegmens megmarad (Stop-pal újra menthető).
+  12. Menet közben: a pipa kivétele felvétel közben kézi módra vált (a
+      futó szegmenst csak a Stop zárja le); a pipa visszatétele
+      nyugalmi állapotban AZONNAL felfegyverez (lásd a döntéseket); a
+      küszöbök módosítása azonnal érvényes.
+  13. A jelölőnégyzet és a két számmező engedélyezése, a "(a 4.
+      fázisban kapcsolódik be)" felirat törlése.
+
+  *D. Kijelzés*
+  14. "Várakozás billentyűre... (AUTO)", "● AUTO FELVÉTEL 0:42", és egy
+      ✓, ha a szegmens elérte a játékidő-küszöböt.
+  15. "N szegmens mentve" számláló; az "Utoljára mentve" a legutóbbi
+      fájlt mutatja.
+  16. A főablak gombja is jelzi az automatikus módot.
+
+  *E. Ellenőrzés*
+  17. Python-port (szegmentáló + csend-követés) forgatókönyvekkel:
+      rövid próbálkozás, hosszú játék, kitartott akkord, pedálos
+      lecsengés, több szegmens, a küszöb határán érkező hang, kézi Stop,
+      a pipa kivétele / visszatétele.
+  18. Mutációs tesztek (pl. a pedál figyelmen kívül hagyása, csend
+      lenyomott billentyű mellett, rossz irányú összehasonlítás, a
+      határon érkező hang rossz szegmensben).
+  19. A valódi VB kód Linuxon, szimulált órával, bájtra azonos kimenet
+      a Python-porttal.
+  20. Ablak-szintű próba WinForms-csonkkal.
+  21. A felhasználó tesztje valódi billentyűzettel.
+
+  *F. Lezárás*
+  22. Dokumentáció + **1.20.0** (a felhasználó jóváhagyásával).
 
   **A felhasználó döntései (2026-09-24):**
   - **Csend = semmi nem szól.** A szünet-küszöb számlálása csak akkor
@@ -405,15 +449,17 @@ ablak ezt hívja a mentés után).
     kitartó pedál is fel van engedve; az utolsó elengedéstől számít.
     Így egy hosszan kitartott akkord vagy pedálos lecsengés közepén nem
     vág a program.
-  - **Az automatikus mód alapállapota.** Programindítás után a felvevő
-    ablak ELSŐ megnyitásakor az "Automatikus felvétel" BE van
-    kapcsolva. Felvétel (automatikus is) csak attól kezdve történhet,
+  - **Az automatikus mód alapállapota.** *(MÓDOSÍTVA 2026-09-25, a
+    felhasználó kérésére.)* A jelölőnégyzet állapota a `MidiBill3.ini`-be
+    kerül (`[Felvevo] Automatikus=1/0`), és a program az utoljára
+    elmentett értékkel indul; CSAK ha még nincs mentett érték, akkor
+    bekapcsolt. Mindig a jelölőnégyzet tényleges állapota mentődik - a
+    Stop miatt kikerült pipa is (a felhasználó döntése). *(Korábban,
+    2026-09-24: minden programindításkor bekapcsolt, és nem került az
+    ini-be.)* Felvétel (automatikus is) csak attól kezdve történhet,
     hogy a felvevő ablak nyitva van - amíg a felhasználó nem kattint a
     "MIDI felvétel..." gombra (vagy nem nyom F9-et), addig semmi nem
-    rögzül. Ezért ez a jelölőnégyzet NEM kerül a `Kezdet.json`-ba:
-    minden programindításkor bekapcsolt állapotból indul; a program
-    futása alatt (az ablak bezárása és újranyitása között) megmarad az
-    utolsó állapota.
+    rögzül.
   - **Az ablak megnyitása felfegyverez** (a felhasználó döntése,
     2026-09-24). Ha az "Automatikus felvétel" be van kapcsolva, a
     felvevő ablak megnyitása (a "MIDI felvétel..." gomb vagy F9)
@@ -427,13 +473,30 @@ ablak ezt hívja a mentés után).
     hanem a `MidiBill3.ini`-ben (módosítva 2026-09-24: a `Beallitasok`
     osztályt minden preset mentése is használja, így a felvevő
     beállításai minden preset fájlba bekerültek volna). Megmarad: dátum
-    szerinti almappa, jelentés készítése és a két küszöb értéke. (Az
-    "Automatikus felvétel" jelölőnégyzet kivétel - lásd fent. A
-    fájlnév-mező sem kerül be: az a betöltött preset nevét követi, egy
+    szerinti almappa, jelentés készítése és a két küszöb értéke, és
+    2026-09-25-től az "Automatikus felvétel" jelölőnégyzet is (lásd
+    fent). (A
+    fájlnév-mező nem kerül be: az a betöltött preset nevét követi, egy
     elmentett érték ezzel ütközne.) **Elkészült** a 4. fázis előtti
     önálló lépésben, az 1.19.0 verzióban (az ablakpozíciók mentésével
     együtt, lásd `CHANGELOG.md`) - a 4. fázisnak már csak használnia
     kell.
+  - **Beragadt hang: NINCS külön védelem** (a felhasználó döntése,
+    2026-09-25). Ha a billentyűzet nem küld Note Off-ot, a program úgy
+    látja, hogy a hang még szól, így a szegmens magától nem zárul le -
+    a felhasználó ezt füllel hallja, és kézzel (Stop) lezárja.
+  - **A pipa visszatétele AZONNAL felfegyverez** (a felhasználó
+    döntése, 2026-09-25). Ha az "Automatikus felvétel" be van pipálva,
+    nem kell külön Startot nyomni - ettől automatikus. Tehát ha nyitott
+    ablaknál, nyugalmi állapotban visszateszi a pipát, a felvevő rögtön
+    felfegyverez, és az első leütés indítja a felvételt.
+  - **A pipa kivétele felfegyverzett állapotban LESZEREL** (a
+    felhasználó döntése, 2026-09-25). Felvétel közben viszont a futó
+    felvétel kézi módban megy tovább, csak a Stop zárja le - egy
+    véletlen kattintás így nem vágja el a játékot.
+  - **A szünet-küszöb alapértéke 3 mp** (a felhasználó kérése,
+    2026-09-25 - az 5 mp túl sok volt). A játékidő-küszöb marad 5 mp. A
+    már mentett ini-érték felülírja az alapértéket.
 
 - [ ] **5. fázis - Lejátszás.** `.mid` beolvasása (NAudio), lejátszó
   időzítővel, közvetlen küldés a kimeneti csapra
@@ -479,7 +542,7 @@ sorrendje, a pillanatkép időpontja, az előadói vezérlők helye és a
 **FONTOS**: ez a VB-kód PORTJA, nem a VB futtatása - ha a
 `MidiFelvevo.vb` SMF-író része változik, a szkriptet is frissíteni kell.
 
-A hibafelismerő képessége igazolt: a szkript végén **23 szándékosan
+A hibafelismerő képessége igazolt: a szkript végén **33 szándékosan
 elrontott változat** fut le, és mindegyiknek meg KELL buknia (VLQ
 folytatásbit, Program Change adatbájtjai, trackszám a fejlécben, a
 kezdőállapot rossz trackben, tracknév a track sorszámával, kimaradó
@@ -490,7 +553,21 @@ régi "amelyik nem nulla, az a bank" névfeloldás, és kilenc
 állapotgép-hiba: indítás bármilyen üzenetre, 0 sebességű Note On-ra,
 metronómra/visszajátszásra, pillanatkép felfegyverzéskor, kimaradó,
 rossz helyre kerülő vagy túl sok megjegyzett vezérlő, lezáratlan hang,
-rögzülő belső üzenet, és a belső elnémítás, ami nem zárja le a hangokat).
+rögzülő belső üzenet, és a belső elnémítás, ami nem zárja le a hangokat;
+2026-09-25-től tíz automatikus-mód hiba is: a pedál figyelmen kívül
+hagyása, a felfegyverzés alatti pedál elvesztése, csend egy felengedett
+hangtól, miközben más még szól, a csend újraindulása egy csúszkától,
+"meghaladta" az "elérte" helyett, fordított játékidő-döntés, a hiányzó
+üzenet előtti ellenőrzés, a hiányzó újra-felfegyverzés, a pipa
+kivétele, ami nem szerel le, és a rövid
+felvételt eldobó kézi Stop).
+
+**Az automatikus mód a VALÓDI VB kódon is ellenőrizve (2026-09-25)**: a
+`MidiFelvevoForm` + `MidiFelvevo` + `AutomatikusSzegmentalo` Linuxon,
+WinForms-csonkkal és szimulált órával lefuttatva ugyanarra a
+forgatókönyvre bájtra azonos fájlokat ment, mint a Python-port (6 mentett,
+1 eldobott szegmens). A VB oldalon az üzenet előtti ellenőrzést, illetve
+a pedálfigyelést kikapcsolva a próba elbukik.
 
 **A port hűsége ellenőrizve (2026-09-23)**: a `Modellek` fájljait (a
 NAudio-függő `MidiEngine` kivételével) Linuxon, .NET 8 alatt, `Option

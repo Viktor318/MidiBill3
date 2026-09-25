@@ -9,30 +9,34 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.19.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.20.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a MIDI felvétel 4. fázisa: automatikus felvétel mód - szegmensekre
+  bontás a csendek mentén, ahol a csend = semmi nem szól, billentyű és
+  kitartó pedál sem; a szünet-küszöb után mentés vagy eldobás a
+  játékidő-küszöb szerint, majd azonnali újra-felfegyverzés; pontos
+  vágás az üzenetek előtti ellenőrzéssel; az "Automatikus felvétel"
+  állapota a `MidiBill3.ini`-ben; új
+  `Modellek/AutomatikusSzegmentalo.vb` - lásd `CHANGELOG.md` és `MIDI_felvetel_fazisterv.md`). A **major**
+  verzióemelés (2.0.0) akkor esedékes, ha a teljes felvevő ablak
+  elkészült.
+- **Előző verzió**: 1.19.0
   (új `%AppData%\MidiBill3\MidiBill3.ini` az "extra", nem preset-jellegű
   beállításoknak: a két ablak pozíciója láthatóság-ellenőrzéssel, a
   felvevő beállításai - dátum szerinti almappa, jelentés, a két küszöb -,
   és a felvevő ablak automatikus újranyitása, ha a kilépéskor nyitva
   volt; új `Modellek/IniFajl.vb` és `ExtraBeallitasok.vb` - lásd
-  `CHANGELOG.md`). A **major** verzióemelés (2.0.0) akkor esedékes, ha
-  a teljes felvevő ablak elkészült.
-- **Előző verzió**: 1.18.0
+  `CHANGELOG.md`)
+- **Korábbi verzió**: 1.18.0
   (a MIDI felvétel 3. fázisa: a `MidiFelvevoForm` felvevő ablak kézi
   felvétellel, F9, futó idő, állapotjelző főablak-gomb, bezáráskori
   mentés/eldobás; a felvételt az első leütés indítja; a belső
   karbantartó üzenetek kimaradnak a felvételből; a gyári GM2
   hangszerlisták eltávolítva - lásd `CHANGELOG.md` és
   `MIDI_felvetel_fazisterv.md`)
-- **Korábbi verzió**: 1.17.0
+- **Még korábbi verzió**: 1.17.0
   (a Bank Select MSB és LSB külön kezelése - HIBAJAVÍTÁS, eddig egyetlen
   nem nulla bankú hangszer sem szólalt meg; "Több SoundFont
   importálása" menüpont - lásd `MSB_LSB_GM2_terv.md`)
-- **Még korábbi verzió**: 1.16.0
-  (a felvett `.mid` szerkezetének átalakítása csatornánkénti trackekre,
-  tracknévvel és hangszernévvel; nem kötelező hangnem a fájlban;
-  automatikus `.txt` jelentés a felvétel mellé; a Segédprogramok menü
-  átrendezése és gyorsbillentyű-javítás)
 - **Cél keretrendszer**: .NET 10 (LTS)
 - **UI**: WinForms
 - **MIDI réteg**: NAudio.Midi 2.3.0 (+ NAudio.Core 2.3.0)
@@ -55,8 +59,9 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ```
 MidiBill3/                        - EGYETLEN projekt
 ├── MainForm.vb / .Designer.vb   - Fő ablak
-├── MidiFelvevoForm.vb / .Designer.vb - A MIDI felvevő ablak (a felvétel 3. fázisa):
-│                                   Start/Stop (F9), futó idő, mentési beállítások
+├── MidiFelvevoForm.vb / .Designer.vb - A MIDI felvevő ablak (a felvétel 3-4. fázisa):
+│                                   Start/Stop (F9), futó idő, mentési beállítások,
+│                                   automatikus felvétel (szegmensek a csendek mentén)
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
 │                                   példány, a kiválasztott csatornacsoportot mutatja
 │                                   (magasság 378, keret 408 - Her/Tér/Vib/Chorus/
@@ -100,7 +105,10 @@ MidiBill3/                        - EGYETLEN projekt
 │   ├── MidiJelentes.vb          - "MIDI fájl beállításainak mentése
 │   │                               olvasható formában" (magyar .txt riport)
 │   ├── MidiFelvevo.vb           - Felvevő motor: állapotgép + kézzel írt
-│   │                               SMF-kimenet (format 1, 480 PPQ)
+│   │                               SMF-kimenet (format 1, 480 PPQ) +
+│   │                               csendfigyelés (billentyűk és pedál)
+│   ├── AutomatikusSzegmentalo.vb - Az automatikus felvétel döntése, felület
+│   │                               nélkül: semmi / eldobás / mentés
 │   └── Utvonalak.vb             - MINDEN fájl-útvonal egy helyen: gyári
 │                                   (csak olvasható) vs. felhasználói
 │                                   (írható) szétválasztás + egyszeri
