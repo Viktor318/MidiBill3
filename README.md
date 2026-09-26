@@ -97,6 +97,12 @@ architektúrája nem adott lehetőséget.
     betöltött preset neve, dátum szerinti almappa választható), "Utoljára
     mentve" sor és "Mappa megnyitása" gomb; bezáráskor felvétel közben
     rákérdez (mentés / eldobás / mégse)
+- **Lejátszás** a felvevő ablakban (**F8** = Lejátszás / Stop): bármilyen
+  `.mid` fájl visszajátszása a MIDI kimenetre, pontos időzítéssel (saját
+  háttérszálon); a Stop csak a lejátszás hangjait némítja, az élő játék
+  szól tovább. Választható, hogy a lejátszás után visszaálljanak-e a
+  panelek beállításai, vagy a felület átálljon a fájl beállításaira; a
+  friss felvétel mentés után magától betöltődik a lejátszóba
 - **Jelentés a felvétel mellé**: a mentett `.mid` mellé automatikusan
   készül egy azonos nevű `.txt` a fájl tartalmáról (csatornák, hangszerek,
   vezérlők, tempó, hangnem, az aktuális preset fájl neve)
@@ -150,6 +156,7 @@ MidiBill3/                      - egyetlen projekt
 │   │                             transzponálás, Bank Select-alapú hangszerváltás
 │   ├── MidiFelvevo.vb          - MIDI felvétel, Standard MIDI File írása
 │   │                             (csatornánként külön track)
+│   ├── MidiLejatszo.vb         - MIDI fájl lejátszása saját háttérszálon
 │   ├── AutomatikusSzegmentalo.vb - Az automatikus felvétel döntése
 │   │                             (mentés / eldobás a csend után)
 │   ├── MidiFajlOlvaso.vb       - Standard MIDI File beolvasása és elemzése
@@ -202,5 +209,6 @@ fájlkezelés, beépített segédprogramok).
 
 A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kész, kézi
 és automatikus módban is (felvevő ablak, indítás az első leütésre,
-szegmensekre bontás a csendek mentén, mentés és jelentés); a
-visszajátszás és a metronóm fejlesztése folyamatban van.
+szegmensekre bontás a csendek mentén, mentés és jelentés), és a
+lejátszás is működik; a tekerés, a lejátszás közbeni ráfelvétel
+(overdub) és a metronóm fejlesztése folyamatban van.

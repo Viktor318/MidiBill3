@@ -11,6 +11,14 @@ Namespace Modellek
         Private Const POLY_PRESSURE_STATUS As Integer = &HA0
 
         Private midiKimenet As MidiOut = Nothing
+
+        ''' <summary>
+        ''' A kimenet megnyitását, lezárását és a küldést kölcsönösen kizárja.
+        ''' A lejátszó (MidiLejatszo) SAJÁT SZÁLÓN küld, miközben a felületi
+        ''' szál élő üzeneteket küldhet, vagy épp kimeneti eszközt válthat -
+        ''' enélkül egy lezárás alatt álló eszközre is menne üzenet.
+        ''' </summary>
+        Private ReadOnly kimenetZar As New Object()
         Private midiBemenet As MidiIn = Nothing
 
         Private noteOn(15, 127) As Boolean
@@ -247,25 +255,29 @@ Namespace Modellek
         End Sub
 
         Public Sub KimenetMegnyitas(eszkozIndex As Integer)
-            KimenetBezaras()
-            midiKimenet = New MidiOut(eszkozIndex)
-            kimenetiHibaJelezve = False
-            Array.Clear(noteOn, 0, noteOn.Length)
-            Array.Clear(kimenoHang, 0, kimenoHang.Length)
+            SyncLock kimenetZar
+                KimenetBezaras()
+                midiKimenet = New MidiOut(eszkozIndex)
+                kimenetiHibaJelezve = False
+                Array.Clear(noteOn, 0, noteOn.Length)
+                Array.Clear(kimenoHang, 0, kimenoHang.Length)
+            End SyncLock
         End Sub
 
         Public Sub KimenetBezaras()
-            If midiKimenet IsNot Nothing Then
-                Try
-                    OsszesHangElnemitasa()
-                Catch
-                End Try
-                Try
-                    midiKimenet.Dispose()
-                Catch
-                End Try
-                midiKimenet = Nothing
-            End If
+            SyncLock kimenetZar
+                If midiKimenet IsNot Nothing Then
+                    Try
+                        OsszesHangElnemitasa()
+                    Catch
+                    End Try
+                    Try
+                        midiKimenet.Dispose()
+                    Catch
+                    End Try
+                    midiKimenet = Nothing
+                End If
+            End SyncLock
         End Sub
 
         ''' <summary>
@@ -416,11 +428,18 @@ Namespace Modellek
                                         Optional idobelyegMs As Long = -1,
                                         Optional lejatszasBol As Boolean = False,
                                         Optional metronomBol As Boolean = False)
-            If midiKimenet Is Nothing Then Return
-            Try
-                Dim uzenet As Integer = statuszBajt Or (adat1 << 8) Or (adat2 << 16)
-                midiKimenet.Send(uzenet)
-            Catch ex As Exception
+            Dim hiba As Boolean = False
+            SyncLock kimenetZar
+                If midiKimenet Is Nothing Then Return
+                Try
+                    Dim uzenet As Integer = statuszBajt Or (adat1 << 8) Or (adat2 << 16)
+                    midiKimenet.Send(uzenet)
+                Catch ex As Exception
+                    hiba = True
+                End Try
+            End SyncLock
+
+            If hiba Then
                 If Not kimenetiHibaJelezve Then
                     kimenetiHibaJelezve = True
                     RaiseEvent KimenetiHiba("A MIDI kimeneti eszköz nem érhető el (lehet, hogy időközben eltávolították). Válassz újra egy eszközt.")
@@ -428,7 +447,7 @@ Namespace Modellek
                 ' Sikertelen küldést nem veszünk fel: ami nem szólalt meg, az
                 ' ne is kerüljön bele a felvételbe.
                 Return
-            End Try
+            End If
 
             Dim vegsoIdobelyeg As Long = If(idobelyegMs >= 0, idobelyegMs, idozito.ElapsedMilliseconds)
             RaiseEvent UzenetKikuldve(statuszBajt, adat1, adat2, vegsoIdobelyeg, lejatszasBol, metronomBol, belsoUzenetekKuldese)
@@ -623,6 +642,10 @@ Namespace Modellek
         ''' Az időbélyeg SZÁNDÉKOSAN a küldés pillanatában olvasódik ki (nem
         ''' a fájlbeli idő), mert az overdub-felvétel szempontjából az a
         ''' releváns, mikor szólalt meg ténylegesen a hang.
+        '''
+        ''' SZÁLKEZELÉS: a lejátszó (MidiLejatszo) a SAJÁT szálán hívja - az
+        ''' UzenetKikuldve és a KimenetiHiba esemény ilyenkor ezen a szálon
+        ''' váltódik ki, a feliratkozónak kell a felületi szálra átadnia.
         ''' </summary>
         Public Sub LejatszottUzenetKuldese(statuszBajt As Integer, adat1 As Integer, adat2 As Integer)
             KuldesEgyCsatornara(statuszBajt, adat1, adat2, lejatszasBol:=True)

@@ -14,6 +14,83 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.21.0] - 2026-09-26
+
+A MIDI felvétel **5. fázisa**: lejátszás a felvevő ablakban.
+
+### Hozzáadva - lejátszás (a felvétel 5. fázisa)
+
+A felvevő ablak új **"Lejátszás"** csoportja egy `.mid` fájlt játszik
+vissza a MIDI kimenetre - a saját felvételt éppúgy, mint bármilyen más
+MIDI fájlt.
+
+- **Gombok**: "Fájl megnyitása..." (először a `Felvetelek` mappában
+  nyílik, utána a legutóbb használtban), "▶ Lejátszás" és "■ Stop". A
+  csoport címe mutatja a betöltött fájl nevét ("Lejátszás: <fájlnév>"),
+  a Lejátszás gomb lejátszás közben **zöld**. A fájl végén a lejátszás
+  magától leáll.
+- **F8 = Lejátszás / Stop**, a felvevő ablakban és a főablakban is (a
+  főablakban szükség esetén megnyitja a felvevő ablakot). Az F10 azért
+  nem, mert a Windows a menüsornak foglalja.
+- **Stop: csak a lejátszás némul** - a lejátszó nyilvántartja az általa
+  megszólaltatott hangokat és a lenyomott pedált, és célzott Note Off-fal
+  csak ezeket engedi el; a közben élőben játszott hangok szólnak tovább.
+- **"A lejátszott fájl beállításainak megtartása"** (alapból KI, a
+  `MidiBill3.ini` megjegyzi; lejátszás közben nem állítható):
+  - **kikapcsolva** a lejátszás a fájl hangszíneivel szól, Stopnál és a
+    fájl végén pedig a panelek beállításai visszamennek a
+    szintetizátorra;
+  - **bekapcsolva** a lejátszás indításakor a felület átáll a fájl
+    szerint, pontosan a "Preset készítése MIDI fájlból" logikájával (a
+    fájlban szóló csatornák aktívak a fájl kezdő beállításaival, a többi
+    inaktív, split C4, transzponálás 0, alap hangerő 100%, reverb a fájl
+    szerint; a hangszerlista és a MIDI eszközök maradnak), és a végén
+    nincs visszaállítás.
+  - Mindkét esetben BELSŐ üzenetként megy ki, egy futó felvételbe nem
+    kerül.
+- **"Mentett fájl betöltése a lejátszóba"** (a Mentés csoport alján,
+  alapból BE, az ini megjegyzi): minden mentés után - a kézi Stop és az
+  automatikus szegmensek után is - a friss felvétel betöltődik a
+  lejátszóba (nem indul el magától; futó lejátszást nem szakít meg).
+- A kimeneti eszköz váltása, a felvevő ablak és a program bezárása
+  leállítja a lejátszást.
+
+**Technikai részletek**:
+- **Beolvasás saját kóddal** (az eredeti terv NAudio-t írt): új
+  `MidiFajlOlvaso.EsemenyekBeolvasasa()` - minden csatorna-üzenet
+  időrendben, a tempótérképpel ezredmásodpercre átszámolva; azonos
+  időpontnál a track-, azon belül a fájlbeli sorrend dönt (stabil
+  rendezés). SysEx és meta kimarad; SMPTE-időzítésű fájl érthető
+  hibával; csonka tracknél az addigi rész érvényes.
+- **Új `Modellek/MidiLejatszo.vb`**: a lejátszás SAJÁT HÁTTÉRSZÁLON fut a
+  `MidiEngine` stopperórájához igazítva, a lejátszás idejére 1 ms-os
+  Windows időzítő-felbontással - a WinForms időzítő kb. 15 ms-os
+  felbontása hallható csúszást okozna. Adott pontról is indítható (a 6.
+  fázis tekeréséhez).
+- **`MidiEngine`**: a kimenet megnyitását, lezárását és a küldést egy
+  zár kölcsönösen kizárja (a lejátszó más szálon küld); a lejátszó
+  szálán érkező `UzenetKikuldve` eseményt a főablak a felületi szálra
+  adja át, így a felvevő továbbra is egyetlen szálon dolgozik. A
+  `KimenetiHiba` üzenet `BeginInvoke`-kal megy (egy `Invoke` holtpontba
+  kerülhetne a lejátszót épp leállító felületi szállal).
+
+**Ellenőrzés**: új `Tesztek/lejatszo_ellenorzes.py` - az eseménylista
+Python-portja kézzel, bájtonként összerakott fájlokon (tempóváltások
+másik trackben, azonos időpontú események két trackben, running
+status, SysEx, meta a hangok között, egy adatbájtos üzenetek, Pitch
+Bend, format 0 és 1, ismeretlen chunk, csonka track, SMPTE és egyéb
+hibás fájlok), a független `mido` könyvtárral összevetve; 5 mutáció,
+mind fennakad. A VALÓDI VB kód Linuxon ugyanezekre a fájlokra betűre
+azonos eseménylistát ad; a `MidiLejatszo` szimulált órával: minden
+esemény pontosan az esedékes ezredmásodpercben, a Stop csak a saját
+hangokat és a pedált engedi el, középről indítás; valódi szálon 50
+esemény, a legnagyobb késés 3,6 ms (Linuxon, a Windows 1 ms-os
+felbontása nélkül); a felvevő ablak logikája (F8, a gombok és a szín,
+a beállítások átvétele / visszaküldése, a fájl vége, a mentés utáni
+betöltés) WinForms-csonkkal.
+
+---
+
 ## [1.20.0] - 2026-09-25
 
 A MIDI felvétel **4. fázisa**: az automatikus felvétel mód - a felvevő a

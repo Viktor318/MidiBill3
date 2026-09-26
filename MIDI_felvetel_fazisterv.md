@@ -13,7 +13,9 @@ fázis** is kész és tesztelve (kiadva az **1.18.0** verzióban,
 2026-09-24). A felvevő beállításainak és az ablakpozícióknak a
 megőrzése (`MidiBill3.ini`) önálló lépésként elkészült az **1.19.0**
 verzióban. A **4. fázis** is kész és tesztelve (kiadva az **1.20.0**
-verzióban, 2026-09-25). Következik az **5. fázis** (lejátszás). A major
+verzióban, 2026-09-25). Az **5. fázis** (lejátszás) is kész és tesztelve
+(kiadva az **1.21.0** verzióban, 2026-09-26). Következik a **6. fázis**
+(tekerés és időkijelzés). A major
 verzióemelés (2.0.0) a teljes felvevő ablak elkészültekor esedékes.
 
 ---
@@ -498,9 +500,84 @@ ablak ezt hívja a mentés után).
     2026-09-25 - az 5 mp túl sok volt). A játékidő-küszöb marad 5 mp. A
     már mentett ini-érték felülírja az alapértéket.
 
-- [ ] **5. fázis - Lejátszás.** `.mid` beolvasása (NAudio), lejátszó
-  időzítővel, közvetlen küldés a kimeneti csapra
-  (`LejatszottUzenetKuldese`), zöld gomb aktív lejátszás közben, Stop.
+- [x] **5. fázis - Lejátszás.** *(Kész és a felhasználó által tesztelve,
+  2026-09-26 - kiadva az 1.21.0 verzióban; részletek: `CHANGELOG.md`
+  1.21.0.)*
+  `.mid` beolvasása, lejátszó, közvetlen
+  küldés a kimeneti csapra (`LejatszottUzenetKuldese`), zöld gomb aktív
+  lejátszás közben, Stop.
+
+  **Technikai pontosítások (2026-09-26):**
+  - **Beolvasás SAJÁT kóddal, nem NAudio-val** (az eredeti terv
+    módosítása): a meglévő `MidiFajlOlvaso` bővül egy eseménylista-
+    függvénnyel (csatorna-üzenetek időrendben, ms-ban, a tempótérképpel
+    átszámolva; SysEx és meta kimarad; SMPTE-időzítésű fájl érthető
+    hibával). Így egy helyen van az SMF-értelmezés, ugyanúgy tűri a
+    sérült fájlokat, és `mido`-val ellenőrizhető.
+  - **A lejátszás SAJÁT HÁTTÉRSZÁLON fut** a `MidiEngine` stopperórájához
+    igazítva - a WinForms időzítő kb. 15 ms-os felbontása és a UI szál
+    terheltsége hallható csúszást okozna. Ehhez: a kimenet megnyitása /
+    lezárása és a küldés kölcsönös kizárása (eszközváltás közben se
+    ütközzenek), és a főablak a kimeneti eseményt a UI szálra adja
+    vissza (a felvevő továbbra is egyetlen szálon dolgozik - a 7. fázis,
+    az overdub miatt is fontos).
+
+  **Lépések:**
+  1. `MidiFajlOlvaso.EsemenyekBeolvasasa()` - eseménylista.
+  2. Új `Modellek/MidiLejatszo.vb` (felület nélkül): indítás / Stop /
+     fájl vége / állapot, háttérszálas időzítés, adott pontról indítás
+     (a 6. fázis tekeréséhez).
+  3. A lejátszó nyilvántartja az általa megszólaltatott hangokat: Stopnál
+     CSAK ezeket némítja (+ a pedált a lejátszott csatornákon).
+  4. Kimenetváltás / -lezárás lejátszás közben: a lejátszás leáll.
+  5. Felület a felvevő ablakban: "Lejátszás" csoport, három gomb egy
+     sorban ("Fájl megnyitása...", "Lejátszás", "Stop"), a csoport címe
+     "Lejátszás: <fájlnév>", a Lejátszás gomb lejátszás közben ZÖLD.
+  6. "Fájl megnyitása...": a `Felvetelek` mappában nyílik, utána a
+     legutóbb használt mappát jegyzi meg.
+  7. "Mentett fájl betöltése a lejátszóba" jelölőnégyzet (lásd a
+     döntéseket).
+  8. A fájl végén magától leáll; az ablak / a program bezárása leállítja.
+  9. Ellenőrzés: Python (az eseménylista a `mido` időzítésével
+     összevetve, tempóváltásos fájlon is) + mutációs teszt; VB a
+     lejátszóval, szimulált órával és rögzített küldéssel (sorrend,
+     időzítés, Stop utáni némítás, az élő hangok érintetlenek); végül a
+     felhasználó tesztje valódi szintetizátorral.
+  10. Dokumentáció + verzió (a felhasználó jóváhagyásával).
+
+  **A felhasználó döntései (2026-09-26):**
+  - **A lejátszott fájl beállításai - a felhasználó választja**
+    (2026-09-26; az aznapi első döntést - "a végén sem áll vissza" -
+    ez váltotta fel). Új jelölőnégyzet a Lejátszás csoportban: **"A
+    lejátszott fájl beállításainak megtartása"**, alapból KIKAPCSOLVA,
+    az állapota a `MidiBill3.ini`-be kerül (mentett érték híján
+    kikapcsolt). Lejátszás közben nem állítható - az indításkor dől el,
+    mi történik:
+    - **Kikapcsolva**: a lejátszás a fájl beállításaival szól, Stopnál
+      és a fájl végén pedig a program VISSZAKÜLDI a panelek beállításait
+      a szintetizátorra - az élő játék utána ugyanúgy szól, mint előtte.
+    - **Bekapcsolva**: a lejátszás INDÍTÁSAKOR a felület átáll a fájl
+      szerint, PONTOSAN a "Preset készítése MIDI fájlból" logikájával
+      (`MidiPresetKeszito`), mintha egy abból készült presetet töltenél
+      be: a fájlban hangot játszó csatornák aktívak a fájl kezdő
+      hangszínével, hangerejével, terével, vibratójával és chorusával; a
+      többi csatorna inaktív; split pont C4, transzponálás 0, alap
+      hangerő 100%, a reverb a fájl legerősebb értéke; a hangszerlista és
+      a MIDI eszközök maradnak. A felhasználó saját beállításai tehát
+      felülíródnak (a felhasználó döntése). Stopnál / a fájl végén nincs
+      visszaállítás.
+    - Mindkét esetben a panelek kiküldése (a visszaállítás, illetve az
+      átállás) BELSŐ üzenetként megy ki, így egy futó felvételbe nem
+      kerül bele.
+  - **Stop: CSAK a lejátszás némul** (a lejátszó által megszólaltatott
+    hangok + a pedál a lejátszott csatornákon); az élő játék szól tovább.
+  - **"Mentett fájl betöltése a lejátszóba"** jelölőnégyzet (az eredeti
+    "Mentett fájl automatikus lejátszása" név helyett - ez csak betölti,
+    nem indítja el): a Mentés csoport alján, alapból BEKAPCSOLVA, az
+    állapota a `MidiBill3.ini`-be kerül. Minden mentés után (kézi Stop és
+    automatikus szegmens is) a friss fájl betöltődik a lejátszóba.
+  - **F8 = Lejátszás / Stop** (a felvevő ablakban és a főablakban is). Az
+    F10 azért nem, mert a Windows a menüsornak foglalja.
 
 - [ ] **6. fázis - Tekerés és időkijelzés.** Húzható csúszka,
   `MouseDown`/`MouseUp` megkülönböztetés a programozott frissítéstől,

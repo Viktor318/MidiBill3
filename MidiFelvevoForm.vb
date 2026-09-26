@@ -8,7 +8,9 @@ Imports System.Diagnostics
 ''' mappájának megnyitása (3. fázis), és az AUTOMATIKUS FELVÉTEL mód (4.
 ''' fázis): a csendek mentén szegmensekre bontja a játékot, a rövid
 ''' próbálkozásokat eldobja, a hosszabbakat külön fájlba menti, és utána
-''' azonnal újra felfegyverez - lásd SzegmensEllenorzese.
+''' azonnal újra felfegyverez - lásd SzegmensEllenorzese. Az 5. fázisban
+''' bekerült a LEJÁTSZÁS is (lásd a "Lejátszás" szakaszt): egy .mid fájl
+''' visszajátszása háttérszálon, F8 gyorsbillentyűvel.
 '''
 ''' SZÁNDÉKOSAN NEM ez az ablak birtokolja a felvevő motort (MidiFelvevo),
 ''' hanem a főablak - lásd MainForm.midiFelvevo. Ennek oka a bezárás: a
@@ -99,17 +101,26 @@ Public Class MidiFelvevoForm
     ''' <param name="pillanatkepLekerdezo">A csatorna-állapot pillanatképe, amit a felvevő PONTOSAN az első leütéskor kér le.</param>
     ''' <param name="jelentesKeszito">A felvétel melletti .txt jelentés elkészítése; üres sztring = siker, egyébként a hiba szövege.</param>
     ''' <param name="alapFajlNev">A "Mentett fájl neve" mező kezdőértéke (a betöltött preset neve).</param>
+    ''' <param name="panelekVisszakuldese">A panelek beállításainak visszaküldése a szintetizátorra (lejátszás után, ha a beállítások megtartása ki van kapcsolva).</param>
+    ''' <param name="fajlBeallitasainakAtvetele">A felület átállítása egy .mid fájl szerint (a "Preset készítése MIDI fájlból" logikájával); üres sztring = siker, egyébként a hiba szövege.</param>
     Public Sub New(felvevo As MidiFelvevo, motor As MidiEngine,
                    pillanatkepLekerdezo As Func(Of List(Of MidiUzenet)),
                    jelentesKeszito As Func(Of String, String),
-                   alapFajlNev As String)
+                   alapFajlNev As String,
+                   panelekVisszakuldese As Action,
+                   fajlBeallitasainakAtvetele As Func(Of String, String))
         InitializeComponent()
 
         Me.felvevo = felvevo
         Me.motor = motor
         Me.pillanatkepLekerdezo = pillanatkepLekerdezo
         Me.jelentesKeszito = jelentesKeszito
+        Me.panelekVisszakuldese = panelekVisszakuldese
+        Me.fajlBeallitasainakAtvetele = fajlBeallitasainakAtvetele
         Ora = Function() motor.ElteltIdoMs
+
+        lejatszo = New MidiLejatszo(AddressOf motor.LejatszottUzenetKuldese, Function() motor.ElteltIdoMs)
+        AddHandler lejatszo.Befejezodott, AddressOf Lejatszo_Befejezodott
 
         FelvevoBeallitasokBetoltese()
         automatikusModAllapot = chkAutomatikus.Checked
@@ -117,6 +128,7 @@ Public Class MidiFelvevoForm
         javasoltFajlNev = alapFajlNev
         UtvonalMintaFrissitese()
         AllapotKijelzesFrissitese()
+        LejatszasKijelzesFrissitese()
         betoltesAlatt = False
     End Sub
 
@@ -322,6 +334,11 @@ Public Class MidiFelvevoForm
         utoljaraMentettFajl = utvonal
         mentettSzegmensek += 1
 
+        ' A friss felvétel betöltése a lejátszóba (NEM indítja el). Futó
+        ' lejátszást nem szakít meg - egy lejátszás alatti automatikus
+        ' szegmens-mentés így nem állítja le a lejátszást.
+        If chkBetoltesLejatszoba.Checked AndAlso Not lejatszo.Fut Then LejatszasiFajlBetoltese(utvonal, csendes:=True)
+
         Dim sor As String = "Utoljára mentve: " & IO.Path.GetFileName(utvonal)
         If chkJelentes.Checked Then
             Dim jelentesHiba As String = jelentesKeszito(utvonal)
@@ -506,6 +523,186 @@ Public Class MidiFelvevoForm
     End Sub
 
     ' ============================================================
+    ' Lejátszás (5. fázis)
+    ' ============================================================
+
+    Private ReadOnly panelekVisszakuldese As Action
+    Private ReadOnly fajlBeallitasainakAtvetele As Func(Of String, String)
+
+    ''' <summary>A lejátszó - háttérszálon küld, lásd Modellek\MidiLejatszo.vb.</summary>
+    Private ReadOnly lejatszo As MidiLejatszo
+
+    ''' <summary>A lejátszóba betöltött fájl teljes útvonala, vagy üres.</summary>
+    Private betoltottLejatszasiFajl As String = ""
+
+    ''' <summary>Ahol a "Fájl megnyitása..." legutóbb járt (MidiBill3.ini); üresen a Felvetelek mappa.</summary>
+    Private utolsoLejatszasMappa As String = ""
+
+    ''' <summary>
+    ''' A futó lejátszás végén vissza kell-e küldeni a panelek beállításait.
+    ''' Az INDÍTÁSKOR dől el (a "beállítások megtartása" jelölőnégyzet
+    ''' szerint), ezért a jelölőnégyzet lejátszás közben nem állítható.
+    ''' </summary>
+    Private panelekVisszaallitasaAVegen As Boolean = False
+
+    Private ReadOnly dlgLejatszasMegnyitas As New OpenFileDialog With {
+        .Title = "Lejátszandó MIDI fájl",
+        .Filter = "MIDI fájlok (*.mid;*.midi)|*.mid;*.midi|Minden fájl (*.*)|*.*"
+    }
+
+    ''' <summary>F8 és a főablak F8-a: lejátszás közben leállít, egyébként elindít.</summary>
+    Public Sub LejatszasValtasa()
+        If lejatszo.Fut Then
+            LejatszasLeallitasa()
+        Else
+            LejatszasInditasa()
+        End If
+    End Sub
+
+    Private Sub btnFajlMegnyitasa_Click(sender As Object, e As EventArgs) Handles btnFajlMegnyitasa.Click
+        LejatszasiFajlValasztasa()
+    End Sub
+
+    Private Sub btnLejatszas_Click(sender As Object, e As EventArgs) Handles btnLejatszas.Click
+        LejatszasInditasa()
+    End Sub
+
+    Private Sub btnLejatszasStop_Click(sender As Object, e As EventArgs) Handles btnLejatszasStop.Click
+        LejatszasLeallitasa()
+    End Sub
+
+    ''' <summary>
+    ''' A lejátszás indítása. Ha nincs betöltött fájl, előbb a
+    ''' fájlválasztó nyílik meg.
+    '''
+    ''' A "A lejátszott fájl beállításainak megtartása" jelölőnégyzet
+    ''' (a felhasználó döntése, 2026-09-26):
+    ''' - bekapcsolva a felület MOST átáll a fájl szerint, a "Preset készítése
+    '''   MIDI fájlból" logikájával, és a végén nincs visszaállítás;
+    ''' - kikapcsolva a lejátszás a fájl beállításaival szól, a végén (Stop
+    '''   vagy a fájl vége) pedig a panelek beállításai visszamennek a
+    '''   szintetizátorra.
+    ''' </summary>
+    Private Sub LejatszasInditasa()
+        If lejatszo.Fut Then Return
+        If Not lejatszo.VanBetoltottEsemeny Then
+            If Not LejatszasiFajlValasztasa() OrElse Not lejatszo.VanBetoltottEsemeny Then Return
+        End If
+
+        If chkBeallitasokMegtartasa.Checked Then
+            Dim hiba As String = fajlBeallitasainakAtvetele(betoltottLejatszasiFajl)
+            If hiba.Length > 0 Then
+                MsgBox("A fájl beállításait nem sikerült átvenni a felületre - a lejátszás a fájl beállításaival szól." &
+                       vbCrLf & vbCrLf & "Hiba: " & hiba, MsgBoxStyle.Exclamation, "MidiBill - lejátszás")
+            End If
+            panelekVisszaallitasaAVegen = False
+        Else
+            panelekVisszaallitasaAVegen = True
+        End If
+
+        lejatszo.Inditas()
+        LejatszasKijelzesFrissitese()
+    End Sub
+
+    ''' <summary>
+    ''' A lejátszás leállítása: csak a lejátszás hangjai némulnak el (lásd
+    ''' MidiLejatszo.Leallitas). A főablak kimenetváltáskor és kilépéskor
+    ''' panelekVissza:=False-szal hívja (ott a panelek úgyis újra kimennek,
+    ''' illetve már nincs értelme).
+    ''' </summary>
+    Public Sub LejatszasLeallitasa(Optional panelekVissza As Boolean = True)
+        lejatszo.Leallitas()
+        LejatszasVegeKezelese(panelekVissza)
+    End Sub
+
+    Private Sub LejatszasVegeKezelese(panelekVissza As Boolean)
+        If panelekVisszaallitasaAVegen Then
+            panelekVisszaallitasaAVegen = False
+            If panelekVissza Then panelekVisszakuldese()
+        End If
+        LejatszasKijelzesFrissitese()
+    End Sub
+
+    ''' <summary>A fájl vége - a LEJÁTSZÓ SZÁLÁN érkezik, a felületi szálra adjuk át.</summary>
+    Private Sub Lejatszo_Befejezodott()
+        If IsDisposed OrElse Not IsHandleCreated Then Return
+        Try
+            BeginInvoke(Sub()
+                            ' Ha közben már új lejátszás indult, ez a jelzés elavult.
+                            If Not lejatszo.Fut Then LejatszasVegeKezelese(True)
+                        End Sub)
+        Catch ex As InvalidOperationException
+            ' Az ablak épp bezárul - nincs mit frissíteni.
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' A lejátszandó fájl kiválasztása. Először a Felvetelek mappában nyílik
+    ''' meg, utána a legutóbb használt mappában.
+    ''' </summary>
+    ''' <returns>True, ha a felhasználó választott és a fájl betöltődött.</returns>
+    Private Function LejatszasiFajlValasztasa() As Boolean
+        Dim mappa As String = utolsoLejatszasMappa
+        If mappa.Length = 0 OrElse Not IO.Directory.Exists(mappa) Then
+            IO.Directory.CreateDirectory(Utvonalak.FelvetelekMappa)
+            mappa = Utvonalak.FelvetelekMappa
+        End If
+        dlgLejatszasMegnyitas.InitialDirectory = mappa
+        dlgLejatszasMegnyitas.FileName = ""
+        If dlgLejatszasMegnyitas.ShowDialog(Me) <> DialogResult.OK Then Return False
+
+        utolsoLejatszasMappa = IO.Path.GetDirectoryName(dlgLejatszasMegnyitas.FileName)
+        Return LejatszasiFajlBetoltese(dlgLejatszasMegnyitas.FileName, csendes:=False)
+    End Function
+
+    ''' <summary>
+    ''' Egy .mid fájl betöltése a lejátszóba (futó lejátszást leállít). A
+    ''' mentés utáni automatikus betöltés csendes: hiba esetén nem jelez.
+    ''' </summary>
+    Friend Function LejatszasiFajlBetoltese(utvonal As String, csendes As Boolean) As Boolean
+        Dim lista As MidiEsemenyLista
+        Try
+            lista = MidiFajlOlvaso.EsemenyekBeolvasasa(utvonal)
+            If lista.Esemenyek.Count = 0 Then
+                Throw New IO.InvalidDataException("A fájl nem tartalmaz lejátszható MIDI üzenetet.")
+            End If
+        Catch ex As Exception
+            If Not csendes Then
+                MsgBox("Nem sikerült betölteni a(z) """ & IO.Path.GetFileName(utvonal) & """ fájlt." & vbCrLf & vbCrLf &
+                       "Hiba: " & ex.Message, MsgBoxStyle.Exclamation, "MidiBill - lejátszás")
+            End If
+            Return False
+        End Try
+
+        If lejatszo.Fut Then LejatszasLeallitasa()
+        lejatszo.Betoltes(lista)
+        betoltottLejatszasiFajl = utvonal
+        LejatszasKijelzesFrissitese()
+        Return True
+    End Function
+
+    ''' <summary>
+    ''' A Lejátszás csoport kijelzése: a címben a betöltött fájl neve, a
+    ''' Lejátszás gomb lejátszás közben ZÖLD (stabil szín), a Stop csak
+    ''' ilyenkor aktív, a "beállítások megtartása" pedig csak nyugalomban
+    ''' állítható.
+    ''' </summary>
+    Private Sub LejatszasKijelzesFrissitese()
+        Dim fut As Boolean = lejatszo.Fut
+        grpLejatszas.Text = If(betoltottLejatszasiFajl.Length = 0, "Lejátszás",
+                               "Lejátszás: " & IO.Path.GetFileName(betoltottLejatszasiFajl))
+        btnLejatszas.Enabled = Not fut
+        btnLejatszasStop.Enabled = fut
+        chkBeallitasokMegtartasa.Enabled = Not fut
+        If fut Then
+            btnLejatszas.UseVisualStyleBackColor = False
+            btnLejatszas.BackColor = Color.LightGreen
+        Else
+            btnLejatszas.UseVisualStyleBackColor = True
+        End If
+    End Sub
+
+    ' ============================================================
     ' A felvevő beállításai és az ablak helye (MidiBill3.ini)
     ' ============================================================
 
@@ -514,6 +711,9 @@ Public Class MidiFelvevoForm
     Private Const KULCS_JATEKIDO_KUSZOB As String = "JatekidoKuszob"
     Private Const KULCS_SZUNET_KUSZOB As String = "SzunetKuszob"
     Private Const KULCS_AUTOMATIKUS As String = "Automatikus"
+    Private Const KULCS_BETOLTES_LEJATSZOBA As String = "BetoltesLejatszoba"
+    Private Const KULCS_BEALLITASOK_MEGTARTASA As String = "LejatszottBeallitasokMegtartasa"
+    Private Const KULCS_LEJATSZAS_MAPPA As String = "LejatszasMappa"
 
     ''' <summary>
     ''' A felvevő beállításai a MidiBill3.ini-ből; ami hiányzik, annál a
@@ -533,6 +733,9 @@ Public Class MidiFelvevoForm
             ini.Egesz(szakasz, KULCS_JATEKIDO_KUSZOB, CInt(nudJatekidoKuszob.Value)))
         nudSzunetKuszob.Value = KorlatokKozott(nudSzunetKuszob,
             ini.Egesz(szakasz, KULCS_SZUNET_KUSZOB, CInt(nudSzunetKuszob.Value)))
+        chkBetoltesLejatszoba.Checked = ini.Logikai(szakasz, KULCS_BETOLTES_LEJATSZOBA, True)
+        chkBeallitasokMegtartasa.Checked = ini.Logikai(szakasz, KULCS_BEALLITASOK_MEGTARTASA, False)
+        utolsoLejatszasMappa = ini.Szoveg(szakasz, KULCS_LEJATSZAS_MAPPA, "")
     End Sub
 
     ''' <summary>Egy (akár kézzel elrontott) ini-érték a mező megengedett tartományába szorítva.</summary>
@@ -555,6 +758,9 @@ Public Class MidiFelvevoForm
         ini.Beallitas(szakasz, KULCS_JATEKIDO_KUSZOB, CInt(nudJatekidoKuszob.Value))
         ini.Beallitas(szakasz, KULCS_SZUNET_KUSZOB, CInt(nudSzunetKuszob.Value))
         ini.Beallitas(szakasz, KULCS_AUTOMATIKUS, chkAutomatikus.Checked)
+        ini.Beallitas(szakasz, KULCS_BETOLTES_LEJATSZOBA, chkBetoltesLejatszoba.Checked)
+        ini.Beallitas(szakasz, KULCS_BEALLITASOK_MEGTARTASA, chkBeallitasokMegtartasa.Checked)
+        ini.Beallitas(szakasz, KULCS_LEJATSZAS_MAPPA, utolsoLejatszasMappa)
     End Sub
 
     ' ============================================================
@@ -562,10 +768,16 @@ Public Class MidiFelvevoForm
     ' ============================================================
 
     Private Sub MidiFelvevoForm_KeyDown(sender As Object, e As KeyEventArgs) Handles MyBase.KeyDown
-        If e.KeyCode <> Keys.F9 Then Return
+        Select Case e.KeyCode
+            Case Keys.F9
+                FelvetelValtasa()
+            Case Keys.F8
+                LejatszasValtasa()
+            Case Else
+                Return
+        End Select
         e.Handled = True
         e.SuppressKeyPress = True
-        FelvetelValtasa()
     End Sub
 
     ''' <summary>
@@ -590,6 +802,10 @@ Public Class MidiFelvevoForm
     End Sub
 
     Private Sub MidiFelvevoForm_FormClosed(sender As Object, e As FormClosedEventArgs) Handles MyBase.FormClosed
+        LejatszasLeallitasa()
+        RemoveHandler lejatszo.Befejezodott, AddressOf Lejatszo_Befejezodott
+        lejatszo.Dispose()
+        dlgLejatszasMegnyitas.Dispose()
         BeallitasokRogzitese()
         ExtraBeallitasok.Ini.Beallitas(ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK, ExtraBeallitasok.KULCS_NYITVA,
                                        NyitvaMaradE(e.CloseReason))

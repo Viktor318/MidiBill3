@@ -101,6 +101,12 @@ architecture couldn't support.
     the loaded preset's name, optional date subfolder), a "Last saved"
     line and an "Open folder" button; closing during a recording asks
     what to do (save / discard / cancel)
+- **Playback** in the recorder window (**F8** = Play / Stop): plays back
+  any `.mid` file to the MIDI output with accurate timing (on its own
+  background thread); Stop silences only the playback's notes, live
+  playing keeps sounding. You can choose whether the panels' settings
+  are restored after playback or the UI switches to the file's settings;
+  a fresh recording is loaded into the player automatically after saving
 - **Report alongside the recording**: a `.txt` file with the same name is
   generated automatically next to the saved `.mid`, describing its
   contents (channels, instruments, controllers, tempo, key, and the name
@@ -156,6 +162,8 @@ MidiBill3/                      - single project
 │   │                             Bank Select-based instrument switching
 │   ├── MidiFelvevo.vb          ("Recorder") - MIDI recording, Standard MIDI
 │   │                             File writing (one track per channel)
+│   ├── MidiLejatszo.vb         ("Player") - MIDI file playback on its own
+│   │                             background thread
 │   ├── AutomatikusSzegmentalo.vb ("Automatic segmenter") - the automatic
 │   │                             recording decision (save / discard after silence)
 │   ├── MidiFajlOlvaso.vb       - Standard MIDI File reading and analysis
@@ -210,4 +218,5 @@ import, MIDI recording and file handling, built-in utilities).
 This project is currently under active development. MIDI recording is
 complete in both manual and automatic mode (recorder window, recording
 starts on the first key press, splitting into segments at silences,
-saving and reporting); playback and the metronome are still being built.
+saving and reporting), and playback works too; seeking, overdubbing
+during playback and the metronome are still being built.

@@ -169,6 +169,9 @@ Public Class MainForm
         ' (a CloseReason alapján) - azt nem szabad hamisra felülírni.
         ExtraBeallitasok.AblakHelyzetRogzitese(Me, ExtraBeallitasok.SZAKASZ_FOABLAK)
         If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            ' A lejátszás a MIDI motor lezárása ELŐTT álljon le (a lejátszó
+            ' saját szálon küld); a panelek visszaküldésének itt nincs értelme.
+            felvevoAblak.LejatszasLeallitasa(panelekVissza:=False)
             felvevoAblak.BeallitasokRogzitese()
             ExtraBeallitasok.Ini.Beallitas(ExtraBeallitasok.SZAKASZ_FELVEVO_ABLAK, ExtraBeallitasok.KULCS_NYITVA, True)
         End If
@@ -436,6 +439,12 @@ Public Class MainForm
             MidiEszkozokUjratoltese()
             ActiveControl = Nothing
             Return
+        End If
+
+        ' Kimenetváltáskor a lejátszás leáll (a panelek úgyis újra kimennek
+        ' az új eszközre, lásd lent).
+        If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
+            felvevoAblak.LejatszasLeallitasa(panelekVissza:=False)
         End If
 
         Try
@@ -936,7 +945,12 @@ Public Class MainForm
 
     Private Sub midiMotor_KimenetiHiba(hibaUzenet As String) Handles midiMotor.KimenetiHiba
         If InvokeRequired Then
-            Invoke(Sub() MsgBox(hibaUzenet, MsgBoxStyle.Exclamation, "MidiBill"))
+            ' BeginInvoke és NEM Invoke: a lejátszó szálán érkező hibánál egy
+            ' szinkron átadás holtpontba kerülhetne a lejátszót épp leállító
+            ' felületi szállal.
+            If IsHandleCreated AndAlso Not IsDisposed Then
+                BeginInvoke(Sub() MsgBox(hibaUzenet, MsgBoxStyle.Exclamation, "MidiBill"))
+            End If
         Else
             MsgBox(hibaUzenet, MsgBoxStyle.Exclamation, "MidiBill")
         End If
@@ -1030,7 +1044,8 @@ Public Class MainForm
     ''' A folyamat végén figyelmeztet, ha a fájl hibás/hiányzó MIDI eszköznevet
     ''' vagy tartományon kívüli, korrigált értéket tartalmazott.
     ''' </summary>
-    Private Sub BeallitasokAlkalmazasa(b As Beallitasok, frissitsdEszkozoketIs As Boolean)
+    Private Sub BeallitasokAlkalmazasa(b As Beallitasok, frissitsdEszkozoketIs As Boolean,
+                                       Optional uzenetekNelkul As Boolean = False)
         Dim ertekKorrigalva As Boolean = False
 
         For i As Integer = 0 To 15
@@ -1121,6 +1136,8 @@ Public Class MainForm
 
         CsatornaPanelekFrissitese()
         OsszesCsatornaUjrakuldese()
+
+        If uzenetekNelkul Then Return
 
         If eszkozHianyzik Then
             MsgBox("A betölteni kívánt json fájl nem létező MIDI eszköznevet tartalmazott, amit a program figyelmen kívül hagyott.",
@@ -2062,11 +2079,23 @@ Public Class MainForm
     ''' letelt-e már a szünet-küszöb: ha igen, a régi szegmens még ez előtt
     ''' lezárul, és ez az üzenet már az újba kerül (lásd
     ''' MidiFelvevoForm.UzenetElottiEllenorzes).
+    '''
+    ''' A LEJÁTSZÓ a saját szálán küld (lásd Modellek\MidiLejatszo.vb): az
+    ''' ilyen üzenetet a felületi szálra adjuk át, így a felvevő továbbra is
+    ''' egyetlen szálon dolgozik. Az időbélyeg a küldés pillanatáé marad.
     ''' </summary>
     Private Sub midiMotor_UzenetKikuldve(statuszBajt As Integer, adat1 As Integer, adat2 As Integer,
                                          idobelyegMs As Long, lejatszasBol As Boolean, metronomBol As Boolean,
                                          belsoUzenet As Boolean) _
                                          Handles midiMotor.UzenetKikuldve
+
+        If InvokeRequired Then
+            If IsHandleCreated AndAlso Not IsDisposed AndAlso Not zarasFolyamatban Then
+                BeginInvoke(Sub() midiMotor_UzenetKikuldve(statuszBajt, adat1, adat2, idobelyegMs,
+                                                           lejatszasBol, metronomBol, belsoUzenet))
+            End If
+            Return
+        End If
 
         If felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed Then
             felvevoAblak.UzenetElottiEllenorzes(statuszBajt, idobelyegMs, lejatszasBol, metronomBol, belsoUzenet)
@@ -2121,13 +2150,50 @@ Public Class MainForm
     ''' rögtön le is állítaná).
     ''' </summary>
     Private Sub MainForm_KeyDown(sender As Object, e As KeyEventArgs) Handles MyBase.KeyDown
-        If e.KeyCode <> Keys.F9 Then Return
+        If e.KeyCode <> Keys.F9 AndAlso e.KeyCode <> Keys.F8 Then Return
         e.Handled = True
         e.SuppressKeyPress = True
         Dim marNyitva As Boolean = felvevoAblak IsNot Nothing AndAlso Not felvevoAblak.IsDisposed
         Dim ablak As MidiFelvevoForm = FelvevoAblakMegjelenitese()
-        If marNyitva OrElse midiFelvevo.Allapot = FelvevoAllapot.Alap Then ablak.FelvetelValtasa()
+        If e.KeyCode = Keys.F8 Then
+            ' F8 = lejátszás / Stop (a lejátszás a felvevő ablakban van).
+            ablak.LejatszasValtasa()
+        ElseIf marNyitva OrElse midiFelvevo.Allapot = FelvevoAllapot.Alap Then
+            ablak.FelvetelValtasa()
+        End If
     End Sub
+
+    ''' <summary>
+    ''' A panelek beállításainak visszaküldése a szintetizátorra - a
+    ''' lejátszás után, ha a "beállítások megtartása" ki van kapcsolva.
+    ''' BELSŐ üzenetként megy ki, így egy futó felvételbe nem kerül bele.
+    ''' </summary>
+    Private Sub PanelekVisszakuldese()
+        midiMotor.BelsoKarbantartasKent(Sub() OsszesCsatornaUjrakuldese())
+    End Sub
+
+    ''' <summary>
+    ''' A felület átállítása egy lejátszott .mid fájl szerint - PONTOSAN a
+    ''' "Preset készítése MIDI fájlból" logikájával (MidiPresetKeszito),
+    ''' mintha az abból készült presetet töltenénk be (a felhasználó
+    ''' döntése, 2026-09-26). A hangszerlista és a MIDI eszközök maradnak. A
+    ''' kiküldés BELSŐ üzenetként megy, így egy futó felvételbe nem kerül.
+    ''' Az üzenetablakok elmaradnak: egy idegen fájl hangszere, ami nincs az
+    ''' aktuális listában, csendben a lista első hangszerére kerül a
+    ''' panelen (a lejátszás ettől még a fájl hangszínével szól).
+    ''' </summary>
+    ''' <returns>Üres sztring, ha sikerült; egyébként a hiba szövege.</returns>
+    Private Function LejatszottFajlBeallitasainakAtvetele(midiUtvonal As String) As String
+        Try
+            Dim fajlAdat As MidiFajlAdat = MidiFajlOlvaso.Beolvas(midiUtvonal)
+            Dim preset As Beallitasok = MidiPresetKeszito.PresetKeszitese(fajlAdat, aktualisHangszerListaFajl, AppInfo.AppVerzio())
+            preset.HangszerListaFajl = ""   ' a lista marad - ne töltődjön újra
+            midiMotor.BelsoKarbantartasKent(Sub() BeallitasokAlkalmazasa(preset, False, uzenetekNelkul:=True))
+            Return ""
+        Catch ex As Exception
+            Return ex.Message
+        End Try
+    End Function
 
     ''' <summary>
     ''' A felvevő ablak megnyitása (a főablak a tulajdonosa: nem modális, a
@@ -2139,7 +2205,9 @@ Public Class MainForm
             felvevoAblak = New MidiFelvevoForm(midiFelvevo, midiMotor,
                                                AddressOf AktivCsatornakAllapotUzenetei,
                                                AddressOf FelvetelJelentesenekKeszitese,
-                                               FelvetelAlapNeve())
+                                               FelvetelAlapNeve(),
+                                               AddressOf PanelekVisszakuldese,
+                                               AddressOf LejatszottFajlBeallitasainakAtvetele)
             AddHandler felvevoAblak.AllapotValtozott, AddressOf FelvevoAllapotKijelzeseinekFrissitese
             AddHandler felvevoAblak.FormClosed, AddressOf FelvevoAblak_FormClosed
             felvevoAblak.Show(Me)

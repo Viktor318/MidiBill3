@@ -163,6 +163,25 @@ Namespace Modellek
     End Class
 
     ''' <summary>
+    ''' Egyetlen lejátszandó csatorna-üzenet a fájlból, a fájl elejétől
+    ''' számított idővel (ezredmásodpercben, a tempóváltásokat is figyelembe
+    ''' véve). Lásd MidiFajlOlvaso.EsemenyekBeolvasasa.
+    ''' </summary>
+    Public Structure MidiLejatszasiEsemeny
+        Public IdoMs As Double
+        Public StatuszBajt As Integer
+        Public Adat1 As Integer
+        Public Adat2 As Integer
+    End Structure
+
+    ''' <summary>Egy .mid fájl lejátszandó eseményei időrendben, és a fájl teljes hossza.</summary>
+    Public Class MidiEsemenyLista
+        Public Property Esemenyek As New List(Of MidiLejatszasiEsemeny)
+        ''' <summary>A fájl teljes hossza ezredmásodpercben (a leghosszabb track vége).</summary>
+        Public Property HosszMs As Double = 0
+    End Class
+
+    ''' <summary>
     ''' Standard MIDI File (.mid) fájlok BEOLVASÁSA - a program KÖZÖS
     ''' SMF-értelmezője.
     '''
@@ -725,6 +744,205 @@ Namespace Modellek
 
             Return osszesMikroszek / 1000000.0
         End Function
+
+        ' ============================================================
+        ' Eseménylista a LEJÁTSZÁSHOZ (a felvétel 5. fázisa)
+        ' ============================================================
+
+        ''' <summary>Egy csatorna-üzenet a feldolgozás közben, még tick-pozícióval.</summary>
+        Private Structure NyersEsemeny
+            Public Tick As Long
+            Public StatuszBajt As Integer
+            Public Adat1 As Integer
+            Public Adat2 As Integer
+        End Structure
+
+        ''' <summary>
+        ''' A fájl LEJÁTSZANDÓ eseményei: minden csatorna-üzenet (&amp;H80 -
+        ''' &amp;HEF) időrendben, a fájl elejétől számított ezredmásodperccel.
+        ''' A meta-események (név, tempó stb.) és a SysEx NEM kerülnek bele -
+        ''' a tempóváltások csak az időzítésben jelennek meg.
+        '''
+        ''' SORREND: elsősorban az idő szerint; AZONOS időpontnál a track
+        ''' sorrendje, azon belül a fájlbeli sorrend dönt (stabil rendezés) -
+        ''' így pl. a Bank Select mindig a hozzá tartozó Program Change elé
+        ''' kerül, és format 1-nél ugyanazt a sorrendet kapjuk, mint más
+        ''' lejátszók (pl. a mido könyvtár).
+        ''' </summary>
+        ''' <exception cref="IO.InvalidDataException">A fájl nem érvényes Standard MIDI File, vagy SMPTE-időzítésű.</exception>
+        Public Function EsemenyekBeolvasasa(fajlUtvonal As String) As MidiEsemenyLista
+            Return EsemenyekBajtokbol(IO.File.ReadAllBytes(fajlUtvonal))
+        End Function
+
+        ''' <summary>Ugyanaz, mint az EsemenyekBeolvasasa(), már beolvasott bájtokból.</summary>
+        Public Function EsemenyekBajtokbol(adat As Byte()) As MidiEsemenyLista
+            If adat.Length < 14 OrElse Not ChunkAzonositoEgyezikE(adat, 0, "MThd") Then
+                Throw New IO.InvalidDataException("A fájl nem érvényes Standard MIDI File (hiányzik az 'MThd' fejléc).")
+            End If
+
+            Dim headerHossz As Integer = OlvasBeInt32(adat, 4)
+            If headerHossz < 6 OrElse adat.Length < 8 + headerHossz Then
+                Throw New IO.InvalidDataException("A fájl fejléce hibás vagy csonka.")
+            End If
+
+            Dim division As Integer = OlvasBeInt16(adat, 12)
+            If (division And &H8000) <> 0 Then
+                Throw New IO.InvalidDataException("A fájl SMPTE (képkocka-alapú) időzítést használ - ezt a lejátszó nem támogatja.")
+            End If
+            If division <= 0 Then
+                Throw New IO.InvalidDataException("A fájl fejlécében érvénytelen a felbontás (0 tick / negyed).")
+            End If
+
+            Dim nyers As New List(Of NyersEsemeny)
+            Dim tempoValtasok As New List(Of TempoValtas)
+            Dim leghosszabbTick As Long = 0
+            Dim offset As Integer = 8 + headerHossz
+            Dim trackIndex As Integer = 0
+
+            While offset + 8 <= adat.Length
+                Dim chunkHossz As Integer = OlvasBeInt32(adat, offset + 4)
+                If chunkHossz < 0 Then Exit While
+                If Not ChunkAzonositoEgyezikE(adat, offset, "MTrk") Then
+                    offset += 8 + chunkHossz
+                    Continue While
+                End If
+
+                Dim trackVege As Integer = offset + 8 + chunkHossz
+                If trackVege > adat.Length Then trackVege = adat.Length
+
+                Dim vegeTick As Long = TrackEsemenyei(adat, offset + 8, trackVege, nyers, tempoValtasok)
+                If vegeTick > leghosszabbTick Then leghosszabbTick = vegeTick
+
+                trackIndex += 1
+                offset = trackVege
+            End While
+
+            If trackIndex = 0 Then
+                Throw New IO.InvalidDataException("A fájl nem tartalmaz egyetlen érvényes tracket sem ('MTrk' chunk hiányzik).")
+            End If
+
+            ' A track-onként, sorrendben gyűjtött eseményeket STABILAN
+            ' rendezzük idő szerint (az OrderBy stabil) - lásd a sorrend
+            ' leírását fent.
+            Dim rendezett As List(Of NyersEsemeny) = nyers.OrderBy(Function(e) e.Tick).ToList()
+
+            Dim atvalto As New TickAtvalto(TempoterkepEpitese(tempoValtasok), division)
+            Dim eredmeny As New MidiEsemenyLista()
+            For Each e As NyersEsemeny In rendezett
+                eredmeny.Esemenyek.Add(New MidiLejatszasiEsemeny With {
+                    .IdoMs = atvalto.Ezredmasodperc(e.Tick),
+                    .StatuszBajt = e.StatuszBajt,
+                    .Adat1 = e.Adat1,
+                    .Adat2 = e.Adat2
+                })
+            Next
+            eredmeny.HosszMs = atvalto.Ezredmasodperc(leghosszabbTick)
+            Return eredmeny
+        End Function
+
+        ''' <summary>
+        ''' Egy track csatorna-üzeneteinek és tempóváltásainak összegyűjtése -
+        ''' ugyanazokkal a szabályokkal, mint a TrackFeldolgozasa (running
+        ''' status, amit a meta- és SysEx-események érvénytelenítenek; sérült
+        ''' adatnál a track addigi része érvényes).
+        ''' </summary>
+        ''' <returns>A track utolsó eseményének tick-pozíciója.</returns>
+        Private Function TrackEsemenyei(adat As Byte(), kezdet As Integer, vege As Integer,
+                                        nyers As List(Of NyersEsemeny), tempoValtasok As List(Of TempoValtas)) As Long
+            Dim pos As Integer = kezdet
+            Dim abszolutTick As Long = 0
+            Dim elozoStatusz As Integer = 0
+
+            While pos < vege
+                Dim delta As Integer
+                pos = VlqOlvasas(adat, pos, vege, delta)
+                If pos >= vege Then Exit While
+                abszolutTick += delta
+
+                Dim elsoBajt As Integer = adat(pos)
+                Dim statuszBajt As Integer
+                If elsoBajt >= &H80 Then
+                    statuszBajt = elsoBajt
+                    pos += 1
+                Else
+                    statuszBajt = elozoStatusz
+                    If statuszBajt = 0 Then Exit While
+                End If
+
+                If statuszBajt = META_ESEMENY Then
+                    If pos >= vege Then Exit While
+                    Dim metaTipus As Integer = adat(pos)
+                    pos += 1
+                    Dim hossz As Integer
+                    pos = VlqOlvasas(adat, pos, vege, hossz)
+                    If hossz < 0 OrElse pos + hossz > vege Then Exit While
+                    If metaTipus = META_TEMPO AndAlso hossz >= 3 Then
+                        Dim mikroszek As Integer = (CInt(adat(pos)) << 16) Or (CInt(adat(pos + 1)) << 8) Or CInt(adat(pos + 2))
+                        If mikroszek > 0 Then tempoValtasok.Add(New TempoValtas With {.Tick = abszolutTick, .Mikroszek = mikroszek})
+                    End If
+                    pos += hossz
+                    elozoStatusz = 0
+
+                ElseIf statuszBajt = SYSEX_KEZDET OrElse statuszBajt = SYSEX_FOLYTATAS Then
+                    Dim hossz As Integer
+                    pos = VlqOlvasas(adat, pos, vege, hossz)
+                    If hossz < 0 OrElse pos + hossz > vege Then Exit While
+                    pos += hossz
+                    elozoStatusz = 0
+
+                ElseIf statuszBajt >= &H80 AndAlso statuszBajt < &HF0 Then
+                    elozoStatusz = statuszBajt
+                    Dim uzenetTipus As Integer = statuszBajt And &HF0
+                    Dim adatbajtokSzama As Integer = If(uzenetTipus = &HC0 OrElse uzenetTipus = &HD0, 1, 2)
+                    If pos + adatbajtokSzama > vege Then Exit While
+                    Dim adat1 As Integer = adat(pos) And &H7F
+                    Dim adat2 As Integer = If(adatbajtokSzama = 2, CInt(adat(pos + 1)) And &H7F, 0)
+                    pos += adatbajtokSzama
+                    nyers.Add(New NyersEsemeny With {.Tick = abszolutTick, .StatuszBajt = statuszBajt, .Adat1 = adat1, .Adat2 = adat2})
+                Else
+                    Exit While
+                End If
+            End While
+
+            Return abszolutTick
+        End Function
+
+        ''' <summary>
+        ''' Tick -> ezredmásodperc átváltás a teljes tempótérképpel. A
+        ''' szakaszok kezdőidejét előre kiszámolja, így egy átváltás a
+        ''' tempóváltások számától függetlenül gyors (a lejátszás egy sűrű
+        ''' fájlnál több tízezer eseményt vált át).
+        ''' </summary>
+        Private Class TickAtvalto
+            Private ReadOnly szakaszTick As Long()
+            Private ReadOnly szakaszMs As Double()
+            Private ReadOnly msPerTick As Double()
+
+            Public Sub New(terkep As List(Of TempoValtas), tickPerNegyed As Integer)
+                Dim n As Integer = terkep.Count
+                ReDim szakaszTick(n - 1)
+                ReDim szakaszMs(n - 1)
+                ReDim msPerTick(n - 1)
+                For i As Integer = 0 To n - 1
+                    szakaszTick(i) = terkep(i).Tick
+                    msPerTick(i) = terkep(i).Mikroszek / 1000.0 / tickPerNegyed
+                    If i > 0 Then
+                        szakaszMs(i) = szakaszMs(i - 1) + (szakaszTick(i) - szakaszTick(i - 1)) * msPerTick(i - 1)
+                    End If
+                Next
+            End Sub
+
+            Public Function Ezredmasodperc(tick As Long) As Double
+                If tick <= 0 Then Return 0
+                ' Az utolsó olyan szakasz, ami a tick ELŐTT (vagy pontosan ott) kezdődik.
+                Dim also As Integer = 0, felso As Integer = szakaszTick.Length - 1
+                While also < felso
+                    Dim kozep As Integer = (also + felso + 1) \ 2
+                    If szakaszTick(kozep) <= tick Then also = kozep Else felso = kozep - 1
+                End While
+                Return szakaszMs(also) + (tick - szakaszTick(also)) * msPerTick(also)
+            End Function
+        End Class
 
         ' ============================================================
         ' Alacsony szintű bájt-olvasó segédfüggvények

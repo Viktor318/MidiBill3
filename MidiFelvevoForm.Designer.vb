@@ -43,10 +43,17 @@ Partial Class MidiFelvevoForm
         lblElvalaszto2 = New Label()
         lblUtoljaraMentve = New Label()
         btnMappaMegnyitasa = New Button()
+        chkBetoltesLejatszoba = New CheckBox()
+        grpLejatszas = New GroupBox()
+        btnFajlMegnyitasa = New Button()
+        btnLejatszas = New Button()
+        btnLejatszasStop = New Button()
+        chkBeallitasokMegtartasa = New CheckBox()
         grpFelvetel.SuspendLayout()
         CType(nudJatekidoKuszob, ComponentModel.ISupportInitialize).BeginInit()
         CType(nudSzunetKuszob, ComponentModel.ISupportInitialize).BeginInit()
         grpMentes.SuspendLayout()
+        grpLejatszas.SuspendLayout()
         SuspendLayout()
         ' 
         ' grpFelvetel
@@ -104,9 +111,9 @@ Partial Class MidiFelvevoForm
         lblGyorsbillentyu.ForeColor = SystemColors.GrayText
         lblGyorsbillentyu.Location = New Point(18, 80)
         lblGyorsbillentyu.Name = "lblGyorsbillentyu"
-        lblGyorsbillentyu.Size = New Size(274, 20)
+        lblGyorsbillentyu.Size = New Size(419, 20)
         lblGyorsbillentyu.TabIndex = 3
-        lblGyorsbillentyu.Text = "F9 = Start / Stop (a főablakban is működik)"
+        lblGyorsbillentyu.Text = "F9 = felvétel, F8 = lejátszás (a főablakban is működik)"
         ' 
         ' lblElvalaszto1
         ' 
@@ -181,12 +188,13 @@ Partial Class MidiFelvevoForm
         grpMentes.Controls.Add(chkDatumAlmappa)
         grpMentes.Controls.Add(lblUtvonalMinta)
         grpMentes.Controls.Add(chkJelentes)
+        grpMentes.Controls.Add(chkBetoltesLejatszoba)
         grpMentes.Controls.Add(lblElvalaszto2)
         grpMentes.Controls.Add(lblUtoljaraMentve)
         grpMentes.Controls.Add(btnMappaMegnyitasa)
         grpMentes.Location = New Point(12, 228)
         grpMentes.Name = "grpMentes"
-        grpMentes.Size = New Size(536, 262)
+        grpMentes.Size = New Size(536, 292)
         grpMentes.TabIndex = 1
         grpMentes.TabStop = False
         grpMentes.Text = "Mentés"
@@ -247,7 +255,7 @@ Partial Class MidiFelvevoForm
         ' lblElvalaszto2
         ' 
         lblElvalaszto2.BorderStyle = BorderStyle.Fixed3D
-        lblElvalaszto2.Location = New Point(18, 196)
+        lblElvalaszto2.Location = New Point(18, 226)
         lblElvalaszto2.Name = "lblElvalaszto2"
         lblElvalaszto2.Size = New Size(500, 2)
         lblElvalaszto2.TabIndex = 5
@@ -255,7 +263,7 @@ Partial Class MidiFelvevoForm
         ' lblUtoljaraMentve
         ' 
         lblUtoljaraMentve.AutoEllipsis = True
-        lblUtoljaraMentve.Location = New Point(18, 214)
+        lblUtoljaraMentve.Location = New Point(18, 244)
         lblUtoljaraMentve.Name = "lblUtoljaraMentve"
         lblUtoljaraMentve.Size = New Size(346, 26)
         lblUtoljaraMentve.TabIndex = 6
@@ -264,18 +272,81 @@ Partial Class MidiFelvevoForm
         ' 
         ' btnMappaMegnyitasa
         ' 
-        btnMappaMegnyitasa.Location = New Point(372, 208)
+        btnMappaMegnyitasa.Location = New Point(372, 238)
         btnMappaMegnyitasa.Name = "btnMappaMegnyitasa"
         btnMappaMegnyitasa.Size = New Size(146, 36)
         btnMappaMegnyitasa.TabIndex = 7
         btnMappaMegnyitasa.Text = "Mappa megnyitása"
         btnMappaMegnyitasa.UseVisualStyleBackColor = True
         ' 
+        ' chkBetoltesLejatszoba
+        ' 
+        chkBetoltesLejatszoba.AutoSize = True
+        chkBetoltesLejatszoba.Checked = True
+        chkBetoltesLejatszoba.CheckState = CheckState.Checked
+        chkBetoltesLejatszoba.Location = New Point(18, 190)
+        chkBetoltesLejatszoba.Name = "chkBetoltesLejatszoba"
+        chkBetoltesLejatszoba.Size = New Size(281, 24)
+        chkBetoltesLejatszoba.TabIndex = 8
+        chkBetoltesLejatszoba.Text = "Mentett fájl betöltése a lejátszóba"
+        chkBetoltesLejatszoba.UseVisualStyleBackColor = True
+        ' 
+        ' grpLejatszas
+        ' 
+        grpLejatszas.Controls.Add(btnFajlMegnyitasa)
+        grpLejatszas.Controls.Add(btnLejatszas)
+        grpLejatszas.Controls.Add(btnLejatszasStop)
+        grpLejatszas.Controls.Add(chkBeallitasokMegtartasa)
+        grpLejatszas.Location = New Point(12, 530)
+        grpLejatszas.Name = "grpLejatszas"
+        grpLejatszas.Size = New Size(536, 122)
+        grpLejatszas.TabIndex = 2
+        grpLejatszas.TabStop = False
+        grpLejatszas.Text = "Lejátszás"
+        ' 
+        ' btnFajlMegnyitasa
+        ' 
+        btnFajlMegnyitasa.Location = New Point(18, 30)
+        btnFajlMegnyitasa.Name = "btnFajlMegnyitasa"
+        btnFajlMegnyitasa.Size = New Size(170, 42)
+        btnFajlMegnyitasa.TabIndex = 0
+        btnFajlMegnyitasa.Text = "Fájl megnyitása..."
+        btnFajlMegnyitasa.UseVisualStyleBackColor = True
+        ' 
+        ' btnLejatszas
+        ' 
+        btnLejatszas.Location = New Point(196, 30)
+        btnLejatszas.Name = "btnLejatszas"
+        btnLejatszas.Size = New Size(160, 42)
+        btnLejatszas.TabIndex = 1
+        btnLejatszas.Text = "▶ Lejátszás"
+        btnLejatszas.UseVisualStyleBackColor = True
+        ' 
+        ' btnLejatszasStop
+        ' 
+        btnLejatszasStop.Location = New Point(364, 30)
+        btnLejatszasStop.Name = "btnLejatszasStop"
+        btnLejatszasStop.Size = New Size(154, 42)
+        btnLejatszasStop.TabIndex = 2
+        btnLejatszasStop.Text = "■ Stop"
+        btnLejatszasStop.UseVisualStyleBackColor = True
+        ' 
+        ' chkBeallitasokMegtartasa
+        ' 
+        chkBeallitasokMegtartasa.AutoSize = True
+        chkBeallitasokMegtartasa.Location = New Point(18, 84)
+        chkBeallitasokMegtartasa.Name = "chkBeallitasokMegtartasa"
+        chkBeallitasokMegtartasa.Size = New Size(341, 24)
+        chkBeallitasokMegtartasa.TabIndex = 3
+        chkBeallitasokMegtartasa.Text = "A lejátszott fájl beállításainak megtartása"
+        chkBeallitasokMegtartasa.UseVisualStyleBackColor = True
+        ' 
         ' MidiFelvevoForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
-        ClientSize = New Size(560, 502)
+        ClientSize = New Size(560, 664)
+        Controls.Add(grpLejatszas)
         Controls.Add(grpMentes)
         Controls.Add(grpFelvetel)
         FormBorderStyle = FormBorderStyle.FixedSingle
@@ -292,6 +363,8 @@ Partial Class MidiFelvevoForm
         CType(nudSzunetKuszob, ComponentModel.ISupportInitialize).EndInit()
         grpMentes.ResumeLayout(False)
         grpMentes.PerformLayout()
+        grpLejatszas.ResumeLayout(False)
+        grpLejatszas.PerformLayout()
         ResumeLayout(False)
     End Sub
 
@@ -316,5 +389,11 @@ Partial Class MidiFelvevoForm
     Friend WithEvents lblElvalaszto2 As Label
     Friend WithEvents lblUtoljaraMentve As Label
     Friend WithEvents btnMappaMegnyitasa As Button
+    Friend WithEvents chkBetoltesLejatszoba As CheckBox
+    Friend WithEvents grpLejatszas As GroupBox
+    Friend WithEvents btnFajlMegnyitasa As Button
+    Friend WithEvents btnLejatszas As Button
+    Friend WithEvents btnLejatszasStop As Button
+    Friend WithEvents chkBeallitasokMegtartasa As CheckBox
 
 End Class
