@@ -107,6 +107,10 @@ architecture couldn't support.
   playing keeps sounding. You can choose whether the panels' settings
   are restored after playback or the UI switches to the file's settings;
   a fresh recording is loaded into the player automatically after saving
+  - **Seeking** with a slider and a time display ("1:22 / 3:41"), by
+    mouse or keyboard (← / → = 5 s, Home = start of the file); when
+    starting mid-file, the player first sends the channels' settings up
+    to that point, so it plays with the right instruments
 - **Report alongside the recording**: a `.txt` file with the same name is
   generated automatically next to the saved `.mid`, describing its
   contents (channels, instruments, controllers, tempo, key, and the name
@@ -218,5 +222,5 @@ import, MIDI recording and file handling, built-in utilities).
 This project is currently under active development. MIDI recording is
 complete in both manual and automatic mode (recorder window, recording
 starts on the first key press, splitting into segments at silences,
-saving and reporting), and playback works too; seeking, overdubbing
+saving and reporting), and playback with seeking works too; overdubbing
 during playback and the metronome are still being built.

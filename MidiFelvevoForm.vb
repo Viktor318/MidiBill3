@@ -121,6 +121,7 @@ Public Class MidiFelvevoForm
 
         lejatszo = New MidiLejatszo(AddressOf motor.LejatszottUzenetKuldese, Function() motor.ElteltIdoMs)
         AddHandler lejatszo.Befejezodott, AddressOf Lejatszo_Befejezodott
+        tipp.SetToolTip(trkPozicio, "Tekerés: húzd vagy kattints; billentyűvel ← / → = 5 mp vissza / előre, Home = a fájl eleje")
 
         FelvevoBeallitasokBetoltese()
         automatikusModAllapot = chkAutomatikus.Checked
@@ -461,6 +462,7 @@ Public Class MidiFelvevoForm
     Private Sub kijelzoIdozito_Tick(sender As Object, e As EventArgs) Handles kijelzoIdozito.Tick
         SzegmensEllenorzese(Ora.Invoke())
         If felvevo.Allapot = FelvevoAllapot.Rogzit Then lblAllapot.Text = FelvetelFelirata()
+        If lejatszo.Fut Then PozicioKijelzesFrissitese()
     End Sub
 
     ' ============================================================
@@ -677,7 +679,121 @@ Public Class MidiFelvevoForm
         If lejatszo.Fut Then LejatszasLeallitasa()
         lejatszo.Betoltes(lista)
         betoltottLejatszasiFajl = utvonal
+        trkPozicio.Value = 0
+        trkPozicio.Maximum = Math.Max(1, CInt(Math.Min(Integer.MaxValue, Math.Ceiling(lejatszo.HosszMs - 0.001))))   ' a -0,001: lebegőpontos zaj ne adjon +1 ms-t
         LejatszasKijelzesFrissitese()
+        Return True
+    End Function
+
+    ' ------------------------------------------------------------
+    ' Tekerés és időkijelzés (6. fázis)
+    ' ------------------------------------------------------------
+
+    ''' <summary>A billentyűs tekerés lépése: ← / → 5 másodperc (a felhasználó döntése, 2026-11-01).</summary>
+    Private Const TEKERES_LEPES_MS As Double = 5000
+
+    ''' <summary>
+    ''' Igaz, amíg a felhasználó egérrel húzza a csúszkát: ilyenkor a
+    ''' program NEM állítja a csúszkát (különben a lejátszás pozíciója
+    ''' visszarántaná), és a tekerés csak az egérgomb felengedésekor történik
+    ''' meg - húzás közben a kijelzés a célpontot mutatja.
+    ''' </summary>
+    Private egerrelHuz As Boolean = False
+
+    ''' <summary>
+    ''' Tekerés a megadott pontra. Lejátszás közben azonnal odaugrik (csak a
+    ''' lejátszás saját hangjai némulnak el, és a csatornák állapota a
+    ''' célpontig felépül - lásd MidiLejatszo.Ugras); megállított állapotban
+    ''' a következő lejátszás kezdőpontját állítja.
+    ''' </summary>
+    Friend Sub Tekeres(celMs As Double)
+        If Not lejatszo.VanBetoltottEsemeny Then Return
+        lejatszo.Ugras(celMs)
+        PozicioKijelzesFrissitese()
+    End Sub
+
+    ''' <summary>
+    ''' A csúszka és a "1:22 / 3:41" felirat a lejátszó pozíciója szerint.
+    ''' A csúszka értékének programból való állítása NEM vált ki Scroll
+    ''' eseményt - így nincs visszacsatolás a tekerés felé.
+    ''' </summary>
+    Private Sub PozicioKijelzesFrissitese()
+        If egerrelHuz Then Return
+        Dim pozicio As Double = lejatszo.PozicioMs
+        trkPozicio.Value = Math.Max(trkPozicio.Minimum, Math.Min(trkPozicio.Maximum, CInt(Math.Round(pozicio))))
+        lblIdo.Text = IdoFelirat(pozicio)
+    End Sub
+
+    ''' <summary>"1:22 / 3:41" (egy óránál hosszabb fájlnál "h:mm:ss").</summary>
+    Private Function IdoFelirat(pozicioMs As Double) As String
+        Dim hossz As Double = lejatszo.HosszMs
+        Return IdoSzoveg(pozicioMs, hossz) & " / " & IdoSzoveg(hossz, hossz)
+    End Function
+
+    Private Shared Function IdoSzoveg(ms As Double, hosszMs As Double) As String
+        Dim ido As TimeSpan = TimeSpan.FromSeconds(Math.Floor(Math.Max(0, ms) / 1000))
+        If hosszMs >= 3600000 Then
+            Return ido.ToString("h\:mm\:ss", Globalization.CultureInfo.InvariantCulture)
+        End If
+        Return CInt(Math.Floor(ido.TotalMinutes)).ToString(Globalization.CultureInfo.InvariantCulture) &
+               ":" & ido.Seconds.ToString("00", Globalization.CultureInfo.InvariantCulture)
+    End Function
+
+    ''' <summary>
+    ''' Egérrel a csúszkára kattintva a pozíció azonnal a kattintás helyére
+    ''' ugrik (nem lapoz, ahogy a TrackBar alapból tenné - ezért LargeChange
+    ''' = 0), és a húzás innen folytatódik.
+    ''' </summary>
+    Private Sub trkPozicio_MouseDown(sender As Object, e As MouseEventArgs) Handles trkPozicio.MouseDown
+        If e.Button <> MouseButtons.Left Then Return
+        egerrelHuz = True
+        Dim margo As Integer = CInt(13 * DeviceDpi / 96.0)
+        Dim hasznos As Integer = Math.Max(1, trkPozicio.Width - 2 * margo)
+        Dim arany As Double = Math.Max(0, Math.Min(1, (e.X - margo) / CDbl(hasznos)))
+        trkPozicio.Value = CInt(Math.Round(trkPozicio.Minimum + arany * (trkPozicio.Maximum - trkPozicio.Minimum)))
+        lblIdo.Text = IdoFelirat(trkPozicio.Value)
+    End Sub
+
+    ''' <summary>Húzás közben csak a kijelzés követi; billentyűvel (pl. End) azonnal teker.</summary>
+    Private Sub trkPozicio_Scroll(sender As Object, e As EventArgs) Handles trkPozicio.Scroll
+        If egerrelHuz Then
+            lblIdo.Text = IdoFelirat(trkPozicio.Value)
+        Else
+            Tekeres(trkPozicio.Value)
+        End If
+    End Sub
+
+    Private Sub trkPozicio_MouseUp(sender As Object, e As MouseEventArgs) Handles trkPozicio.MouseUp
+        If Not egerrelHuz Then Return
+        egerrelHuz = False
+        Tekeres(trkPozicio.Value)
+    End Sub
+
+    ''' <summary>
+    ''' ← / → = 5 mp vissza / előre, Home = a fájl eleje - csak a felvevő
+    ''' ablakban, és nem akkor, ha egy szövegmezőben vagy számmezőben áll a
+    ''' kurzor (ott a nyilaknak a megszokott dolguk van). A ProcessCmdKey
+    ''' kell, mert a nyilakat a Windows a gombokon a fókusz mozgatására
+    ''' használja, így a KeyDown-ig el sem jutnának.
+    ''' </summary>
+    Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
+        If TekeresBillentyuvel(keyData) Then Return True
+        Return MyBase.ProcessCmdKey(msg, keyData)
+    End Function
+
+    ''' <returns>True, ha a billentyűt a tekerés kezelte.</returns>
+    Friend Function TekeresBillentyuvel(keyData As Keys) As Boolean
+        If keyData <> Keys.Left AndAlso keyData <> Keys.Right AndAlso keyData <> Keys.Home Then Return False
+        If Not lejatszo.VanBetoltottEsemeny OrElse egerrelHuz Then Return False
+        If TypeOf ActiveControl Is TextBoxBase OrElse TypeOf ActiveControl Is UpDownBase Then Return False
+        Select Case keyData
+            Case Keys.Left
+                Tekeres(lejatszo.PozicioMs - TEKERES_LEPES_MS)
+            Case Keys.Right
+                Tekeres(lejatszo.PozicioMs + TEKERES_LEPES_MS)
+            Case Else
+                Tekeres(0)
+        End Select
         Return True
     End Function
 
@@ -694,6 +810,8 @@ Public Class MidiFelvevoForm
         btnLejatszas.Enabled = Not fut
         btnLejatszasStop.Enabled = fut
         chkBeallitasokMegtartasa.Enabled = Not fut
+        trkPozicio.Enabled = lejatszo.VanBetoltottEsemeny
+        PozicioKijelzesFrissitese()
         If fut Then
             btnLejatszas.UseVisualStyleBackColor = False
             btnLejatszas.BackColor = Color.LightGreen

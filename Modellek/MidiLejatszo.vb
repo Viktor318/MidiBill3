@@ -41,6 +41,14 @@ Namespace Modellek
         Private kezdoOraMs As Long = 0
         Private futBelso As Boolean = False
 
+        ''' <summary>
+        ''' A lejátszási pozíció ezredmásodpercben, amikor a lejátszás NEM fut:
+        ''' innen indul a következő lejátszás. A Stop ott hagyja, ahol
+        ''' megállt; a fájl vége és egy új fájl betöltése a fájl elejére
+        ''' állítja; megállított állapotban a tekerés (Ugras) állítja.
+        ''' </summary>
+        Private allasMs As Double = 0
+
         ''' <summary>Hányszor szól éppen egy (csatorna, hang) a lejátszásból - az átfedő azonos hangokat is helyesen kezeli.</summary>
         Private ReadOnly szoloHangok(15, 127) As Integer
         Private ReadOnly pedalLent(15) As Boolean
@@ -81,6 +89,23 @@ Namespace Modellek
             End Get
         End Property
 
+        ''' <summary>
+        ''' Az aktuális lejátszási pozíció ezredmásodpercben (0 .. HosszMs):
+        ''' lejátszás közben az óra szerint, egyébként a megállított pozíció.
+        ''' </summary>
+        Public ReadOnly Property PozicioMs As Double
+            Get
+                SyncLock zar
+                    Return PozicioBelso()
+                End SyncLock
+            End Get
+        End Property
+
+        Private Function PozicioBelso() As Double
+            If Not futBelso Then Return allasMs
+            Return Math.Max(0, Math.Min(hosszMsBelso, CDbl(ora() - kezdoOraMs)))
+        End Function
+
         ''' <summary>Van-e betöltött, lejátszható esemény.</summary>
         Public ReadOnly Property VanBetoltottEsemeny As Boolean
             Get
@@ -95,15 +120,20 @@ Namespace Modellek
                 esemenyek = New List(Of MidiLejatszasiEsemeny)(lista.Esemenyek)
                 hosszMsBelso = lista.HosszMs
                 kovetkezo = 0
+                allasMs = 0
             End SyncLock
         End Sub
 
         ''' <summary>
-        ''' A lejátszás indítása a megadott pontról (alapból a fájl elejéről)
-        ''' a háttérszálon. A kezdőpont a 6. fázis tekeréséhez kell.
+        ''' A lejátszás indítása a háttérszálon, az aktuális pozícióról (lásd
+        ''' PozicioMs - alapból a fájl eleje, tekerés után a beállított pont).
         ''' </summary>
-        Public Sub Inditas(Optional kezdoMs As Double = 0)
+        Public Sub Inditas()
             If Fut OrElse esemenyek.Count = 0 Then Return
+            Dim kezdoMs As Double
+            SyncLock zar
+                kezdoMs = allasMs
+            End SyncLock
             Elokeszites(kezdoMs)
             leallitasJel.Reset()
             szal = New Thread(AddressOf Futtatas) With {
@@ -116,18 +146,134 @@ Namespace Modellek
 
         ''' <summary>
         ''' A lejátszás előkészítése szál nélkül (a Lepes-sel együtt a tesztek
-        ''' szimulált órájához; az Inditas is ezt hívja).
+        ''' szimulált órájához; az Inditas is ezt hívja). Ha nem a fájl
+        ''' elejéről indul, előbb felépíti a csatornák addigi állapotát (lásd
+        ''' AllapotFelepitese).
         ''' </summary>
         Friend Sub Elokeszites(kezdoMs As Double)
             SyncLock zar
-                kovetkezo = 0
-                While kovetkezo < esemenyek.Count AndAlso esemenyek(kovetkezo).IdoMs < kezdoMs
-                    kovetkezo += 1
-                End While
-                kezdoOraMs = ora() - CLng(Math.Round(kezdoMs))
+                Pozicionalas(kezdoMs)
                 futBelso = True
             End SyncLock
         End Sub
+
+        ''' <summary>
+        ''' Tekerés a megadott pozícióra (ezredmásodperc, a fájl hosszára
+        ''' szorítva). Megállított állapotban csak a következő lejátszás
+        ''' kezdőpontját állítja. Lejátszás közben azonnal odaugrik: előbb CSAK
+        ''' a lejátszás saját, épp szóló hangjait és pedálját engedi el (az élő
+        ''' játék szól tovább - a felhasználó döntése, 2026-11-01), majd
+        ''' felépíti a csatornák állapotát a célpontig, és onnan folytatja.
+        ''' </summary>
+        Public Sub Ugras(celMs As Double)
+            SyncLock zar
+                Dim cel As Double = Math.Max(0, Math.Min(hosszMsBelso, celMs))
+                If Not futBelso Then
+                    allasMs = cel
+                    Return
+                End If
+                SajatHangokElengedese()
+                Pozicionalas(cel)
+            End SyncLock
+        End Sub
+
+        ''' <summary>
+        ''' (A zár alatt hívandó.) A következő esemény és az óra beállítása a
+        ''' kezdőpontra, és - ha az nem a fájl eleje - a csatornák állapotának
+        ''' felépítése.
+        ''' </summary>
+        Private Sub Pozicionalas(kezdoMs As Double)
+            kovetkezo = 0
+            While kovetkezo < esemenyek.Count AndAlso esemenyek(kovetkezo).IdoMs < kezdoMs
+                kovetkezo += 1
+            End While
+            If kovetkezo > 0 Then AllapotFelepitese(kovetkezo)
+            kezdoOraMs = ora() - CLng(Math.Round(kezdoMs))
+        End Sub
+
+        ''' <summary>
+        ''' A fájl közepéről induló lejátszás előtt kiküldi csatornánként az
+        ''' addig érvényes állapotot - ahogy a zenei programok is teszik (a
+        ''' felhasználó döntése, 2026-11-01). Enélkül egy, a fájl elején
+        ''' beállított hangszín vagy hangerő középről indítva kimaradna.
+        '''
+        ''' Csatornánként, ebben a sorrendben:
+        ''' 1. a legutóbbi Program Change - előtte a HOZZÁ tartozó Bank Select
+        '''    (az a CC0 / CC32 érték, ami a Program Change pillanatában élt);
+        ''' 2. minden vezérlő (CC) legutóbbi értéke, kivéve a csatorna-mód
+        '''    üzeneteket (CC120-127: All Notes Off stb.) és az RPN/NRPN
+        '''    adatbevitelt (CC6, 38, 96-101) - ha a bank az utolsó Program
+        '''    Change óta változott, a CC0 / CC32 itt az új értékkel megy ki;
+        ''' 3. az RPN/NRPN üzenetek (pl. a pitch bend tartomány) EREDETI
+        '''    sorrendben, mert ezeknél a sorrend számít - a fájlokban ritkák;
+        ''' 4. a legutóbbi pitch bend és channel pressure.
+        ''' A hangokat (Note On) nem indítja újra: egy a kezdőpont előtt
+        ''' leütött, még szóló hang a tekerés után már nem szól.
+        ''' </summary>
+        Private Sub AllapotFelepitese(eddig As Integer)
+            Dim program(15) As Integer
+            Dim pcMsb(15) As Integer
+            Dim pcLsb(15) As Integer
+            Dim cc(15, 127) As Integer
+            Dim pitchBend(15) As Integer
+            Dim nyomas(15) As Integer
+            For c As Integer = 0 To 15
+                program(c) = -1 : pitchBend(c) = -1 : nyomas(c) = -1
+                For n As Integer = 0 To 127
+                    cc(c, n) = -1
+                Next
+            Next
+            Dim rpn As New List(Of MidiLejatszasiEsemeny)
+
+            For i As Integer = 0 To eddig - 1
+                Dim e As MidiLejatszasiEsemeny = esemenyek(i)
+                Dim c As Integer = e.StatuszBajt And &HF
+                Select Case e.StatuszBajt And &HF0
+                    Case &HC0
+                        program(c) = e.Adat1
+                        pcMsb(c) = Math.Max(0, cc(c, CsatornaUzenetek.BANK_SELECT_MSB))
+                        pcLsb(c) = Math.Max(0, cc(c, CsatornaUzenetek.BANK_SELECT_LSB))
+                    Case &HB0
+                        If RpnVezerloE(e.Adat1) Then
+                            rpn.Add(e)
+                        ElseIf e.Adat1 < CSATORNA_MOD_ELSO Then
+                            cc(c, e.Adat1) = e.Adat2
+                        End If
+                    Case &HE0
+                        pitchBend(c) = e.Adat1 Or (e.Adat2 << 7)
+                    Case &HD0
+                        nyomas(c) = e.Adat1
+                End Select
+            Next
+
+            For c As Integer = 0 To 15
+                If program(c) >= 0 Then
+                    Kuldes(&HB0 Or c, CsatornaUzenetek.BANK_SELECT_MSB, pcMsb(c))
+                    Kuldes(&HB0 Or c, CsatornaUzenetek.BANK_SELECT_LSB, pcLsb(c))
+                    Kuldes(&HC0 Or c, program(c), 0)
+                End If
+                For n As Integer = 0 To CSATORNA_MOD_ELSO - 1
+                    If cc(c, n) < 0 Then Continue For
+                    If program(c) >= 0 AndAlso
+                       ((n = CsatornaUzenetek.BANK_SELECT_MSB AndAlso cc(c, n) = pcMsb(c)) OrElse
+                        (n = CsatornaUzenetek.BANK_SELECT_LSB AndAlso cc(c, n) = pcLsb(c))) Then Continue For
+                    Kuldes(&HB0 Or c, n, cc(c, n))
+                Next
+                For Each e As MidiLejatszasiEsemeny In rpn
+                    If (e.StatuszBajt And &HF) = c Then Kuldes(e.StatuszBajt, e.Adat1, e.Adat2)
+                Next
+                If pitchBend(c) >= 0 Then Kuldes(&HE0 Or c, pitchBend(c) And &H7F, pitchBend(c) >> 7)
+                If nyomas(c) >= 0 Then Kuldes(&HD0 Or c, nyomas(c), 0)
+            Next
+        End Sub
+
+        ''' <summary>Az első csatorna-mód vezérlő (CC120 All Sound Off ... CC127) - ezek nem állapotok.</summary>
+        Private Const CSATORNA_MOD_ELSO As Integer = 120
+
+        ''' <summary>RPN / NRPN kiválasztás és adatbevitel (CC6, 38, 96-101) - ezeknél a sorrend számít.</summary>
+        Private Shared Function RpnVezerloE(vezerlo As Integer) As Boolean
+            Return vezerlo = 6 OrElse vezerlo = 38 OrElse (vezerlo >= 96 AndAlso vezerlo <= 101)
+        End Function
 
         ''' <summary>
         ''' Egy ütem: kiküldi az órához képest esedékes eseményeket. A
@@ -147,6 +293,7 @@ Namespace Modellek
                 If kovetkezo >= esemenyek.Count Then
                     SajatHangokElengedese()
                     futBelso = False
+                    allasMs = 0   ' a fájl vége után a következő lejátszás az elejéről indul
                     Return -1
                 End If
                 Return Math.Max(0L, CLng(Math.Ceiling(esemenyek(kovetkezo).IdoMs - relativMs)))
@@ -166,6 +313,7 @@ Namespace Modellek
             End If
             SyncLock zar
                 If futBelso Then
+                    allasMs = PozicioBelso()   ' a Stop ott hagyja a pozíciót, ahol megállt
                     SajatHangokElengedese()
                     futBelso = False
                 End If
@@ -189,6 +337,7 @@ Namespace Modellek
                 ' le a programot - a lejátszás egyszerűen véget ér.
                 SyncLock zar
                     futBelso = False
+                    allasMs = 0
                 End SyncLock
                 termeszetesVege = True
             Finally

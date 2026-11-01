@@ -14,8 +14,9 @@ fázis** is kész és tesztelve (kiadva az **1.18.0** verzióban,
 megőrzése (`MidiBill3.ini`) önálló lépésként elkészült az **1.19.0**
 verzióban. A **4. fázis** is kész és tesztelve (kiadva az **1.20.0**
 verzióban, 2026-09-25). Az **5. fázis** (lejátszás) is kész és tesztelve
-(kiadva az **1.21.0** verzióban, 2026-09-26). Következik a **6. fázis**
-(tekerés és időkijelzés). A major
+(kiadva az **1.21.0** verzióban, 2026-09-26). A **6. fázis** (tekerés és
+időkijelzés) is kész és tesztelve (kiadva az **1.22.0** verzióban,
+2026-11-01). Következik a **7. fázis** (ráfelvétel). A major
 verzióemelés (2.0.0) a teljes felvevő ablak elkészültekor esedékes.
 
 ---
@@ -579,10 +580,34 @@ ablak ezt hívja a mentés után).
   - **F8 = Lejátszás / Stop** (a felvevő ablakban és a főablakban is). Az
     F10 azért nem, mert a Windows a menüsornak foglalja.
 
-- [ ] **6. fázis - Tekerés és időkijelzés.** Húzható csúszka,
+- [x] **6. fázis - Tekerés és időkijelzés.** *(Kész és a felhasználó
+  által tesztelve, 2026-11-01 - kiadva az 1.22.0 verzióban; részletek:
+  `CHANGELOG.md` 1.22.0.)* Húzható csúszka,
   `MouseDown`/`MouseUp` megkülönböztetés a programozott frissítéstől,
-  "1:22 / 3:41" kijelzés, és a tekerés utáni All Notes Off (beragadt
-  hangok ellen).
+  "1:22 / 3:41" kijelzés, és a tekerés utáni némítás (beragadt hangok
+  ellen).
+
+  **A felhasználó döntései (2026-11-01):**
+  - **Állapot-felépítés középről indításkor**: a lejátszó előbb
+    csatornánként kiküldi az addig érvényes állapotot (hangszín a hozzá
+    tartozó bankkal, a vezérlők legutóbbi értéke, RPN/NRPN eredeti
+    sorrendben, pitch bend, channel pressure) - ahogy a zenei programok.
+    A kezdőpont előtt leütött hangok nem indulnak újra.
+  - **Tekeréskor CSAK a lejátszás saját hangjai és pedálja** engedődnek
+    el (célzott Note Off), az élő játék szól tovább - mint a Stopnál. (Az
+    eredeti terv minden csatornára All Notes Off / All Sound Off-ot írt.)
+  - **Billentyűs tekerés**: ← / → = 5 mp, Home = a fájl eleje - csak a
+    felvevő ablakban, szöveg- és számmezőben nem.
+  - **Megállított állapotban** a csúszka a kezdőpontot állítja, és a
+    **Stop ott hagyja a pozíciót**. (Az én döntésem: a fájl vége után és
+    új fájl betöltésekor a pozíció a fájl elejére áll.)
+
+  **Megvalósítás:** `MidiLejatszo.Ugras()` és `.PozicioMs`; az
+  `Inditas()` az aktuális pozícióról indít. A felvevő ablakban
+  `TrackBar` (LargeChange = 0, hogy a csúszkára kattintás ne lapozzon,
+  hanem a kattintás helyére ugorjon) és a `ProcessCmdKey` a nyilakhoz
+  (a gombokon a Windows a nyilakat a fókusz mozgatására használja, így a
+  KeyDown-ig el sem jutnának).
 
 - [ ] **7. fázis - Overdub.** "A lejátszott hangok rögzítése" checkbox
   (alapból KI) bekötése a `MidiFelvevo.LejatszottHangokRogzitese`

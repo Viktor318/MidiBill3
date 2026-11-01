@@ -9,7 +9,15 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.21.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.22.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a MIDI felvétel 6. fázisa: tekerés csúszkával és "1:22 / 3:41"
+  időkijelzéssel, egérrel és billentyűvel (← / → = 5 mp, Home); középről
+  indítva a lejátszó felépíti a csatornák állapotát; tekeréskor csak a
+  lejátszás hangjai némulnak; a Stop ott hagyja a pozíciót - lásd
+  `CHANGELOG.md` és `MIDI_felvetel_fazisterv.md`). A **major**
+  verzióemelés (2.0.0) akkor esedékes, ha a teljes felvevő ablak
+  elkészült.
+- **Előző verzió**: 1.21.0
   (a MIDI felvétel 5. fázisa: lejátszás a felvevő ablakban - saját
   háttérszálon, 1 ms-os időzítéssel; F8 = Lejátszás / Stop; a Stop csak a
   lejátszás hangjait némítja; választható, hogy a lejátszás után a
@@ -115,7 +123,8 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               nélkül: semmi / eldobás / mentés
 │   ├── MidiLejatszo.vb          - MIDI fájl lejátszása SAJÁT HÁTTÉRSZÁLON
 │   │                               (a MidiEngine órájához igazítva), a
-│   │                               saját hangok nyilvántartásával; az
+│   │                               saját hangok nyilvántartásával, tekeréssel
+│   │                               (a csatornák állapotának felépítésével); az
 │   │                               eseménylistát a MidiFajlOlvaso adja
 │   └── Utvonalak.vb             - MINDEN fájl-útvonal egy helyen: gyári
 │                                   (csak olvasható) vs. felhasználói

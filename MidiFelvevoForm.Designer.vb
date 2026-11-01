@@ -49,11 +49,14 @@ Partial Class MidiFelvevoForm
         btnLejatszas = New Button()
         btnLejatszasStop = New Button()
         chkBeallitasokMegtartasa = New CheckBox()
+        trkPozicio = New TrackBar()
+        lblIdo = New Label()
         grpFelvetel.SuspendLayout()
         CType(nudJatekidoKuszob, ComponentModel.ISupportInitialize).BeginInit()
         CType(nudSzunetKuszob, ComponentModel.ISupportInitialize).BeginInit()
         grpMentes.SuspendLayout()
         grpLejatszas.SuspendLayout()
+        CType(trkPozicio, ComponentModel.ISupportInitialize).BeginInit()
         SuspendLayout()
         ' 
         ' grpFelvetel
@@ -296,10 +299,12 @@ Partial Class MidiFelvevoForm
         grpLejatszas.Controls.Add(btnFajlMegnyitasa)
         grpLejatszas.Controls.Add(btnLejatszas)
         grpLejatszas.Controls.Add(btnLejatszasStop)
+        grpLejatszas.Controls.Add(trkPozicio)
+        grpLejatszas.Controls.Add(lblIdo)
         grpLejatszas.Controls.Add(chkBeallitasokMegtartasa)
         grpLejatszas.Location = New Point(12, 530)
         grpLejatszas.Name = "grpLejatszas"
-        grpLejatszas.Size = New Size(536, 122)
+        grpLejatszas.Size = New Size(536, 166)
         grpLejatszas.TabIndex = 2
         grpLejatszas.TabStop = False
         grpLejatszas.Text = "Lejátszás"
@@ -334,18 +339,41 @@ Partial Class MidiFelvevoForm
         ' chkBeallitasokMegtartasa
         ' 
         chkBeallitasokMegtartasa.AutoSize = True
-        chkBeallitasokMegtartasa.Location = New Point(18, 84)
+        chkBeallitasokMegtartasa.Location = New Point(18, 128)
         chkBeallitasokMegtartasa.Name = "chkBeallitasokMegtartasa"
         chkBeallitasokMegtartasa.Size = New Size(341, 24)
-        chkBeallitasokMegtartasa.TabIndex = 3
+        chkBeallitasokMegtartasa.TabIndex = 5
         chkBeallitasokMegtartasa.Text = "A lejátszott fájl beállításainak megtartása"
         chkBeallitasokMegtartasa.UseVisualStyleBackColor = True
+        '
+        ' trkPozicio
+        '
+        trkPozicio.AutoSize = False
+        trkPozicio.Enabled = False
+        trkPozicio.LargeChange = 0
+        trkPozicio.Location = New Point(12, 82)
+        trkPozicio.Maximum = 1000
+        trkPozicio.Name = "trkPozicio"
+        trkPozicio.Size = New Size(380, 36)
+        trkPozicio.SmallChange = 5000
+        trkPozicio.TabIndex = 3
+        trkPozicio.TickStyle = TickStyle.None
+        '
+        ' lblIdo
+        '
+        lblIdo.Font = New Font("Consolas", 10F)
+        lblIdo.Location = New Point(396, 84)
+        lblIdo.Name = "lblIdo"
+        lblIdo.Size = New Size(122, 28)
+        lblIdo.TabIndex = 4
+        lblIdo.Text = "0:00 / 0:00"
+        lblIdo.TextAlign = ContentAlignment.MiddleRight
         ' 
         ' MidiFelvevoForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
-        ClientSize = New Size(560, 664)
+        ClientSize = New Size(560, 708)
         Controls.Add(grpLejatszas)
         Controls.Add(grpMentes)
         Controls.Add(grpFelvetel)
@@ -365,6 +393,7 @@ Partial Class MidiFelvevoForm
         grpMentes.PerformLayout()
         grpLejatszas.ResumeLayout(False)
         grpLejatszas.PerformLayout()
+        CType(trkPozicio, ComponentModel.ISupportInitialize).EndInit()
         ResumeLayout(False)
     End Sub
 
@@ -395,5 +424,7 @@ Partial Class MidiFelvevoForm
     Friend WithEvents btnLejatszas As Button
     Friend WithEvents btnLejatszasStop As Button
     Friend WithEvents chkBeallitasokMegtartasa As CheckBox
+    Friend WithEvents trkPozicio As TrackBar
+    Friend WithEvents lblIdo As Label
 
 End Class

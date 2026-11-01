@@ -14,6 +14,56 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.22.0] - 2026-11-01
+
+A MIDI felvétel **6. fázisa**: tekerés és időkijelzés a lejátszásban.
+
+### Hozzáadva - tekerés és időkijelzés (a felvétel 6. fázisa)
+
+A Lejátszás csoport új **csúszkával** és **időkijelzéssel** ("1:22 /
+3:41") bővült: a lejátszás bárhová tekerhető, lejátszás közben és
+megállított állapotban is.
+
+- **Egérrel**: a csúszkára kattintva a pozíció a kattintás helyére ugrik,
+  húzással finomítható; a tekerés az egérgomb felengedésekor történik meg
+  (húzás közben a kijelzés a célpontot mutatja, és a lejátszás nem rántja
+  vissza a csúszkát).
+- **Billentyűvel** (a felvevő ablakban): **← / →** = 5 mp vissza /
+  előre, **Home** = a fájl eleje. Szövegmezőben és számmezőben a nyilak a
+  megszokott módon működnek, ott nem tekernek.
+- **Megállított állapotban** a csúszka a következő lejátszás kezdőpontját
+  állítja; a **Stop ott hagyja a pozíciót, ahol megállt** (a Lejátszás /
+  F8 onnan folytatja). A fájl vége után és új fájl betöltésekor a
+  pozíció a fájl elejére áll.
+- **Középről indítva helyes hangszínekkel szól**: a lejátszó előbb
+  csatornánként kiküldi az addig érvényes állapotot - a legutóbbi
+  hangszínt a hozzá tartozó bankkal, minden vezérlő legutóbbi értékét
+  (hangerő, tér, pedál stb.), az RPN/NRPN beállításokat (pl. a pitch bend
+  tartományt) eredeti sorrendben, a pitch bendet és a channel pressure-t
+  -, ahogy a zenei programok is teszik. A kezdőpont előtt leütött hangok
+  nem indulnak újra.
+- **Tekeréskor csak a lejátszás némul**: a lejátszó a saját, épp szóló
+  hangjait és pedálját engedi el, az élő játék szól tovább (az eredeti
+  terv minden csatornára kiküldött "Csend legyen!"-szerű némítást írt -
+  a felhasználó a Stoppal azonos viselkedést választotta).
+
+Új: `MidiLejatszo.Ugras()`, `.PozicioMs`; a `MidiLejatszo.Inditas()`
+mostantól az aktuális pozícióról indít.
+
+**Ellenőrzés** (Linuxon, NAudio- és WinForms-csonkkal): a valódi
+`MidiLejatszo` szimulált órával - az állapot-felépítés pontos
+üzenetsorrendje (bank a Program Change-hez, később változott bank,
+vezérlők, RPN sorrendben, pitch bend; All Notes Off és hang nem kerül
+bele), tekerés lejátszás közben (előbb a saját hangok és a pedál
+elengedése, utána az állapot, majd a célpont eseménye azonnal), a Stop
+utáni pozíció, a fájl vége, a szélső értékek; a felvevő ablak tekerő
+része (a csúszka tartománya és felirata, ← / → / Home, a szöveg- és
+számmezők kivétele, kattintás a csúszkára, húzás lejátszás közben,
+felengedés, egér nélküli Scroll, valódi szálon futó lejátszás). Öt
+szándékosan elrontott változat közül mind az öt megbukik.
+
+---
+
 ## [1.21.0] - 2026-09-26
 
 A MIDI felvétel **5. fázisa**: lejátszás a felvevő ablakban.
