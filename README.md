@@ -107,6 +107,10 @@ architektúrája nem adott lehetőséget.
     vagy billentyűvel (← / → = 5 mp, Home = a fájl eleje); középről
     indítva a lejátszó a csatornák addigi beállításait is kiküldi, így a
     helyes hangszínekkel szól
+  - **Ráfelvétel**: lejátszás közben hozzá lehet játszani; választható,
+    hogy a lejátszott anyag is a felvételbe kerüljön-e, és hogy a Start a
+    lejátszást is elindítsa-e. A mentett fájl a lejátszott fájl idejéhez
+    igazodik, így a kettő egymásra rakható
 - **Jelentés a felvétel mellé**: a mentett `.mid` mellé automatikusan
   készül egy azonos nevű `.txt` a fájl tartalmáról (csatornák, hangszerek,
   vezérlők, tempó, hangnem, az aktuális preset fájl neve)
@@ -214,5 +218,5 @@ fájlkezelés, beépített segédprogramok).
 A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kész, kézi
 és automatikus módban is (felvevő ablak, indítás az első leütésre,
 szegmensekre bontás a csendek mentén, mentés és jelentés), és a
-lejátszás is működik, tekeréssel; a lejátszás közbeni ráfelvétel
-(overdub) és a metronóm fejlesztése folyamatban van.
+lejátszás is működik, tekeréssel és ráfelvétellel; a felvevő ablak
+végső tesztelése és a metronóm fejlesztése folyamatban van.

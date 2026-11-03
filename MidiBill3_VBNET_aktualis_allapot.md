@@ -9,7 +9,16 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.22.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.23.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a MIDI felvétel 7. fázisa: ráfelvétel - "A lejátszott hangok
+  rögzítése" és "Felvétel indításakor a lejátszás is induljon"
+  jelölőnégyzet; a mentett fájl a lejátszott fájl idejéhez igazodik; a
+  lejátszás csatorna-állapota a fájl elejére kerül, ha a lejátszás is
+  rögzül; automatikus módban lejátszás alatt nincs vágás - lásd
+  `CHANGELOG.md` és `MIDI_felvetel_fazisterv.md`). A **major**
+  verzióemelés (2.0.0) akkor esedékes, ha a teljes felvevő ablak
+  elkészült.
+- **Előző verzió**: 1.22.0
   (a MIDI felvétel 6. fázisa: tekerés csúszkával és "1:22 / 3:41"
   időkijelzéssel, egérrel és billentyűvel (← / → = 5 mp, Home); középről
   indítva a lejátszó felépíti a csatornák állapotát; tekeréskor csak a
@@ -71,9 +80,10 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 ```
 MidiBill3/                        - EGYETLEN projekt
 ├── MainForm.vb / .Designer.vb   - Fő ablak
-├── MidiFelvevoForm.vb / .Designer.vb - A MIDI felvevő ablak (a felvétel 3-4. fázisa):
+├── MidiFelvevoForm.vb / .Designer.vb - A MIDI felvevő ablak (a felvétel 3-7. fázisa):
 │                                   Start/Stop (F9), futó idő, mentési beállítások,
-│                                   automatikus felvétel (szegmensek a csendek mentén)
+│                                   automatikus felvétel (szegmensek a csendek mentén),
+│                                   lejátszás tekeréssel (F8), ráfelvétel
 ├── HangszerPanel.vb / .Designer.vb - Egy hangszerpanel (UserControl), 4 fizikai
 │                                   példány, a kiválasztott csatornacsoportot mutatja
 │                                   (magasság 378, keret 408 - Her/Tér/Vib/Chorus/
@@ -118,14 +128,17 @@ MidiBill3/                        - EGYETLEN projekt
 │   │                               olvasható formában" (magyar .txt riport)
 │   ├── MidiFelvevo.vb           - Felvevő motor: állapotgép + kézzel írt
 │   │                               SMF-kimenet (format 1, 480 PPQ) +
-│   │                               csendfigyelés (billentyűk és pedál)
+│   │                               csendfigyelés (billentyűk és pedál) +
+│   │                               ráfelvételnél igazítás a lejátszott fájlhoz
 │   ├── AutomatikusSzegmentalo.vb - Az automatikus felvétel döntése, felület
 │   │                               nélkül: semmi / eldobás / mentés
 │   ├── MidiLejatszo.vb          - MIDI fájl lejátszása SAJÁT HÁTTÉRSZÁLON
 │   │                               (a MidiEngine órájához igazítva), a
 │   │                               saját hangok nyilvántartásával, tekeréssel
-│   │                               (a csatornák állapotának felépítésével); az
-│   │                               eseménylistát a MidiFajlOlvaso adja
+│   │                               (a csatornák állapotának felépítésével),
+│   │                               nullponttal és állapot-pillanatképpel a
+│   │                               ráfelvételhez; az eseménylistát a
+│   │                               MidiFajlOlvaso adja
 │   └── Utvonalak.vb             - MINDEN fájl-útvonal egy helyen: gyári
 │                                   (csak olvasható) vs. felhasználói
 │                                   (írható) szétválasztás + egyszeri

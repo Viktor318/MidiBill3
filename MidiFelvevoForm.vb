@@ -10,7 +10,8 @@ Imports System.Diagnostics
 ''' próbálkozásokat eldobja, a hosszabbakat külön fájlba menti, és utána
 ''' azonnal újra felfegyverez - lásd SzegmensEllenorzese. Az 5. fázisban
 ''' bekerült a LEJÁTSZÁS is (lásd a "Lejátszás" szakaszt): egy .mid fájl
-''' visszajátszása háttérszálon, F8 gyorsbillentyűvel.
+''' visszajátszása háttérszálon, F8 gyorsbillentyűvel; a 6. fázisban a
+''' tekerés, a 7.-ben a RÁFELVÉTEL (lásd a "Ráfelvétel" szakaszt).
 '''
 ''' SZÁNDÉKOSAN NEM ez az ablak birtokolja a felvevő motort (MidiFelvevo),
 ''' hanem a főablak - lásd MainForm.midiFelvevo. Ennek oka a bezárás: a
@@ -122,8 +123,11 @@ Public Class MidiFelvevoForm
         lejatszo = New MidiLejatszo(AddressOf motor.LejatszottUzenetKuldese, Function() motor.ElteltIdoMs)
         AddHandler lejatszo.Befejezodott, AddressOf Lejatszo_Befejezodott
         tipp.SetToolTip(trkPozicio, "Tekerés: húzd vagy kattints; billentyűvel ← / → = 5 mp vissza / előre, Home = a fájl eleje")
+        tipp.SetToolTip(chkLejatszottRogzitese, "Bekapcsolva a lejátszás is a felvételbe kerül (ráfelvétel); kikapcsolva csak az élő játék")
+        tipp.SetToolTip(chkLejatszasFelvetellel, "A Start (F9) a lejátszást is elindítja a csúszka pozíciójáról")
 
         FelvevoBeallitasokBetoltese()
+        felvevo.LejatszottHangokRogzitese = chkLejatszottRogzitese.Checked
         automatikusModAllapot = chkAutomatikus.Checked
         txtFajlNev.Text = alapFajlNev
         javasoltFajlNev = alapFajlNev
@@ -168,14 +172,30 @@ Public Class MidiFelvevoForm
     ''' </summary>
     Public Sub FelvetelValtasa()
         If felvevo.Allapot = FelvevoAllapot.Alap Then
-            Inditas()
+            FelhasznaloiInditas()
         Else
             Leallitas()
         End If
     End Sub
 
     Private Sub btnStart_Click(sender As Object, e As EventArgs) Handles btnStart.Click
+        FelhasznaloiInditas()
+    End Sub
+
+    ''' <summary>
+    ''' A Start gomb és az F9: felfegyverzés, és ha a "Felvétel indításakor a
+    ''' lejátszás is induljon" be van kapcsolva, a lejátszás is elindul a
+    ''' csúszka pozíciójáról (a felhasználó döntése, 2026-11-03). Automatikus
+    ''' módban a felvevő jellemzően már felfegyverzett - a Start ilyenkor
+    ''' csak a lejátszást indítja el. Az ablak megnyitása és az automatikus
+    ''' újra-felfegyverzés NEM indít lejátszást.
+    ''' </summary>
+    Private Sub FelhasznaloiInditas()
         Inditas()
+        If chkLejatszasFelvetellel.Checked AndAlso felvevo.Allapot = FelvevoAllapot.Felfegyverezve AndAlso
+           lejatszo.VanBetoltottEsemeny AndAlso Not lejatszo.Fut Then
+            LejatszasInditasa()
+        End If
     End Sub
 
     Private Sub btnStop_Click(sender As Object, e As EventArgs) Handles btnStop.Click
@@ -192,7 +212,7 @@ Public Class MidiFelvevoForm
     Private Sub Inditas()
         If felvevo.Allapot <> FelvevoAllapot.Alap Then Return
         mentettSzegmensek = 0
-        felvevo.Felfegyverzes(pillanatkepLekerdezo)
+        felvevo.Felfegyverzes(AddressOf KezdoAllapotLekerdezese, AddressOf NullpontLekerdezese)
         AllapotValtozasJelzese()
     End Sub
 
@@ -247,11 +267,23 @@ Public Class MidiFelvevoForm
     '''
     ''' Mentési hiba esetén az automatikus mód kikapcsol (EGY üzenetablak),
     ''' és a szegmens megmarad - a Stop gombbal újra menthető.
+    '''
+    ''' Lejátszás alatt NINCS vágás, és a szünet legkorábban a lejátszás
+    ''' végétől számít (a felhasználó döntése, 2026-11-03): ráfelvételnél a
+    ''' játékban lehetnek hosszabb szünetek, miközben a lejátszás szól.
     ''' </summary>
     Friend Sub SzegmensEllenorzese(mostMs As Long)
         If szegmensLezarasFolyamatban OrElse Not chkAutomatikus.Checked Then Return
+        If lejatszo.Fut Then Return
 
-        Dim dontes As SzegmensDontes = AutomatikusSzegmentalo.Dontes(felvevo, mostMs, SzunetKuszobMs, JatekidoKuszobMs)
+        Dim csendKezdete As Long = felvevo.CsendKezdeteMs
+        Dim lejatszasVege As Long? = lejatszo.UtolsoLeallasOraMs
+        If csendKezdete >= 0 AndAlso lejatszasVege.HasValue AndAlso lejatszasVege.Value > csendKezdete Then
+            csendKezdete = lejatszasVege.Value
+        End If
+
+        Dim dontes As SzegmensDontes = AutomatikusSzegmentalo.Dontes(felvevo.Allapot, csendKezdete, felvevo.RogzitettHosszMs,
+                                                                     mostMs, SzunetKuszobMs, JatekidoKuszobMs)
         If dontes = SzegmensDontes.Semmi Then Return
 
         szegmensLezarasFolyamatban = True
@@ -265,7 +297,7 @@ Public Class MidiFelvevoForm
                 felvevo.Eldobas()
             End If
 
-            felvevo.Felfegyverzes(pillanatkepLekerdezo)
+            felvevo.Felfegyverzes(AddressOf KezdoAllapotLekerdezese, AddressOf NullpontLekerdezese)
             AllapotValtozasJelzese()
         Finally
             szegmensLezarasFolyamatban = False
@@ -686,6 +718,47 @@ Public Class MidiFelvevoForm
     End Function
 
     ' ------------------------------------------------------------
+    ' Ráfelvétel (7. fázis)
+    ' ------------------------------------------------------------
+
+    ''' <summary>
+    ''' A felvevő ezt kéri le az első leütéskor: a panelek pillanatképe, és
+    ''' ha a lejátszott hangok is rögzülnek, utána a LEJÁTSZÁS csatornáinak
+    ''' addigi állapota (hangszín, vezérlők stb. - lásd
+    ''' MidiLejatszo.AllapotPillanatkep). Így a fájlba másolt lejátszás akkor
+    ''' is a helyes hangszínekkel szól, ha a felvétel a fájl közepén indult.
+    ''' A lejátszás állapota a panelé UTÁN áll, mert a szintetizátoron is az
+    ''' él: a lejátszás induláskor kiküldte a magáét.
+    ''' </summary>
+    Private Function KezdoAllapotLekerdezese() As List(Of MidiUzenet)
+        Dim lista As New List(Of MidiUzenet)
+        Dim panelek As List(Of MidiUzenet) = pillanatkepLekerdezo()
+        If panelek IsNot Nothing Then lista.AddRange(panelek)
+        If felvevo.LejatszottHangokRogzitese Then lista.AddRange(lejatszo.AllapotPillanatkep(felvevo.KezdoIdobelyegMs))
+        Return lista
+    End Function
+
+    ''' <summary>
+    ''' A felvevő ezt kérdezi meg az első leütéskor: ha épp szól a
+    ''' lejátszás, a mentett fájl a lejátszott fájl elejéhez igazodik (a
+    ''' felhasználó döntése, 2026-11-03), így a kettő egymásra rakható.
+    ''' </summary>
+    Private Function NullpontLekerdezese() As Long?
+        Return lejatszo.FajlNullpontOraMs
+    End Function
+
+    ''' <summary>
+    ''' "A lejátszott hangok rögzítése": bekapcsolva a lejátszás is a
+    ''' felvételbe kerül (és az első lejátszott hang is elindítja a
+    ''' felfegyverzett felvételt - a felhasználó döntése, 2026-11-03);
+    ''' kikapcsolva csak az élő játék. Felvétel közben is átállítható: a
+    ''' következő üzenettől érvényes.
+    ''' </summary>
+    Private Sub chkLejatszottRogzitese_CheckedChanged(sender As Object, e As EventArgs) Handles chkLejatszottRogzitese.CheckedChanged
+        felvevo.LejatszottHangokRogzitese = chkLejatszottRogzitese.Checked
+    End Sub
+
+    ' ------------------------------------------------------------
     ' Tekerés és időkijelzés (6. fázis)
     ' ------------------------------------------------------------
 
@@ -832,6 +905,8 @@ Public Class MidiFelvevoForm
     Private Const KULCS_BETOLTES_LEJATSZOBA As String = "BetoltesLejatszoba"
     Private Const KULCS_BEALLITASOK_MEGTARTASA As String = "LejatszottBeallitasokMegtartasa"
     Private Const KULCS_LEJATSZAS_MAPPA As String = "LejatszasMappa"
+    Private Const KULCS_LEJATSZOTT_ROGZITESE As String = "LejatszottHangokRogzitese"
+    Private Const KULCS_LEJATSZAS_FELVETELLEL As String = "LejatszasFelvetellel"
 
     ''' <summary>
     ''' A felvevő beállításai a MidiBill3.ini-ből; ami hiányzik, annál a
@@ -854,6 +929,8 @@ Public Class MidiFelvevoForm
         chkBetoltesLejatszoba.Checked = ini.Logikai(szakasz, KULCS_BETOLTES_LEJATSZOBA, True)
         chkBeallitasokMegtartasa.Checked = ini.Logikai(szakasz, KULCS_BEALLITASOK_MEGTARTASA, False)
         utolsoLejatszasMappa = ini.Szoveg(szakasz, KULCS_LEJATSZAS_MAPPA, "")
+        chkLejatszottRogzitese.Checked = ini.Logikai(szakasz, KULCS_LEJATSZOTT_ROGZITESE, False)
+        chkLejatszasFelvetellel.Checked = ini.Logikai(szakasz, KULCS_LEJATSZAS_FELVETELLEL, False)
     End Sub
 
     ''' <summary>Egy (akár kézzel elrontott) ini-érték a mező megengedett tartományába szorítva.</summary>
@@ -879,6 +956,8 @@ Public Class MidiFelvevoForm
         ini.Beallitas(szakasz, KULCS_BETOLTES_LEJATSZOBA, chkBetoltesLejatszoba.Checked)
         ini.Beallitas(szakasz, KULCS_BEALLITASOK_MEGTARTASA, chkBeallitasokMegtartasa.Checked)
         ini.Beallitas(szakasz, KULCS_LEJATSZAS_MAPPA, utolsoLejatszasMappa)
+        ini.Beallitas(szakasz, KULCS_LEJATSZOTT_ROGZITESE, chkLejatszottRogzitese.Checked)
+        ini.Beallitas(szakasz, KULCS_LEJATSZAS_FELVETELLEL, chkLejatszasFelvetellel.Checked)
     End Sub
 
     ' ============================================================

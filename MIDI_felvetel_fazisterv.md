@@ -16,7 +16,9 @@ verzióban. A **4. fázis** is kész és tesztelve (kiadva az **1.20.0**
 verzióban, 2026-09-25). Az **5. fázis** (lejátszás) is kész és tesztelve
 (kiadva az **1.21.0** verzióban, 2026-09-26). A **6. fázis** (tekerés és
 időkijelzés) is kész és tesztelve (kiadva az **1.22.0** verzióban,
-2026-11-01). Következik a **7. fázis** (ráfelvétel). A major
+2026-11-01). A **7. fázis** (ráfelvétel) is kész és tesztelve (kiadva az **1.23.0**
+verzióban, 2026-11-03). Következik a **8. fázis** (végigtesztelés,
+dokumentáció, 2.0.0). A major
 verzióemelés (2.0.0) a teljes felvevő ablak elkészültekor esedékes.
 
 ---
@@ -609,9 +611,39 @@ ablak ezt hívja a mentés után).
   (a gombokon a Windows a nyilakat a fókusz mozgatására használja, így a
   KeyDown-ig el sem jutnának).
 
-- [ ] **7. fázis - Overdub.** "A lejátszott hangok rögzítése" checkbox
+- [x] **7. fázis - Overdub.** *(Kész és a felhasználó által tesztelve,
+  2026-11-03 - kiadva az 1.23.0 verzióban; részletek: `CHANGELOG.md`
+  1.23.0.)*
+  "A lejátszott hangok rögzítése" checkbox
   (alapból KI) bekötése a `MidiFelvevo.LejatszottHangokRogzitese`
   property-re - a szűrési logika maga már a 2. fázisban elkészült.
+
+  **A felhasználó döntései (2026-11-03):**
+  - **Időigazítás a lejátszott fájlhoz**: ha lejátszás közben indul a
+    felvétel, a mentett fájl eleje a lejátszott fájl aktuális
+    pozíciójához igazodik (csenddel kitöltve), így a két fájl később
+    egymásra rakható.
+  - **Új jelölőnégyzet: "Felvétel indításakor a lejátszás is induljon"**
+    (alapból ki, ini-be mentve): a kézi Felvétel gomb a lejátszást is
+    elindítja az aktuális pozícióról.
+  - **Automatikus módban lejátszás alatt nincs vágás**: amíg a
+    lejátszás fut, a felvétel egyben marad; a szünet-küszöb csak a
+    lejátszás vége után számít.
+  - **Bekapcsolt "A lejátszott hangok rögzítése" mellett a lejátszás
+    első hangja is elindítja** a felfegyverzett felvételt (az eredeti
+    terv elfogadott mellékhatása marad). Kikapcsolt állapotban a
+    lejátszás nem indít felvételt.
+
+  **Megvalósítás:** az igazításhoz a lejátszó megadja, az óra melyik
+  állása felel meg a lejátszott fájl elejének (`FajlNullpontOraMs`), a
+  felvevő pedig az első leütéskor ezt kéri le (`Felfegyverzes` új
+  `nullpontLekerdezo` paramétere); a mentett fájl tick 0-ja ez lesz. Ha a
+  lejátszott hangok is rögzülnek, a lejátszás csatorna-állapota
+  (`AllapotPillanatkep`, ugyanaz, mint a tekerés állapot-felépítése) a
+  panelek pillanatképe UTÁN a fájl elejére kerül. A szegmentáló a
+  lejátszó leállási idejét (`UtolsoLeallasOraMs`) veszi a csend
+  kezdetének, ha az későbbi. Saját döntés: a felvétel közbeni tekerést
+  az igazítás nem követi (a felvétel egyetlen nullponttal dolgozik).
 
 - [ ] **8. fázis - Tesztelés, dokumentáció, verzió.** Végigtesztelési
   lista, `CHANGELOG.md`, állapot-dokumentum, verziólépés.

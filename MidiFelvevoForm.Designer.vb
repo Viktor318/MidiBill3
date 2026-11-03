@@ -51,6 +51,8 @@ Partial Class MidiFelvevoForm
         chkBeallitasokMegtartasa = New CheckBox()
         trkPozicio = New TrackBar()
         lblIdo = New Label()
+        chkLejatszottRogzitese = New CheckBox()
+        chkLejatszasFelvetellel = New CheckBox()
         grpFelvetel.SuspendLayout()
         CType(nudJatekidoKuszob, ComponentModel.ISupportInitialize).BeginInit()
         CType(nudSzunetKuszob, ComponentModel.ISupportInitialize).BeginInit()
@@ -302,9 +304,11 @@ Partial Class MidiFelvevoForm
         grpLejatszas.Controls.Add(trkPozicio)
         grpLejatszas.Controls.Add(lblIdo)
         grpLejatszas.Controls.Add(chkBeallitasokMegtartasa)
+        grpLejatszas.Controls.Add(chkLejatszottRogzitese)
+        grpLejatszas.Controls.Add(chkLejatszasFelvetellel)
         grpLejatszas.Location = New Point(12, 530)
         grpLejatszas.Name = "grpLejatszas"
-        grpLejatszas.Size = New Size(536, 166)
+        grpLejatszas.Size = New Size(536, 226)
         grpLejatszas.TabIndex = 2
         grpLejatszas.TabStop = False
         grpLejatszas.Text = "Lejátszás"
@@ -368,12 +372,32 @@ Partial Class MidiFelvevoForm
         lblIdo.TabIndex = 4
         lblIdo.Text = "0:00 / 0:00"
         lblIdo.TextAlign = ContentAlignment.MiddleRight
+        '
+        ' chkLejatszottRogzitese
+        '
+        chkLejatszottRogzitese.AutoSize = True
+        chkLejatszottRogzitese.Location = New Point(18, 158)
+        chkLejatszottRogzitese.Name = "chkLejatszottRogzitese"
+        chkLejatszottRogzitese.Size = New Size(245, 24)
+        chkLejatszottRogzitese.TabIndex = 6
+        chkLejatszottRogzitese.Text = "A lejátszott hangok rögzítése"
+        chkLejatszottRogzitese.UseVisualStyleBackColor = True
+        '
+        ' chkLejatszasFelvetellel
+        '
+        chkLejatszasFelvetellel.AutoSize = True
+        chkLejatszasFelvetellel.Location = New Point(18, 188)
+        chkLejatszasFelvetellel.Name = "chkLejatszasFelvetellel"
+        chkLejatszasFelvetellel.Size = New Size(360, 24)
+        chkLejatszasFelvetellel.TabIndex = 7
+        chkLejatszasFelvetellel.Text = "Felvétel indításakor a lejátszás is induljon"
+        chkLejatszasFelvetellel.UseVisualStyleBackColor = True
         ' 
         ' MidiFelvevoForm
         ' 
         AutoScaleDimensions = New SizeF(120F, 120F)
         AutoScaleMode = AutoScaleMode.Dpi
-        ClientSize = New Size(560, 708)
+        ClientSize = New Size(560, 768)
         Controls.Add(grpLejatszas)
         Controls.Add(grpMentes)
         Controls.Add(grpFelvetel)
@@ -426,5 +450,7 @@ Partial Class MidiFelvevoForm
     Friend WithEvents chkBeallitasokMegtartasa As CheckBox
     Friend WithEvents trkPozicio As TrackBar
     Friend WithEvents lblIdo As Label
+    Friend WithEvents chkLejatszottRogzitese As CheckBox
+    Friend WithEvents chkLejatszasFelvetellel As CheckBox
 
 End Class

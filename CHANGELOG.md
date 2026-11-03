@@ -14,6 +14,58 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.23.0] - 2026-11-03
+
+A MIDI felvétel **7. fázisa**: ráfelvétel (overdub) lejátszás közben.
+
+### Hozzáadva - ráfelvétel (a felvétel 7. fázisa)
+
+Lejátszás közben hozzá lehet játszani egy korábbi felvételhez (vagy
+bármilyen MIDI fájlhoz), és a program ezt is rögzíti. A Lejátszás csoport
+két új jelölőnégyzetet kapott (mindkettő alapból ki, a `MidiBill3.ini`
+megjegyzi):
+
+- **"A lejátszott hangok rögzítése"**: kikapcsolva csak az élő játék
+  kerül a felvételbe; bekapcsolva a lejátszott anyag is, így a kettő egy
+  fájlba keveredik. Bekapcsolt állapotban a lejátszás első hangja is
+  elindítja a felfegyverzett felvételt. Felvétel közben is átállítható.
+- **"Felvétel indításakor a lejátszás is induljon"**: a Start (F9) a
+  felfegyverzés mellett a lejátszást is elindítja a csúszka pozíciójáról.
+  Automatikus módban (ahol a felvevő már felfegyverzett) a Start csak a
+  lejátszást indítja. Az ablak megnyitása és az automatikus
+  újra-felfegyverzés nem indít lejátszást.
+- **Időigazítás**: ha a felvétel lejátszás közben indul, a mentett fájl a
+  lejátszott fájl idejéhez igazodik - az elejére annyi csend kerül, ahol
+  a lejátszás a felvétel indulásakor tartott -, így a két fájl később
+  egymásra rakható. (A felvétel közbeni tekerést az igazítás nem követi.)
+- **A lejátszás állapota a fájl elejére**: ha a lejátszott hangok is
+  rögzülnek, a lejátszás csatornáinak addigi beállításai (hangszín a
+  bankkal, vezérlők, RPN, pitch bend) a panelek pillanatképe után a
+  mentett fájl elejére kerülnek - így a fájl közepén indított felvétel is
+  a helyes hangszínekkel szól.
+- **Automatikus mód**: amíg a lejátszás szól, a program nem vágja
+  szegmensekre a felvételt; a szünet-küszöböt legkorábban a lejátszás
+  végétől (Stop vagy a fájl vége) számolja.
+
+Új: `MidiLejatszo.FajlNullpontOraMs`, `.UtolsoLeallasOraMs`,
+`.AllapotPillanatkep()`; `MidiFelvevo.Felfegyverzes()` új, opcionális
+`nullpontLekerdezo` paramétere és `.IgazitasMs`. A felvevő ablak 60
+pixellel magasabb lett (768).
+
+**Ellenőrzés** (Linuxon, NAudio- és WinForms-csonkkal): a lejátszó
+nullpontja, leállási ideje és állapot-pillanatképe szimulált órával
+(korábbi időpontra a már kiment, de későbbi változás nem számít); a
+felvevő igazítása (a mentett fájlban a hang a lejátszott fájl idején
+szól; lejátszás nélkül, illetve értelmetlen nullponttal nincs igazítás);
+a felvevő ablak valódi szálon futó lejátszással (Start + együttindítás,
+élő játék rögzítés nélkül, lejátszás rögzítéssel - a lejátszott hangok a
+mentett fájlban legfeljebb 25 ms eltéréssel az eredeti idejükön, a
+lejátszás hangszíne a fájl elején -, automatikus mód: lejátszás alatt
+nincs vágás, a vége után pontosan a küszöbnél van; ini). Nyolc
+szándékosan elrontott változat közül mind a nyolc megbukik.
+
+---
+
 ## [1.22.0] - 2026-11-01
 
 A MIDI felvétel **6. fázisa**: tekerés és időkijelzés a lejátszásban.

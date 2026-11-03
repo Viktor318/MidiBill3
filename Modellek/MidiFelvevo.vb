@@ -127,6 +127,22 @@
         Private utolsoIdobelyegMs As Long = 0
 
         ''' <summary>
+        ''' Az óra állása, ami a mentett fájl 0. tickjének felel meg. Alapból a
+        ''' felvétel kezdete (az első leütés); ráfelvételnél (lásd
+        ''' nullpontLekerdezo) a lejátszott fájl kezdete - ilyenkor a fájl
+        ''' elején annyi csend van, amennyi a lejátszásból addig eltelt.
+        ''' </summary>
+        Private nullpontMs As Long = 0
+
+        ''' <summary>
+        ''' A felfegyverzéskor kapott függvény, amivel a felvevő a rögzítés
+        ''' indulásakor megkérdezi, hol tart a lejátszás: az óra azon
+        ''' állását adja vissza, ami a lejátszott fájl elejének felel meg,
+        ''' vagy Nothing-ot, ha nincs lejátszás.
+        ''' </summary>
+        Private nullpontLekerdezo As Func(Of Long?) = Nothing
+
+        ''' <summary>
         ''' A felvétel INDULÁSAKOR készült pillanatkép az aktív csatornák
         ''' MIDI-állapotáról (hangszín, hangerő, tér, vibrato, chorus,
         ''' reverb) - ez kerül a mentett fájlban minden csatorna SAJÁT
@@ -262,6 +278,19 @@
         End Property
 
         ''' <summary>
+        ''' Ráfelvételnél: hány ezredmásodperc csend kerül a mentett fájl
+        ''' elejére, hogy a felvétel a lejátszott fájlhoz igazodjon (= hol
+        ''' tartott a lejátszás, amikor a felvétel elindult). 0, ha a felvétel
+        ''' nem lejátszás közben indult, vagy még el sem indult.
+        ''' </summary>
+        Public ReadOnly Property IgazitasMs As Long
+            Get
+                If allapotBelso <> FelvevoAllapot.Rogzit Then Return 0
+                Return elsoIdobelyegMs - nullpontMs
+            End Get
+        End Property
+
+        ''' <summary>
         ''' A legutóbb rögzített üzenet abszolút időbélyege (a MidiEngine
         ''' órája szerint). Az Automatikus felvétel mód SZÜNET-küszöbét ehhez
         ''' méri majd a felvevő ablak, a MidiEngine.ElteltIdoMs-hez hasonlítva
@@ -334,9 +363,18 @@
         ''' MIDI-állapotáról (lásd a kezdoAllapotUzenetek mezőt). Ha Nothing,
         ''' a mentett fájl nem kap kezdőállapot-blokkot.
         ''' </param>
-        Public Sub Felfegyverzes(Optional kezdoAllapotLekerdezo As Func(Of List(Of MidiUzenet)) = Nothing)
+        ''' <param name="nullpontLekerdezo">
+        ''' Opcionális függvény a ráfelvételhez (7. fázis): a rögzítés
+        ''' indulásakor megadja, az óra melyik állása felel meg a LEJÁTSZOTT
+        ''' fájl elejének (Nothing, ha nincs lejátszás). Ha van ilyen, a
+        ''' mentett fájl ehhez igazodik, így a lejátszott fájllal később
+        ''' egymásra rakható (a felhasználó döntése, 2026-11-03).
+        ''' </param>
+        Public Sub Felfegyverzes(Optional kezdoAllapotLekerdezo As Func(Of List(Of MidiUzenet)) = Nothing,
+                                 Optional nullpontLekerdezo As Func(Of Long?) = Nothing)
             Alaphelyzet()
             Me.kezdoAllapotLekerdezo = kezdoAllapotLekerdezo
+            Me.nullpontLekerdezo = nullpontLekerdezo
             allapotBelso = FelvevoAllapot.Felfegyverezve
         End Sub
 
@@ -396,6 +434,17 @@
                 ' Ez az első leütés: innentől számít a felvétel kezdete.
                 allapotBelso = FelvevoAllapot.Rogzit
                 elsoIdobelyegMs = idobelyegMs
+
+                ' Ráfelvétel: a fájl a lejátszott fájl elejéhez igazodik (a
+                ' lejátszás az első leütés előtt indult, így a nullpont
+                ' korábbi - egy későbbi érték értelmetlen lenne).
+                nullpontMs = idobelyegMs
+                If nullpontLekerdezo IsNot Nothing Then
+                    Dim lejatszasKezdete As Long? = nullpontLekerdezo()
+                    If lejatszasKezdete.HasValue AndAlso lejatszasKezdete.Value <= idobelyegMs Then
+                        nullpontMs = lejatszasKezdete.Value
+                    End If
+                End If
 
                 ' A csatorna-állapot pillanatképe PONTOSAN itt készül el -
                 ' lásd a kezdoAllapotUzenetek mező magyarázatát.
@@ -596,6 +645,8 @@
             esemenyek.Clear()
             kezdoAllapotUzenetek.Clear()
             kezdoAllapotLekerdezo = Nothing
+            nullpontLekerdezo = Nothing
+            nullpontMs = 0
             Array.Clear(hangSzol, 0, hangSzol.Length)
             szoloHangokSzama = 0
             Array.Clear(pedalLent, 0, pedalLent.Length)
@@ -761,7 +812,8 @@
         ''' és csak UTÁNA vonjuk ki őket egymásból - ha delta-nként kerekítenénk,
         ''' a kerekítési hibák egy hosszabb felvételen összeadódnának, és a vége
         ''' észrevehetően elcsúszna. Minden track a felvétel KEZDETÉTŐL (tick 0)
-        ''' számol, tehát a sávok időben egymáshoz vannak igazítva.
+        ''' számol, tehát a sávok időben egymáshoz vannak igazítva. (Ráfelvételnél a
+        ''' tick 0 a LEJÁTSZOTT fájl eleje, lásd nullpontMs.)
         ''' </summary>
         Private Function CsatornaTrackEpitese(csatorna As Integer) As Byte()
             Dim adat As New List(Of Byte)
@@ -800,7 +852,7 @@
             For Each esemeny As FelvettEsemeny In esemenyek
                 If (esemeny.StatuszBajt And &HF) <> csatorna Then Continue For
 
-                Dim relativMs As Long = esemeny.IdobelyegMs - elsoIdobelyegMs
+                Dim relativMs As Long = esemeny.IdobelyegMs - nullpontMs
                 Dim abszolutTick As Long = CLng(Math.Round(relativMs * TICK_PER_MS))
                 If abszolutTick < elozoTick Then abszolutTick = elozoTick
 
