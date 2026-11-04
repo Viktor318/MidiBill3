@@ -17,7 +17,7 @@ verzióban, 2026-09-25). Az **5. fázis** (lejátszás) is kész és tesztelve
 (kiadva az **1.21.0** verzióban, 2026-09-26). A **6. fázis** (tekerés és
 időkijelzés) is kész és tesztelve (kiadva az **1.22.0** verzióban,
 2026-11-01). A **7. fázis** (ráfelvétel) is kész és tesztelve (kiadva az **1.23.0**
-verzióban, 2026-11-03). Következik a **8. fázis** (végigtesztelés,
+verzióban, 2026-11-03; az alapsáv megtartása az **1.23.1**-ben). Következik a **8. fázis** (végigtesztelés,
 dokumentáció, 2.0.0). A major
 verzióemelés (2.0.0) a teljes felvevő ablak elkészültekor esedékes.
 
@@ -644,6 +644,13 @@ ablak ezt hívja a mentés után).
   lejátszó leállási idejét (`UtolsoLeallasOraMs`) veszi a csend
   kezdetének, ha az későbbi. Saját döntés: a felvétel közbeni tekerést
   az igazítás nem követi (a felvétel egyetlen nullponttal dolgozik).
+
+  **Utólagos módosítás (2026-11-03, kiadva az 1.23.1 verzióban):** a "Mentett fájl
+  betöltése a lejátszóba" a lejátszás közben indult, a lejátszott hangok
+  rögzítése NÉLKÜLI felvétel után nem cseréli le az alapsávot (a
+  felhasználó döntése) - így több próbálkozás is felvehető ugyanarra.
+  Rétegezésnél és sima felvételnél a friss felvétel töltődik be, mint
+  eddig. Részletek: `CHANGELOG.md` 1.23.1.
 
 - [ ] **8. fázis - Tesztelés, dokumentáció, verzió.** Végigtesztelési
   lista, `CHANGELOG.md`, állapot-dokumentum, verziólépés.

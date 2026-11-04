@@ -142,6 +142,9 @@
         ''' </summary>
         Private nullpontLekerdezo As Func(Of Long?) = Nothing
 
+        ''' <summary>Lejátszás közben indult-e a felvétel (lásd LejatszasKozbenIndult).</summary>
+        Private lejatszasKozbenIndultBelso As Boolean = False
+
         ''' <summary>
         ''' A felvétel INDULÁSAKOR készült pillanatkép az aktív csatornák
         ''' MIDI-állapotáról (hangszín, hangerő, tér, vibrato, chorus,
@@ -283,6 +286,18 @@
         ''' tartott a lejátszás, amikor a felvétel elindult). 0, ha a felvétel
         ''' nem lejátszás közben indult, vagy még el sem indult.
         ''' </summary>
+        ''' <summary>
+        ''' Igaz, ha a futó felvétel LEJÁTSZÁS KÖZBEN indult (a mentett fájl a
+        ''' lejátszott fájlhoz igazodik, lásd nullpontLekerdezo). A felvevő
+        ''' ablak ebből dönti el, hogy mentés után betöltse-e a friss
+        ''' felvételt a lejátszóba. A mentés / eldobás után hamis.
+        ''' </summary>
+        Public ReadOnly Property LejatszasKozbenIndult As Boolean
+            Get
+                Return lejatszasKozbenIndultBelso
+            End Get
+        End Property
+
         Public ReadOnly Property IgazitasMs As Long
             Get
                 If allapotBelso <> FelvevoAllapot.Rogzit Then Return 0
@@ -443,6 +458,7 @@
                     Dim lejatszasKezdete As Long? = nullpontLekerdezo()
                     If lejatszasKezdete.HasValue AndAlso lejatszasKezdete.Value <= idobelyegMs Then
                         nullpontMs = lejatszasKezdete.Value
+                        lejatszasKozbenIndultBelso = True
                     End If
                 End If
 
@@ -647,6 +663,7 @@
             kezdoAllapotLekerdezo = Nothing
             nullpontLekerdezo = Nothing
             nullpontMs = 0
+            lejatszasKozbenIndultBelso = False
             Array.Clear(hangSzol, 0, hangSzol.Length)
             szoloHangokSzama = 0
             Array.Clear(pedalLent, 0, pedalLent.Length)

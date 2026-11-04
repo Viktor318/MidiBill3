@@ -9,7 +9,11 @@ működő állapotban van**, aktívan továbbfejlesztés alatt.
 
 ## Alapadatok
 
-- **Verzió**: 1.23.0 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+- **Verzió**: 1.23.1 (SemVer), a **`MidiBill3.vbproj`-ban közvetlenül**
+  (a ráfelvétel finomítása: a "Mentett fájl betöltése a lejátszóba" a
+  lejátszás közben indult, a lejátszott hangok rögzítése nélküli felvétel
+  után nem cseréli le az alapsávot - lásd `CHANGELOG.md`).
+- **Előző verzió**: 1.23.0
   (a MIDI felvétel 7. fázisa: ráfelvétel - "A lejátszott hangok
   rögzítése" és "Felvétel indításakor a lejátszás is induljon"
   jelölőnégyzet; a mentett fájl a lejátszott fájl idejéhez igazodik; a

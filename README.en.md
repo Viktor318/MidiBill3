@@ -107,6 +107,8 @@ architecture couldn't support.
   playing keeps sounding. You can choose whether the panels' settings
   are restored after playback or the UI switches to the file's settings;
   a fresh recording is loaded into the player automatically after saving
+  (after overdubbing without recording the playback, the backing track
+  stays loaded)
   - **Seeking** with a slider and a time display ("1:22 / 3:41"), by
     mouse or keyboard (← / → = 5 s, Home = start of the file); when
     starting mid-file, the player first sends the channels' settings up

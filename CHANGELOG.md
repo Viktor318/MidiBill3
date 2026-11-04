@@ -14,6 +14,34 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ---
 
+## [1.23.1] - 2026-11-04
+
+A ráfelvétel (7. fázis) finomítása: a lejátszó megtartja az alapsávot.
+
+### Módosítva - a lejátszó ráfelvétel után megtartja az alapsávot
+
+A "Mentett fájl betöltése a lejátszóba" eddig minden mentés után a friss
+felvételt töltötte be. Ráfelvételnél a lejátszott hangok rögzítése
+nélkül ez lecserélte az alapsávot (pl. a kíséretet) a saját játékra, és
+a következő próbálkozáshoz újra meg kellett nyitni. Mostantól (a
+felhasználó döntése, 2026-11-03):
+
+- ha a felvétel **lejátszás közben indult**, és a **lejátszott hangok
+  rögzítése ki van kapcsolva**, a lejátszóban az **alapsáv marad** -
+  egymás után több próbálkozás is felvehető ugyanarra a kíséretre
+  (automatikus módban is, szegmensenként);
+- rétegezésnél (bekapcsolt rögzítés) és a lejátszás nélküli felvételnél
+  marad a régi viselkedés: a friss felvétel töltődik be.
+
+Új: `MidiFelvevo.LejatszasKozbenIndult`.
+
+**Ellenőrzés**: a ráfelvétel-teszt három új esettel (rögzítés nélküli
+ráfelvétel, lejátszás nélküli felvétel, rétegezés - automatikus módban,
+valódi szálon futó lejátszással); négy új szándékosan elrontott
+változat, mind megbukik (összesen 12-ből 12).
+
+---
+
 ## [1.23.0] - 2026-11-03
 
 A MIDI felvétel **7. fázisa**: ráfelvétel (overdub) lejátszás közben.

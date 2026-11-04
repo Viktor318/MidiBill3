@@ -102,7 +102,8 @@ architektúrája nem adott lehetőséget.
   háttérszálon); a Stop csak a lejátszás hangjait némítja, az élő játék
   szól tovább. Választható, hogy a lejátszás után visszaálljanak-e a
   panelek beállításai, vagy a felület átálljon a fájl beállításaira; a
-  friss felvétel mentés után magától betöltődik a lejátszóba
+  friss felvétel mentés után magától betöltődik a lejátszóba (a
+  lejátszott hangok nélküli ráfelvétel után az alapsáv marad)
   - **Tekerés** csúszkával és időkijelzéssel ("1:22 / 3:41"), egérrel
     vagy billentyűvel (← / → = 5 mp, Home = a fájl eleje); középről
     indítva a lejátszó a csatornák addigi beállításait is kiküldi, így a

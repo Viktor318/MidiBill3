@@ -350,6 +350,12 @@ Public Class MidiFelvevoForm
     ''' </param>
     ''' <returns>True, ha a mentés sikerült; False, ha nem (a felvett anyag ilyenkor megmarad).</returns>
     Private Function Mentes(Optional automatikusMentes As Boolean = False) As Boolean
+        ' Ráfelvétel a lejátszott hangok nélkül: a lejátszóban az ALAPSÁV
+        ' marad, hogy a következő próbálkozás is ugyanarra szólhasson (a
+        ' felhasználó döntése, 2026-11-03). A mentés törli a felvevő
+        ' állapotát, ezért előtte kell megnézni.
+        Dim alapsavMarad As Boolean = felvevo.LejatszasKozbenIndult AndAlso Not felvevo.LejatszottHangokRogzitese
+
         Dim utvonal As String
         Try
             utvonal = Utvonalak.UjFelvetelUtvonala(txtFajlNev.Text, chkDatumAlmappa.Checked)
@@ -369,8 +375,13 @@ Public Class MidiFelvevoForm
 
         ' A friss felvétel betöltése a lejátszóba (NEM indítja el). Futó
         ' lejátszást nem szakít meg - egy lejátszás alatti automatikus
-        ' szegmens-mentés így nem állítja le a lejátszást.
-        If chkBetoltesLejatszoba.Checked AndAlso Not lejatszo.Fut Then LejatszasiFajlBetoltese(utvonal, csendes:=True)
+        ' szegmens-mentés így nem állítja le a lejátszást. A lejátszott
+        ' hangok nélküli ráfelvétel után az alapsáv marad (lásd fent);
+        ' rétegezésnél (bekapcsolt rögzítés) a friss felvétel töltődik be,
+        ' mert abban az alapsáv is benne van.
+        If chkBetoltesLejatszoba.Checked AndAlso Not alapsavMarad AndAlso Not lejatszo.Fut Then
+            LejatszasiFajlBetoltese(utvonal, csendes:=True)
+        End If
 
         Dim sor As String = "Utoljára mentve: " & IO.Path.GetFileName(utvonal)
         If chkJelentes.Checked Then
