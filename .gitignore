@@ -367,3 +367,6 @@ Kezdet.json
 
 # Biztonsági mentésként generált file, nem kell követni
 MidiBill3.zip
+
+# Claude munkamappa (segédfájlok, nem a projekt része)
+/Claude outputs/
