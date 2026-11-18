@@ -12,6 +12,18 @@ foglalja össze, verziónkénti bontásban. A formátum lazán a
 
 ## [Nem kiadott]
 
+### Hozzáadva - GPL-3.0 licenc
+
+A repó nyilvános lett (2026-11-18), ezért licencet kapott: **GNU General
+Public License 3. verzió** (a felhasználó döntése). A GPL-3.0 mellett az
+is szólt, hogy a MidiLayer fork - a MidiBill3 egyik ötletforrása - szintén
+GPL-3.0, így onnan kód is átvehető.
+
+- Új `LICENSE` fájl a licenc hivatalos, változatlan szövegével (a GitHub
+  így automatikusan felismeri).
+- Mindkét README új "Licenc" / "License" szakaszt kapott, a NAudio (MIT)
+  megemlítésével, és a fájlfában is szerepel a `LICENSE`.
+
 ---
 
 ## [1.23.1] - 2026-11-04

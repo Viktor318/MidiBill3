@@ -183,7 +183,8 @@ MidiBill3/                      - egyetlen projekt
 ├── CHANGELOG.md                - Részletes változásnapló
 ├── MidiBill3_VBNET_aktualis_allapot.md  - A projekt aktuális állapotának leírása
 ├── MIDI_felvetel_fazisterv.md  - A MIDI felvevő fázisterve
-└── MSB_LSB_GM2_terv.md         - Az MSB/LSB szétválasztás terve
+├── MSB_LSB_GM2_terv.md         - Az MSB/LSB szétválasztás terve
+└── LICENSE                     - A licenc teljes szövege (GPL-3.0)
 ```
 
 ### Hol tárolja az adatokat?
@@ -221,3 +222,17 @@ A projekt jelenleg aktív fejlesztés alatt áll. A MIDI felvétel kész, kézi
 szegmensekre bontás a csendek mentén, mentés és jelentés), és a
 lejátszás is működik, tekeréssel és ráfelvétellel; a felvevő ablak
 végső tesztelése és a metronóm fejlesztése folyamatban van.
+
+## Licenc
+
+Copyright (C) 2026 Oszkó Viktor
+
+A MidiBill3 szabad szoftver: a Free Software Foundation által kiadott
+**GNU General Public License 3. verziója** (GPL-3.0) szerint
+terjeszthető és módosítható. A program abban a reményben kerül
+terjesztésre, hogy hasznos lesz, de MINDENFÉLE GARANCIA NÉLKÜL. A
+licenc teljes (angol nyelvű) szövege a [`LICENSE`](LICENSE) fájlban
+olvasható.
+
+A program a [NAudio](https://github.com/naudio/NAudio) könyvtárat
+használja, amely MIT licenc alatt érhető el.

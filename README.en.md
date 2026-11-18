@@ -192,7 +192,8 @@ MidiBill3/                      - single project
 ├── CHANGELOG.md                - Detailed change log
 ├── MidiBill3_VBNET_aktualis_allapot.md  - Current state of the project
 ├── MIDI_felvetel_fazisterv.md  - Phase plan for the MIDI recorder
-└── MSB_LSB_GM2_terv.md         - Plan for the MSB/LSB split
+├── MSB_LSB_GM2_terv.md         - Plan for the MSB/LSB split
+└── LICENSE                     - Full text of the license (GPL-3.0)
 ```
 
 ### Where is data stored?
@@ -231,3 +232,16 @@ starts on the first key press, splitting into segments at silences,
 saving and reporting), and playback with seeking and overdubbing works
 too; final testing of the recorder window and the metronome are still
 in progress.
+
+## License
+
+Copyright (C) 2026 Oszkó Viktor
+
+MidiBill3 is free software: you can redistribute it and/or modify it
+under the terms of the **GNU General Public License version 3**
+(GPL-3.0) as published by the Free Software Foundation. It is
+distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY. See the [`LICENSE`](LICENSE) file for the full text.
+
+The program uses the [NAudio](https://github.com/naudio/NAudio)
+library, which is available under the MIT license.
